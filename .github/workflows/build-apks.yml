@@ -79,18 +79,66 @@ jobs:
         working-directory: ${{ matrix.app.dir }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
-      # 3. Cryptographic Signing — keystore + passwords pulled from secrets.
+      # 3. Cryptographic Signing.
+      #    - If SIGNING_KEY / KEY_ALIAS / KEY_STORE_PASSWORD secrets are set,
+      #      decode and use the release keystore provided by the repo admin.
+      #    - Otherwise, fall back to the default self-signed keystore committed
+      #      at keystore/securepay-release.jks so CI builds always produce a
+      #      signed APK. The default keystore is for CI / smoke tests only.
+      - name: Prepare signing material
+        id: signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          DEFAULT_KEYSTORE: ${{ github.workspace }}/keystore/securepay-release.jks
+        run: |
+          set -euo pipefail
+          mkdir -p signing
+          if [ -n "$SIGNING_KEY" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_STORE_PASSWORD" ]; then
+            echo "Using repository signing secrets."
+            printf '%s' "$SIGNING_KEY" | base64 --decode > signing/release.jks
+            ALIAS="$KEY_ALIAS"
+            STORE_PASS="$KEY_STORE_PASSWORD"
+            KEY_PASS="${KEY_PASSWORD:-$KEY_STORE_PASSWORD}"
+          elif [ -f "$DEFAULT_KEYSTORE" ]; then
+            echo "::warning::Signing secrets missing — using default repo keystore ($DEFAULT_KEYSTORE). Configure SIGNING_KEY/KEY_ALIAS/KEY_STORE_PASSWORD for production."
+            cp "$DEFAULT_KEYSTORE" signing/release.jks
+            ALIAS="securepay"
+            STORE_PASS="securepayci"
+            KEY_PASS="${KEY_PASSWORD:-securepayci}"
+          else
+            echo "::error::No signing material available: secrets empty and $DEFAULT_KEYSTORE not found."
+            exit 1
+          fi
+          echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"
+          echo "store_pass=$STORE_PASS" >> "$GITHUB_OUTPUT"
+          echo "key_pass=$KEY_PASS" >> "$GITHUB_OUTPUT"
+
       - name: Sign release APK
         id: sign
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: ${{ matrix.app.dir }}/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
           BUILD_TOOLS_VERSION: '34.0.0'
+          ALIAS: ${{ steps.signing.outputs.alias }}
+          STORE_PASS: ${{ steps.signing.outputs.store_pass }}
+          KEY_PASS: ${{ steps.signing.outputs.key_pass }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
+          ZIPALIGN="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/zipalign"
+          IN="${{ matrix.app.dir }}/app/build/outputs/apk/release/app-release-unsigned.apk"
+          ALIGNED="${{ matrix.app.dir }}/app/build/outputs/apk/release/app-release-aligned.apk"
+          OUT="${{ matrix.app.dir }}/app/build/outputs/apk/release/app-release-signed.apk"
+          "$ZIPALIGN" -f -p -v 4 "$IN" "$ALIGNED"
+          "$APKSIGNER" sign \
+            --ks signing/release.jks \
+            --ks-key-alias "$ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --out "$OUT" "$ALIGNED"
+          "$APKSIGNER" verify --verbose "$OUT"
+          echo "signedReleaseFile=$OUT" >> "$GITHUB_OUTPUT"
 
       # 4. Artifact Renaming — apply the exact nomenclature with the short SHA.
       - name: Rename signed APK
