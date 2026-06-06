@@ -3,6 +3,7 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-feature
         android:name="android.hardware.camera.any"
@@ -13,7 +14,8 @@
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SecurePay">
+        android:theme="@style/Theme.SecurePay"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"

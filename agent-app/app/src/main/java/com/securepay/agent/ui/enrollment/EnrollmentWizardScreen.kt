@@ -11,15 +11,22 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -28,8 +35,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,8 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.securepay.agent.R
+import com.securepay.agent.data.remote.SecurePayRepository
 import com.securepay.agent.ui.components.StepIndicator
 import com.securepay.agent.ui.enrollment.steps.KycStep
 import com.securepay.agent.ui.enrollment.steps.PlanStep
@@ -49,9 +54,12 @@ import com.securepay.agent.ui.enrollment.steps.ScannerStep
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnrollmentWizardScreen(
-    modifier: Modifier = Modifier,
-    viewModel: EnrollmentViewModel = viewModel(factory = EnrollmentViewModel.Factory)
+    repository: SecurePayRepository,
+    onComplete: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val viewModel = remember { EnrollmentViewModel(repository) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -61,7 +69,6 @@ fun EnrollmentWizardScreen(
         stringResource(R.string.step_plan)
     )
 
-    // Surface submission errors as a snackbar, then reset for retry.
     LaunchedEffect(state.submission) {
         val submission = state.submission
         if (submission is SubmissionState.Error) {
@@ -76,9 +83,13 @@ fun EnrollmentWizardScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.wizard_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -100,6 +111,7 @@ fun EnrollmentWizardScreen(
             if (submission is SubmissionState.Success) {
                 EnrollmentSuccess(
                     enrollmentId = submission.enrollmentId,
+                    onDone = onComplete,
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -131,14 +143,12 @@ fun EnrollmentWizardScreen(
                                 onNationalIdChange = viewModel::updateKycNationalId,
                                 onPhoneChange = viewModel::updateKycPhone
                             )
-
                             EnrollmentStep.DEVICE -> ScannerStep(
                                 state = state,
                                 onImeiChange = viewModel::updateImei,
                                 onDeviceModelChange = viewModel::updateDeviceModel,
                                 onSimulateScan = viewModel::simulateScan
                             )
-
                             EnrollmentStep.PLAN -> PlanStep(
                                 state = state,
                                 onSelectPlan = viewModel::selectPlan,
@@ -210,6 +220,7 @@ private fun WizardControls(
 @Composable
 private fun EnrollmentSuccess(
     enrollmentId: String,
+    onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -220,10 +231,11 @@ private fun EnrollmentSuccess(
         Icon(
             imageVector = Icons.Filled.CheckCircle,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(64.dp)
         )
         Text(
-            text = "Enrollment submitted",
+            text = "Enrollment submitted!",
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -232,5 +244,8 @@ private fun EnrollmentSuccess(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Button(onClick = onDone, modifier = Modifier.padding(top = 16.dp)) {
+            Text("Done")
+        }
     }
 }

@@ -1,9 +1,16 @@
 package com.securepay.agent
 
 import android.app.Application
+import com.securepay.agent.data.remote.ApiModule
+import com.securepay.agent.data.remote.SecurePayRepository
+import com.securepay.agent.data.remote.TokenManager
 
-/**
- * Application entry point. A lightweight place to host process-wide setup
- * (analytics, crash reporting, DI graph) as the agent app grows.
- */
-class SecurePayAgentApplication : Application()
+class SecurePayAgentApplication : Application() {
+
+    val tokenManager: TokenManager by lazy { TokenManager(this) }
+
+    val repository: SecurePayRepository by lazy {
+        val api = ApiModule.provideApi(tokenManager)
+        SecurePayRepository(api, tokenManager)
+    }
+}

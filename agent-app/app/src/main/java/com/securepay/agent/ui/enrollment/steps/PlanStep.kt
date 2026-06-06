@@ -28,12 +28,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.securepay.agent.R
 import com.securepay.agent.data.model.Plan
+import com.securepay.agent.data.model.formatAmount
 import com.securepay.agent.ui.enrollment.EnrollmentUiState
 
-/**
- * Step 3 — Plan selection. An exposed dropdown drives a computed summary card
- * and a down payment field that is validated against the plan total.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanStep(
@@ -71,7 +68,16 @@ fun PlanStep(
             ) {
                 state.availablePlans.forEach { plan ->
                     DropdownMenuItem(
-                        text = { Text(plan.name) },
+                        text = {
+                            Column {
+                                Text(plan.name, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "${formatAmount(plan.totalAmount)} · ${plan.termDays} days",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        },
                         onClick = {
                             onSelectPlan(plan)
                             expanded = false
@@ -90,8 +96,12 @@ fun PlanStep(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             isError = state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid,
             supportingText = {
-                if (state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid) {
-                    Text("Must be between 0 and the loan total")
+                if (selectedPlan != null) {
+                    if (state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid) {
+                        Text("Must be between ${formatAmount(selectedPlan.minDownPayment)} and ${formatAmount(selectedPlan.totalAmount)}")
+                    } else {
+                        Text("Min: ${formatAmount(selectedPlan.minDownPayment)}")
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -125,15 +135,15 @@ private fun SummaryCard(plan: Plan, modifier: Modifier = Modifier) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             SummaryRow(
                 label = stringResource(R.string.summary_total_loan),
-                value = formatCurrency(plan.totalLoanAmount)
+                value = formatAmount(plan.totalAmount)
             )
             SummaryRow(
                 label = stringResource(R.string.summary_daily_rate),
-                value = formatCurrency(plan.dailyRate)
+                value = formatAmount(plan.dailyRate)
             )
             SummaryRow(
                 label = stringResource(R.string.summary_term),
-                value = plan.termDays.toString()
+                value = "${plan.termDays} days"
             )
         }
     }
@@ -158,6 +168,3 @@ private fun SummaryRow(label: String, value: String) {
         )
     }
 }
-
-private fun formatCurrency(amount: Double): String =
-    "$" + amount.toBigDecimal().stripTrailingZeros().toPlainString()

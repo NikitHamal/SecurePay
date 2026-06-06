@@ -43,11 +43,6 @@ import androidx.core.content.ContextCompat
 import com.securepay.agent.R
 import com.securepay.agent.ui.enrollment.EnrollmentUiState
 
-/**
- * Step 2 — Device capture. Shows a live CameraX preview to frame the IMEI
- * barcode/label, with a manual entry fallback and a "Simulate Scan" helper for
- * demos or devices without a camera.
- */
 @Composable
 fun ScannerStep(
     state: EnrollmentUiState,
@@ -131,16 +126,12 @@ fun ScannerStep(
             onValueChange = onDeviceModelChange,
             label = { Text(stringResource(R.string.label_device_model)) },
             singleLine = true,
-            isError = state.draft.deviceModel.isEmpty().not() && !state.isDeviceModelValid,
+            isError = state.draft.deviceModel.isNotEmpty() && !state.isDeviceModelValid,
             modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
-/**
- * Binds a CameraX [Preview] use case to the current lifecycle and renders it in
- * a [PreviewView] through interop. The provider is unbound on disposal.
- */
 @Composable
 private fun CameraPreview(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -165,10 +156,7 @@ private fun CameraPreview(modifier: Modifier = Modifier) {
         try {
             provider.unbindAll()
             provider.bindToLifecycle(lifecycleOwner, selector, preview)
-        } catch (_: Exception) {
-            // Camera may be unavailable (e.g. emulator without webcam); the
-            // manual IMEI entry below remains fully functional.
-        }
+        } catch (_: Exception) { }
 
         onDispose {
             provider.unbindAll()
