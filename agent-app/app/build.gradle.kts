@@ -28,7 +28,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            buildConfigField("String", "API_BASE_URL", "\"https://securepay.fly.dev/api/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://securepay-dashboard.pages.dev/api/\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

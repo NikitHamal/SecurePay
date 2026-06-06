@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
+import { getDb } from '$lib/api/server';
 
-export const GET: RequestHandler = async () => {
-  const result = await db.execute('SELECT * FROM plans ORDER BY term_days ASC');
+export const GET: RequestHandler = async ({ platform }) => {
+  const db = getDb({ platform });
+  const result = await db.prepare('SELECT * FROM plans ORDER BY term_days ASC').all();
 
-  const plans = result.rows.map((row) => ({
+  const plans = result.results.map((row) => ({
     id: row.id as string,
     name: row.name as string,
     termDays: Number(row.term_days),

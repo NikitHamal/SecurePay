@@ -1,16 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { errorResponse } from '$lib/api/server';
+import { getDb, errorResponse } from '$lib/api/server';
 import type { LedgerEntry, PaymentMethod } from '$lib/types';
 
-export const GET: RequestHandler = async ({ locals, url }) => {
+export const GET: RequestHandler = async ({ locals, url, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
   const methodFilter = url.searchParams.get('method') as PaymentMethod | null;
   const accountIdFilter = url.searchParams.get('accountId');
+
+  const db = getDb({ platform });
 
   let sql = `
     SELECT p.*, a.customer_name, d.imei
@@ -32,9 +33,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
   sql += ' ORDER BY p.created_at DESC';
 
-  const result = await db.execute({ sql, args });
+  const result = await db.prepare(sql).bind(...args).all();
 
-  const entries: LedgerEntry[] = result.rows.map((row) => ({
+  const entries: LedgerEntry[] = result.results.map((row) => ({
     id: row.id as string,
     customerId: row.account_id as string,
     customerName: row.customer_name as string,

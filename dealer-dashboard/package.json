@@ -11,9 +11,11 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260606.1",
     "@sveltejs/adapter-auto": "^3.2.5",
     "@sveltejs/kit": "^2.5.28",
     "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.16.10",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
@@ -24,7 +26,7 @@
     "vite": "^5.4.8"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.3",
+    "@sveltejs/adapter-cloudflare": "^7.2.8",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
     "uuid": "^14.0.0"

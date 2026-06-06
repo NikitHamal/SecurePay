@@ -164,7 +164,7 @@
         All methods
         <span class="ml-1.5 rounded-md bg-surface-100 px-1.5 py-0.5 text-2xs text-ink-muted tabular-nums">{entries.length}</span>
       </button>
-      {#each (['M-PESA', 'CARD', 'BANK', 'CASH'] as PaymentMethod[]).filter(Boolean) as m (m)}
+      {#each ['M-PESA', 'CARD', 'BANK', 'CASH'] as m (m)}
         {@const count = entries.filter((e) => e.method === m).length}
         <button
           type="button"
@@ -175,8 +175,8 @@
             : 'border-edge bg-surface-100/40 text-ink-secondary hover:text-ink-primary hover:bg-hover'}"
         >
           <span class="inline-flex items-center gap-1.5">
-            <span class="h-1.5 w-1.5 rounded-full" style="background: {methodStyles[m as PaymentMethod].color};"></span>
-            {methodStyles[m as PaymentMethod].label}
+            <span class="h-1.5 w-1.5 rounded-full" style="background: {methodStyles[m].color};"></span>
+            {methodStyles[m].label}
           </span>
           <span class="ml-1.5 rounded-md bg-surface-100 px-1.5 py-0.5 text-2xs text-ink-muted tabular-nums">{count}</span>
         </button>
