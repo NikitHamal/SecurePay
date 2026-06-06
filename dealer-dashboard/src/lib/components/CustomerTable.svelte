@@ -1,14 +1,16 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import type { Customer } from '$lib/types';
+  import type { Customer, Status } from '$lib/types';
   import { customers, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
-  import { formatCountdown, formatCurrency } from '$lib/utils/format';
-  import StatusBadge from './StatusBadge.svelte';
+  import { formatCountdown, formatCurrency, formatPhone } from '$lib/utils/format';
+  import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
+  import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
 
-  /** Number of hours added by the Extend Timer action. */
   export let extendHours = 24;
+  export let statusFilter: Status | 'ALL' = 'ALL';
+  export let search: string = '';
+  export let onSelect: (id: string) => void = () => {};
 
-  /** Ticking clock used to drive the live countdowns. */
   let now: number = Date.now();
   let interval: ReturnType<typeof setInterval> | undefined;
 
@@ -32,6 +34,11 @@
     return set.has(id);
   }
 
+  function paidRatio(customer: Customer): number {
+    if (customer.totalLoanAmount === 0) return 0;
+    return (customer.amountPaid / customer.totalLoanAmount) * 100;
+  }
+
   async function onExtend(id: string): Promise<void> {
     await extendTimer(id, extendHours);
   }
@@ -39,58 +46,94 @@
   async function onLock(id: string): Promise<void> {
     await forceRemoteLock(id);
   }
+
+  $: visible = $customers.filter((c) => {
+    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
+    const q = search.trim().toLowerCase();
+    if (!q) return matchesStatus;
+    const haystack = `${c.customerName} ${c.phoneNumber} ${c.imei} ${c.deviceModel} ${c.id}`.toLowerCase();
+    return matchesStatus && haystack.includes(q);
+  });
 </script>
 
 <div class="card overflow-hidden">
   <div class="overflow-x-auto">
-    <table class="w-full min-w-[860px] border-collapse text-left text-sm">
+    <table class="w-full min-w-[920px] border-collapse text-left text-sm">
       <thead>
-        <tr class="border-b border-white/5 text-xs uppercase tracking-wide text-text-secondary">
-          <th class="px-4 py-3 font-medium">Customer</th>
-          <th class="px-4 py-3 font-medium">IMEI</th>
-          <th class="px-4 py-3 font-medium">Device</th>
-          <th class="px-4 py-3 text-right font-medium">Balance</th>
-          <th class="px-4 py-3 font-medium">Status</th>
-          <th class="px-4 py-3 font-medium">Next Due</th>
-          <th class="px-4 py-3 text-right font-medium">Actions</th>
+        <tr class="border-b border-edge text-2xs uppercase tracking-[0.12em] text-ink-muted">
+          <th class="px-4 py-3 font-semibold">Customer</th>
+          <th class="px-4 py-3 font-semibold">Device · Plan</th>
+          <th class="px-4 py-3 font-semibold">Loan progress</th>
+          <th class="px-4 py-3 font-semibold">Status</th>
+          <th class="px-4 py-3 font-semibold">Next due</th>
+          <th class="px-4 py-3 text-right font-semibold">Actions</th>
         </tr>
       </thead>
       <tbody>
-        {#each $customers as customer (customer.id)}
+        {#each visible as customer (customer.id)}
+          {@const ratio = paidRatio(customer)}
           {@const left = remainingMs(customer)}
-          <tr class="border-b border-white/5 transition-colors last:border-b-0 hover:bg-white/[0.03]">
-            <td class="px-4 py-3">
-              <div class="font-medium text-text-primary">{customer.customerName}</div>
-              <div class="text-xs text-text-secondary">{customer.phoneNumber}</div>
+          <tr
+            class="group cursor-pointer border-b border-edge/60 last:border-b-0 transition-colors hover:bg-hover"
+            on:click={() => onSelect(customer.id)}
+          >
+            <td class="px-4 py-3.5">
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                  style="background: linear-gradient(135deg, hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37) % 360}, 70%, 60%), hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37 + 40) % 360}, 70%, 50%));"
+                  aria-hidden="true"
+                >
+                  {customer.customerName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
+                </span>
+                <div class="min-w-0">
+                  <div class="font-medium text-ink-primary truncate">{customer.customerName}</div>
+                  <div class="text-2xs text-ink-muted">{customer.id} · {formatPhone(customer.phoneNumber)}</div>
+                </div>
+              </div>
             </td>
-            <td class="px-4 py-3 font-mono text-xs text-text-secondary">{customer.imei}</td>
-            <td class="px-4 py-3">
-              <div class="text-text-primary">{customer.deviceModel}</div>
-              <div class="text-xs text-text-secondary">{customer.planName}</div>
+            <td class="px-4 py-3.5">
+              <div class="text-ink-primary">{customer.deviceModel}</div>
+              <div class="text-2xs text-ink-muted">{customer.planName} · {formatCurrency(customer.dailyRate)}/day</div>
             </td>
-            <td class="px-4 py-3 text-right">
-              <div class="font-medium text-text-primary">{formatCurrency(customer.remainingBalance)}</div>
-              <div class="text-xs text-text-secondary">of {formatCurrency(customer.totalLoanAmount)}</div>
+            <td class="px-4 py-3.5 min-w-[200px]">
+              <div class="flex items-center gap-3">
+                <div class="flex-1">
+                  <div class="mb-1 flex items-baseline justify-between text-2xs text-ink-secondary">
+                    <span class="font-medium text-ink-primary tabular-nums">{formatCurrency(customer.amountPaid)}</span>
+                    <span class="tabular-nums">{ratio.toFixed(0)}%</span>
+                  </div>
+                  <div class="h-1.5 w-full overflow-hidden rounded-full" style="background: var(--progress-track);">
+                    <div
+                      class="h-full rounded-full"
+                      style="width: {Math.min(100, ratio)}%; background: linear-gradient(90deg, {ratio > 80 ? '#10B981' : ratio > 50 ? '#F59E0B' : '#EF4444'}, {ratio > 80 ? '#34D399' : ratio > 50 ? '#FBBF24' : '#F87171'});"
+                    ></div>
+                  </div>
+                  <div class="mt-1 text-2xs text-ink-muted">
+                    {formatCurrency(customer.remainingBalance)} left
+                  </div>
+                </div>
+              </div>
             </td>
-            <td class="px-4 py-3">
-              <StatusBadge status={customer.status} />
+            <td class="px-4 py-3.5">
+              <StatusBadge status={customer.status} size="sm" />
             </td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3.5">
               <span
-                class="font-mono text-sm tabular-nums {left <= 0 ? 'font-semibold text-crimson' : 'text-text-primary'}"
+                class="font-mono text-sm tabular-nums {left <= 0 ? 'font-semibold text-crimson' : 'text-ink-primary'}"
               >
                 {formatCountdown(left)}
               </span>
             </td>
-            <td class="px-4 py-3">
-              <div class="flex justify-end gap-2">
+            <td class="px-4 py-3.5">
+              <div class="flex justify-end gap-2 opacity-70 transition-opacity group-hover:opacity-100" on:click|stopPropagation>
                 <button
                   type="button"
                   class="btn-emerald"
                   disabled={isPending($pending, customer.id)}
                   on:click={() => onExtend(customer.id)}
                 >
-                  Extend Timer
+                  +{extendHours}h
                 </button>
                 <button
                   type="button"
@@ -98,16 +141,26 @@
                   disabled={customer.status === 'LOCKED' || isPending($pending, customer.id)}
                   on:click={() => onLock(customer.id)}
                 >
-                  Force Remote Lock
+                  Lock
                 </button>
               </div>
             </td>
           </tr>
         {/each}
 
-        {#if $customers.length === 0}
+        {#if visible.length === 0}
           <tr>
-            <td colspan="7" class="px-4 py-10 text-center text-text-secondary"> No customer accounts loaded. </td>
+            <td colspan="6" class="px-4 py-14 text-center">
+              <div class="mx-auto flex max-w-xs flex-col items-center gap-2">
+                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-100 text-ink-muted">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M21 21l-4.3-4.3M11 18a7 7 0 110-14 7 7 0 010 14z" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <p class="text-sm text-ink-secondary">No accounts match your filters.</p>
+                <p class="text-2xs text-ink-muted">Try a different status or search term.</p>
+              </div>
+            </td>
           </tr>
         {/if}
       </tbody>

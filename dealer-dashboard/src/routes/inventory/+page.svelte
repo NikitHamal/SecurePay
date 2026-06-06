@@ -1,54 +1,176 @@
 <script lang="ts">
-  import PageHeader from '$lib/components/PageHeader.svelte';
-  import StatusBadge from '$lib/components/StatusBadge.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import TopBar from '$lib/components/layout/TopBar.svelte';
+  import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
+  import Donut from '$lib/components/charts/Donut.svelte';
+  import BarChart from '$lib/components/charts/BarChart.svelte';
   import { customers } from '$lib/stores/customers';
+  import { portfolioMetrics } from '$lib/stores/portfolio';
+  import { formatCurrency } from '$lib/utils/format';
+
+  export let data: unknown = undefined;
+
+  let view: 'cards' | 'table' = 'cards';
+
+  $: m = $portfolioMetrics;
 </script>
 
 <svelte:head>
   <title>Inventory · SecurePay Dealer Console</title>
 </svelte:head>
 
-<section class="p-6">
+<div class="page">
+  <TopBar searchPlaceholder="Search IMEI, model, customer…" />
+
   <PageHeader
+    eyebrow="Hardware"
     title="IMEI Matrix"
-    subtitle="Hardware inventory mapped to financed accounts and lock status"
-  />
+    subtitle="Hardware inventory mapped to financed accounts and lock status."
+  >
+    <div slot="actions" class="flex items-center gap-1 rounded-lg border border-edge bg-surface-100 p-1">
+      <button
+        type="button"
+        on:click={() => (view = 'cards')}
+        class="rounded-md px-3 py-1 text-xs font-medium transition-colors
+               {view === 'cards' ? 'bg-emerald-300/15 text-emerald' : 'text-ink-secondary hover:text-ink-primary'}"
+      >
+        Cards
+      </button>
+      <button
+        type="button"
+        on:click={() => (view = 'table')}
+        class="rounded-md px-3 py-1 text-xs font-medium transition-colors
+               {view === 'table' ? 'bg-emerald-300/15 text-emerald' : 'text-ink-secondary hover:text-ink-primary'}"
+      >
+        Table
+      </button>
+    </div>
+  </PageHeader>
 
-  <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full min-w-[720px] border-collapse text-left text-sm">
-        <thead>
-          <tr class="border-b border-white/5 text-xs uppercase tracking-wide text-text-secondary">
-            <th class="px-4 py-3 font-medium">IMEI</th>
-            <th class="px-4 py-3 font-medium">Device Model</th>
-            <th class="px-4 py-3 font-medium">Assigned Customer</th>
-            <th class="px-4 py-3 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each $customers as customer (customer.id)}
-            <tr class="border-b border-white/5 transition-colors last:border-b-0 hover:bg-white/[0.03]">
-              <td class="px-4 py-3 font-mono text-xs text-text-secondary">{customer.imei}</td>
-              <td class="px-4 py-3 text-text-primary">{customer.deviceModel}</td>
-              <td class="px-4 py-3">
-                <div class="text-text-primary">{customer.customerName}</div>
-                <div class="text-xs text-text-secondary">{customer.id}</div>
-              </td>
-              <td class="px-4 py-3">
-                <StatusBadge status={customer.status} />
-              </td>
-            </tr>
-          {/each}
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="card p-6">
+      <p class="section-title">Model mix</p>
+      <p class="mt-1 text-sm text-ink-secondary">{m.deviceDistribution.length} models deployed</p>
+      <div class="mt-4">
+        <Donut
+          segments={m.deviceDistribution.map((d) => ({ label: d.name, value: d.value, color: d.color }))}
+          size={170}
+          stroke={20}
+          gap={3}
+          centerTitle={$customers.length.toString()}
+          centerSubtitle="devices"
+          legendValues={false}
+          showLegend
+        />
+      </div>
+    </div>
 
-          {#if $customers.length === 0}
-            <tr>
-              <td colspan="4" class="px-4 py-10 text-center text-text-secondary">
-                No inventory records loaded.
-              </td>
-            </tr>
-          {/if}
-        </tbody>
-      </table>
+    <div class="card p-6 lg:col-span-2">
+      <p class="section-title">Devices per model</p>
+      <p class="mt-1 text-sm text-ink-secondary">Distribution across the fleet</p>
+      <div class="mt-4">
+        <BarChart
+          values={m.deviceDistribution.map((d) => ({
+            label: d.name.length > 10 ? d.name.split(' ')[0].slice(0, 8) : d.name,
+            value: d.value,
+            color: d.color
+          }))}
+          color="#38BDF8"
+          height={220}
+          xLabelRotation={-22}
+        />
+      </div>
     </div>
   </div>
-</section>
+
+  {#if view === 'cards'}
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {#each $customers as customer (customer.id)}
+        {@const ratio = customer.totalLoanAmount > 0 ? (customer.amountPaid / customer.totalLoanAmount) * 100 : 0}
+        <article class="card card-hover p-4">
+          <header class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <span
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-semibold text-white"
+                style="background: linear-gradient(135deg, hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37) % 360}, 70%, 60%), hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37 + 40) % 360}, 70%, 50%));"
+              >
+                {customer.deviceModel.split(' ').map((p) => p[0]).join('').slice(0, 2)}
+              </span>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-ink-primary">{customer.deviceModel}</p>
+                <p class="truncate text-2xs text-ink-muted">{customer.customerName}</p>
+              </div>
+            </div>
+            <StatusBadge status={customer.status} size="sm" />
+          </header>
+
+          <dl class="mt-3 grid grid-cols-2 gap-2 text-2xs">
+            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
+              <dt class="text-ink-muted">IMEI</dt>
+              <dd class="font-mono text-ink-secondary truncate">{customer.imei}</dd>
+            </div>
+            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
+              <dt class="text-ink-muted">Plan</dt>
+              <dd class="text-ink-secondary truncate">{customer.planName}</dd>
+            </div>
+            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
+              <dt class="text-ink-muted">Outstanding</dt>
+              <dd class="font-medium text-ink-primary tabular-nums">{formatCurrency(customer.remainingBalance)}</dd>
+            </div>
+            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
+              <dt class="text-ink-muted">Daily rate</dt>
+              <dd class="font-medium text-ink-primary tabular-nums">{formatCurrency(customer.dailyRate)}</dd>
+            </div>
+          </dl>
+
+          <div class="mt-3">
+            <div class="mb-1 flex items-baseline justify-between text-2xs text-ink-secondary">
+              <span>Loan progress</span>
+              <span class="tabular-nums text-ink-primary">{ratio.toFixed(0)}%</span>
+            </div>
+            <div class="h-1.5 w-full overflow-hidden rounded-full" style="background: var(--progress-track);">
+              <div
+                class="h-full rounded-full"
+                style="width: {Math.min(100, ratio)}%; background: linear-gradient(90deg, {ratio > 80 ? '#10B981' : ratio > 50 ? '#F59E0B' : '#EF4444'}, {ratio > 80 ? '#34D399' : ratio > 50 ? '#FBBF24' : '#F87171'});"
+              ></div>
+            </div>
+          </div>
+        </article>
+      {/each}
+    </div>
+  {:else}
+    <div class="card mt-6 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] border-collapse text-left text-sm">
+          <thead>
+            <tr class="border-b border-edge text-2xs uppercase tracking-[0.12em] text-ink-muted">
+              <th class="px-4 py-3 font-semibold">IMEI</th>
+              <th class="px-4 py-3 font-semibold">Device Model</th>
+              <th class="px-4 py-3 font-semibold">Assigned Customer</th>
+              <th class="px-4 py-3 text-right font-semibold">Outstanding</th>
+              <th class="px-4 py-3 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each $customers as customer (customer.id)}
+              <tr class="border-b border-edge/60 last:border-b-0 transition-colors hover:bg-hover">
+                <td class="px-4 py-3 font-mono text-2xs text-ink-secondary">{customer.imei}</td>
+                <td class="px-4 py-3 text-ink-primary">{customer.deviceModel}</td>
+                <td class="px-4 py-3">
+                  <div class="text-ink-primary">{customer.customerName}</div>
+                  <div class="text-2xs text-ink-muted">{customer.id}</div>
+                </td>
+                <td class="px-4 py-3 text-right font-medium text-ink-primary tabular-nums">
+                  {formatCurrency(customer.remainingBalance)}
+                </td>
+                <td class="px-4 py-3">
+                  <StatusBadge status={customer.status} size="sm" />
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {/if}
+</div>

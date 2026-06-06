@@ -1,0 +1,178 @@
+import type { Customer, KpiSummary, LedgerEntry, PaymentMethod } from '$lib/types';
+
+const API_BASE = '/api';
+
+let authToken: string | null = null;
+
+export function setToken(token: string): void {
+  authToken = token;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('securepay_token', token);
+  }
+}
+
+export function getToken(): string | null {
+  if (authToken) return authToken;
+  if (typeof window !== 'undefined') {
+    authToken = localStorage.getItem('securepay_token');
+  }
+  return authToken;
+}
+
+export function clearToken(): void {
+  authToken = null;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('securepay_token');
+  }
+}
+
+function headers(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return h;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...headers(), ...(options.headers as Record<string, string> || {}) }
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error || `Request failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export function computeStatus(nextPaymentDueEpochMillis: number, now = Date.now()): 'ACTIVE' | 'WARNING' | 'LOCKED' {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  if (now >= nextPaymentDueEpochMillis) return 'LOCKED';
+  if (nextPaymentDueEpochMillis - now <= DAY_MS) return 'WARNING';
+  return 'ACTIVE';
+}
+
+export async function login(email: string, password: string): Promise<{ token: string; dealer: { id: string; name: string; email: string } }> {
+  const result = await request<{ token: string; dealer: { id: string; name: string; email: string } }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password })
+  });
+  setToken(result.token);
+  return result;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await request('/auth/logout', { method: 'POST' });
+  } finally {
+    clearToken();
+  }
+}
+
+export async function listCustomers(status?: string): Promise<Customer[]> {
+  const params = status ? `?status=${status}` : '';
+  return request<Customer[]>(`/accounts${params}`);
+}
+
+export async function getAccount(id: string): Promise<Customer> {
+  return request<Customer>(`/accounts/${id}`);
+}
+
+export async function createAccount(data: {
+  customerName: string;
+  nationalId: string;
+  phoneNumber: string;
+  imei: string;
+  planId: string;
+  downPayment?: number;
+}): Promise<Customer> {
+  return request<Customer>('/accounts', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function extendTimer(id: string, hours: number): Promise<Customer> {
+  return request<Customer>(`/accounts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ nextPaymentDue: Date.now() + hours * 60 * 60 * 1000 })
+  });
+}
+
+export async function forceRemoteLock(id: string): Promise<Customer> {
+  return request<Customer>(`/accounts/${id}/force-lock`, { method: 'POST' });
+}
+
+export async function forceRemoteUnlock(id: string): Promise<Customer> {
+  return request<Customer>(`/accounts/${id}/force-unlock`, { method: 'POST' });
+}
+
+export async function recordPayment(data: {
+  accountId: string;
+  amount: number;
+  method: string;
+  reference?: string;
+}): Promise<{ payment: { id: string }; account: Customer }> {
+  return request('/payments', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function listLedger(method?: string, accountId?: string): Promise<LedgerEntry[]> {
+  const params = new URLSearchParams();
+  if (method) params.set('method', method);
+  if (accountId) params.set('accountId', accountId);
+  const qs = params.toString();
+  return request<LedgerEntry[]>(`/ledger${qs ? `?${qs}` : ''}`);
+}
+
+export async function getKpis(): Promise<KpiSummary> {
+  return request<KpiSummary>('/kpis');
+}
+
+export async function listDevices(): Promise<{ id: string; imei: string; model: string; status: string; createdAt: number }[]> {
+  return request('/devices');
+}
+
+export async function addDevice(imei: string, model: string): Promise<{ id: string; imei: string; model: string; status: string }> {
+  return request('/devices', {
+    method: 'POST',
+    body: JSON.stringify({ imei, model })
+  });
+}
+
+export async function listPlans(): Promise<{ id: string; name: string; termDays: number; totalAmount: number; dailyRate: number; minDownPayment: number }[]> {
+  return request('/plans');
+}
+
+export async function deviceCheck(imei: string): Promise<{
+  enrolled: boolean;
+  imei: string;
+  deviceModel?: string;
+  status?: string;
+  accountId?: string;
+  customerName?: string;
+  nextPaymentDue?: number;
+  dailyRate?: number;
+}> {
+  return request(`/device/check?imei=${encodeURIComponent(imei)}`);
+}
+
+export async function deviceHeartbeat(imei: string): Promise<{
+  enrolled: boolean;
+  status: string;
+  nextPaymentDue: number;
+  dailyRate: number;
+  amountPaid: number;
+  totalLoanAmount: number;
+  remainingBalance: number;
+  serverTime: number;
+}> {
+  return request('/device/heartbeat', {
+    method: 'POST',
+    body: JSON.stringify({ imei })
+  });
+}
