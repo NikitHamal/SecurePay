@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_charcoal">#FF121212</color>
+    <color name="surface_dark">#FF1E1E1E</color>
+    <color name="surface_variant">#FF242424</color>
+    <color name="primary_emerald">#FF10B981</color>
+    <color name="primary_container">#FF064E3B</color>
+    <color name="error_crimson">#FFDC2626</color>
+    <color name="error_container">#FF7F1D1D</color>
+    <color name="warning_amber">#FFF59E0B</color>
+    <color name="on_background">#FFECECEC</color>
+    <color name="on_surface_secondary">#FFA0A0A0</color>
+</resources>

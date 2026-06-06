@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SecurePay</string>
+    <string name="device_admin_label">SecurePay Financing Controller</string>
+    <string name="device_admin_description">Allows SecurePay to enforce the device-financing payment policy, including locking the device when an installment is overdue.</string>
+</resources>

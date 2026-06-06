@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimal platform theme. The Compose SecurePayTheme drives the real UI
+         colors; this base theme just provides a dark, action-bar-less window
+         so the splash before Compose draws matches the charcoal background. -->
+    <style name="Theme.SecurePayCustomer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background_charcoal</item>
+        <item name="android:statusBarColor">@color/background_charcoal</item>
+        <item name="android:navigationBarColor">@color/background_charcoal</item>
+    </style>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SecurePay Agent</string>
+    <string name="enrollment_title">New Enrollment</string>
+    <string name="step_kyc">Customer</string>
+    <string name="step_scanner">Device</string>
+    <string name="step_payment">Plan</string>
+    <string name="action_next">Next</string>
+    <string name="action_back">Back</string>
+    <string name="action_submit">Submit Enrollment</string>
+    <string name="action_simulate_scan">Simulate Scan</string>
+    <string name="camera_permission_rationale">Camera access is required to scan the device IMEI barcode.</string>
+    <string name="grant_camera_permission">Grant Camera Permission</string>
+</resources>

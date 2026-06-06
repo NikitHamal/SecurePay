@@ -1,0 +1,34 @@
+# ---- Android / Gradle (customer-app, agent-app) ----
+.gradle/
+**/build/
+local.properties
+*.keystore
+*.jks
+captures/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# ---- Node / SvelteKit (dealer-dashboard) ----
+node_modules/
+.svelte-kit/
+dealer-dashboard/build/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ---- Misc ----
+*.log
+dist/

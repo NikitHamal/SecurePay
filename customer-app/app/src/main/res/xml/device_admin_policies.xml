@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Device-admin policy declaration for the SecurePay DPC. These are the
+     capabilities the financing controller may exercise once the user (or an
+     enrolling provisioning flow) activates this admin. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- Observe failed unlock attempts. -->
+        <watch-login />
+        <!-- Immediately lock the device when a payment is overdue. -->
+        <force-lock />
+        <!-- Disable keyguard widgets / features while locked. -->
+        <disable-keyguard-features />
+        <!-- Enforce password quality / expiration on the financed device. -->
+        <limit-password />
+        <expire-password />
+        <set-global-proxy />
+    </uses-policies>
+</device-admin>

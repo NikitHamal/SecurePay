@@ -1,0 +1,141 @@
+name: Build & Sign SecurePay APKs
+
+# Triggers automatically on every commit or pull request targeting main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-apks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 1 — Parallel compilation & signing.
+  # The matrix fans the two native Android modules out into two concurrent
+  # runners so customer-app and agent-app compile at the same time.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build ${{ matrix.app.label }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - label: CustomerApp
+            dir: customer-app
+            artifact: SecurePay-CustomerApp
+          - label: AgentApp
+            dir: agent-app
+            artifact: SecurePay-AgentApp
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Derive the short commit SHA used in the final binary nomenclature.
+      - name: Resolve short commit SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      # 1. Environmental Setup — Java 17 toolchain.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 1. Environmental Setup — Android SDK / build-tools / platform-tools.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required Android packages
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      # Provision Gradle 8.9 (also seeds the dependency cache) and expose the
+      # `gradle` command so we can materialise the wrapper deterministically.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      # 2. Bootstrap the Gradle wrapper for this module if it is not committed,
+      #    then build the release target through the wrapper as required.
+      - name: Ensure Gradle wrapper
+        working-directory: ${{ matrix.app.dir }}
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9 --distribution-type bin
+          fi
+          chmod +x gradlew
+
+      - name: Assemble release APK
+        working-directory: ${{ matrix.app.dir }}
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      # 3. Cryptographic Signing — keystore + passwords pulled from secrets.
+      - name: Sign release APK
+        id: sign
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: ${{ matrix.app.dir }}/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: '34.0.0'
+
+      # 4. Artifact Renaming — apply the exact nomenclature with the short SHA.
+      - name: Rename signed APK
+        run: |
+          mkdir -p dist
+          cp "${{ steps.sign.outputs.signedReleaseFile }}" \
+            "dist/${{ matrix.app.artifact }}-${{ steps.vars.outputs.sha_short }}.apk"
+          ls -lh dist
+
+      # Hand the renamed binary to the bundling stage.
+      - name: Upload module APK (intermediate)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-${{ matrix.app.label }}
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Stage 2 — Package both signed binaries into ONE downloadable asset zip.
+  # ---------------------------------------------------------------------------
+  bundle:
+    name: Bundle signed APKs
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve short commit SHA
+        id: vars
+        run: echo "sha_short=$(echo ${GITHUB_SHA} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Collect signed module APKs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: signed-*
+          merge-multiple: true
+          path: release-apks
+
+      - name: List bundled binaries
+        run: ls -lh release-apks
+
+      # 5. Artifact Upload — single asset containing both production binaries.
+      - name: Upload combined release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SecurePay-APKs-${{ steps.vars.outputs.sha_short }}
+          path: release-apks/*.apk
+          if-no-files-found: error
+          retention-days: 30
