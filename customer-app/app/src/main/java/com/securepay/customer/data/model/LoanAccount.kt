@@ -76,6 +76,21 @@ data class LoanAccount(
         get() = DeviceStatus.evaluate(nextPaymentDueEpochMillis, lockedByDealer, System.currentTimeMillis())
 }
 
+@Serializable
+data class PaymentEntry(
+    val id: String = "",
+    val accountId: String = "",
+    val amount: Int = 0,
+    val method: String = "",
+    val reference: String? = null,
+    val createdAt: Long = 0L
+)
+
+@Serializable
+data class PaymentsResponse(
+    val payments: List<PaymentEntry> = emptyList()
+)
+
 fun formatCentsAsCurrency(cents: Int, currencyCode: String = "KES"): String {
     val whole = cents / 100.0
     return if (currencyCode == "KES") {

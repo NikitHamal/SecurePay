@@ -3,7 +3,6 @@ package com.securepay.customer.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.securepay.customer.admin.DevicePolicyController
 import com.securepay.customer.data.model.DeviceStatus
 import com.securepay.customer.data.repository.DeviceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +17,7 @@ import kotlinx.coroutines.delay
 import com.securepay.customer.domain.RemainingTime
 
 class DeviceViewModel(
-    private val repository: DeviceRepository,
-    private val policyController: DevicePolicyController
+    private val repository: DeviceRepository
 ) : ViewModel() {
 
     private val ticker: StateFlow<Long> = flow {
@@ -37,8 +35,6 @@ class DeviceViewModel(
     private val requestingGrace = MutableStateFlow(false)
     private val transientMessage = MutableStateFlow<String?>(null)
 
-    private var lastEnforcedLocked: Boolean? = null
-
     private val derived: StateFlow<DeviceUiState> = combine(
         repository.account,
         ticker,
@@ -54,7 +50,6 @@ class DeviceViewModel(
                 account.lockedByDealer,
                 now
             )
-            reconcilePolicy(status)
             DeviceUiState(
                 isLoading = false,
                 account = account,
@@ -89,21 +84,14 @@ class DeviceViewModel(
         }
     }
 
-    private fun reconcilePolicy(status: DeviceStatus) {
-        val nowLocked = status == DeviceStatus.LOCKED
-        if (lastEnforcedLocked == nowLocked) return
-        lastEnforcedLocked = nowLocked
-        if (nowLocked) policyController.enforceLock() else policyController.releaseRestrictions()
-    }
-
     fun simulatePayment() {
         if (processingPayment.value) return
         viewModelScope.launch {
             processingPayment.value = true
             transientMessage.value = null
             runCatching { repository.heartbeat() }
-                .onSuccess { transientMessage.value = "Payment received. Device unlocked." }
-                .onFailure { transientMessage.value = "Payment failed. Please retry." }
+                .onSuccess { transientMessage.value = "Updated. Device status refreshed." }
+                .onFailure { transientMessage.value = "Update failed. Please retry." }
             processingPayment.value = false
         }
     }
@@ -124,15 +112,14 @@ class DeviceViewModel(
     }
 
     class Factory(
-        private val repository: DeviceRepository,
-        private val policyController: DevicePolicyController
+        private val repository: DeviceRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(DeviceViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return DeviceViewModel(repository, policyController) as T
+            return DeviceViewModel(repository) as T
         }
     }
 }
