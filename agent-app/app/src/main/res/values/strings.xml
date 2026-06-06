@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SecurePay Agent</string>
+    <string name="wizard_title">New Enrollment</string>
+
+    <string name="step_kyc">Customer</string>
+    <string name="step_device">Device</string>
+    <string name="step_plan">Plan</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_next">Next</string>
+    <string name="action_submit">Submit Enrollment</string>
+
+    <string name="label_full_name">Full name</string>
+    <string name="label_national_id">National ID</string>
+    <string name="label_phone">Phone number</string>
+
+    <string name="label_imei">IMEI (15 digits)</string>
+    <string name="label_device_model">Device model</string>
+    <string name="action_simulate_scan">Simulate Scan</string>
+    <string name="camera_permission_rationale">Camera access is needed to scan the device IMEI. You can also enter it manually below.</string>
+    <string name="action_grant_camera">Grant camera access</string>
+
+    <string name="label_plan">Financing plan</string>
+    <string name="label_down_payment">Down payment</string>
+    <string name="summary_total_loan">Total loan amount</string>
+    <string name="summary_daily_rate">Daily rate</string>
+    <string name="summary_term">Term (days)</string>
+</resources>
