@@ -4,6 +4,7 @@
 local.properties
 *.keystore
 *.jks
+!keystore/*.jks
 captures/
 .cxx/
 *.apk
