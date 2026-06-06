@@ -1,29 +1,92 @@
 package com.securepay.customer.data.model
 
-/**
- * Immutable snapshot of the customer's financing account as returned by the
- * (mock) backend. Field names are aligned with the agent enrollment app and the
- * dealer dashboard so a single record round-trips cleanly across all three tiers.
- */
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class DeviceCheckResponse(
+    val enrolled: Boolean = false,
+    val device: DeviceInfo? = null,
+    val account: AccountBrief? = null
+)
+
+@Serializable
+data class DeviceInfo(
+    val id: String = "",
+    val imei: String = "",
+    val model: String = "",
+    val status: String = ""
+)
+
+@Serializable
+data class AccountBrief(
+    val id: String = "",
+    val customerName: String = "",
+    val status: String = "",
+    val nextPaymentDue: Long = 0L,
+    val amountPaid: Int = 0,
+    val totalLoanAmount: Int = 0,
+    val dailyRate: Int = 0
+)
+
+@Serializable
+data class AccountResponse(
+    val id: String = "",
+    val customerName: String = "",
+    val nationalId: String = "",
+    val phoneNumber: String = "",
+    val imei: String = "",
+    val deviceModel: String = "",
+    val planName: String = "",
+    val totalLoanAmount: Int = 0,
+    val amountPaid: Int = 0,
+    val remainingBalance: Int = 0,
+    val dailyRate: Int = 0,
+    val nextPaymentDueEpochMillis: Long = 0L,
+    val status: String = "ACTIVE",
+    val lockedByDealer: Int = 0,
+    val downPayment: Int = 0,
+    val termDays: Int = 0,
+    val currencyCode: String = "KES",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+)
+
 data class LoanAccount(
     val id: String,
     val customerName: String,
     val imei: String,
     val deviceModel: String,
     val planName: String,
-    val totalLoanAmount: Double,
-    val amountPaid: Double,
-    val dailyRate: Double,
+    val totalLoanAmountCents: Int,
+    val amountPaidCents: Int,
+    val dailyRateCents: Int,
     val termDays: Int,
-    /** Epoch millis after which the account is considered overdue / LOCKED. */
     val nextPaymentDueEpochMillis: Long,
-    val currencyCode: String = "USD"
+    val lockedByDealer: Boolean,
+    val currencyCode: String = "KES"
 ) {
-    val remainingBalance: Double
-        get() = (totalLoanAmount - amountPaid).coerceAtLeast(0.0)
+    val remainingBalanceCents: Int
+        get() = (totalLoanAmountCents - amountPaidCents).coerceAtLeast(0)
 
-    /** 0f..1f completion of the financing term, used by the progress indicator. */
     val repaymentProgress: Float
-        get() = if (totalLoanAmount <= 0.0) 1f
-        else (amountPaid / totalLoanAmount).toFloat().coerceIn(0f, 1f)
+        get() = if (totalLoanAmountCents <= 0) 1f
+        else (amountPaidCents.toFloat() / totalLoanAmountCents).coerceIn(0f, 1f)
+
+    val displayStatus: DeviceStatus
+        get() = DeviceStatus.evaluate(nextPaymentDueEpochMillis, lockedByDealer, System.currentTimeMillis())
+}
+
+fun formatCentsAsCurrency(cents: Int, currencyCode: String = "KES"): String {
+    val whole = cents / 100.0
+    return if (currencyCode == "KES") {
+        "KES ${String.format("%,.0f", whole)}"
+    } else {
+        val symbol = when (currencyCode) {
+            "USD" -> "$"
+            "EUR" -> "\u20ac"
+            "GBP" -> "\u00a3"
+            else -> "$currencyCode "
+        }
+        "$symbol${String.format("%,.2f", whole)}"
+    }
 }

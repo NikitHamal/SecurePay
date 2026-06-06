@@ -45,7 +45,6 @@ class MainActivity : ComponentActivity() {
                 )
                 val state by vm.uiState.collectAsStateWithLifecycle()
 
-                // Keep the lock surface visible even over the keyguard on lock.
                 ensureLockVisibility(state.isLocked)
 
                 DashboardScreen(
@@ -54,8 +53,6 @@ class MainActivity : ComponentActivity() {
                     onMessageShown = vm::consumeMessage
                 )
 
-                // Full-screen overlay slides in instantly on LOCKED, covering all
-                // dashboard navigation beneath it.
                 AnimatedVisibility(
                     visible = state.isLocked,
                     enter = fadeIn(),
@@ -71,7 +68,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Surfaces the activity above the keyguard while LOCKED on API 27+. */
     private fun ensureLockVisibility(locked: Boolean) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(locked)

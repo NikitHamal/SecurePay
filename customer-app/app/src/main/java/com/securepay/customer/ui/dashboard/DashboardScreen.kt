@@ -43,14 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.securepay.customer.data.model.DeviceStatus
 import com.securepay.customer.data.model.LoanAccount
+import com.securepay.customer.data.model.formatCentsAsCurrency
 import com.securepay.customer.ui.DeviceUiState
 import com.securepay.customer.ui.components.StatusBadge
 import com.securepay.customer.ui.components.statusColor
 import com.securepay.customer.ui.theme.CharcoalElevated
 import com.securepay.customer.ui.theme.TextSecondary
-import java.text.NumberFormat
-import java.util.Currency
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,7 +95,7 @@ fun DashboardScreen(
                 ) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    Text("Loading account…", color = TextSecondary)
+                    Text("Loading account\u2026", color = TextSecondary)
                 }
             } else {
                 Spacer(Modifier.height(4.dp))
@@ -201,7 +199,7 @@ private fun BalanceCard(account: LoanAccount) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = formatCurrency(account.remainingBalance, account.currencyCode),
+                text = formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -215,12 +213,12 @@ private fun BalanceCard(account: LoanAccount) {
                 )
                 MetricColumn(
                     label = "Daily Rate",
-                    value = formatCurrency(account.dailyRate, account.currencyCode),
+                    value = formatCentsAsCurrency(account.dailyRateCents, account.currencyCode),
                     modifier = Modifier.weight(1f)
                 )
                 MetricColumn(
                     label = "Paid",
-                    value = formatCurrency(account.amountPaid, account.currencyCode),
+                    value = formatCentsAsCurrency(account.amountPaidCents, account.currencyCode),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -264,13 +262,7 @@ private fun PaymentTrigger(isProcessing: Boolean, onClick: () -> Unit) {
         } else {
             Icon(Icons.Filled.Bolt, contentDescription = null)
             Spacer(Modifier.size(8.dp))
-            Text("Simulate Payment Integration", fontWeight = FontWeight.SemiBold)
+            Text("Check for Updates", fontWeight = FontWeight.SemiBold)
         }
     }
-}
-
-private fun formatCurrency(amount: Double, currencyCode: String): String {
-    val format = NumberFormat.getCurrencyInstance(Locale.US)
-    runCatching { format.currency = Currency.getInstance(currencyCode) }
-    return format.format(amount)
 }
