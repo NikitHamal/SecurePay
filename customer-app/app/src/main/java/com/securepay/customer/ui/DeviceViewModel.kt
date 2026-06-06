@@ -3,6 +3,7 @@ package com.securepay.customer.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.securepay.customer.admin.SecurityChecker
 import com.securepay.customer.data.model.DeviceStatus
 import com.securepay.customer.data.repository.DeviceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,9 @@ class DeviceViewModel(
     private val processingPayment = MutableStateFlow(false)
     private val requestingGrace = MutableStateFlow(false)
     private val transientMessage = MutableStateFlow<String?>(null)
+    private val securityReport = MutableStateFlow<SecurityChecker.SecurityReport?>(null)
+
+    val securityWarnings: StateFlow<SecurityChecker.SecurityReport?> = securityReport.asStateFlow()
 
     private val derived: StateFlow<DeviceUiState> = combine(
         repository.account,
@@ -85,6 +89,13 @@ class DeviceViewModel(
     init {
         viewModelScope.launch { repository.refresh() }
         startHeartbeat()
+    }
+
+    fun runSecurityCheck(context: android.content.Context) {
+        viewModelScope.launch {
+            val report = SecurityChecker.runAllChecks(context)
+            securityReport.value = report
+        }
     }
 
     private fun startHeartbeat() {

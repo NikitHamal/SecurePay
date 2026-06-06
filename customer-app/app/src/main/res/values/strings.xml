@@ -3,4 +3,5 @@
     <string name="app_name">SecurePay</string>
     <string name="device_admin_label">SecurePay Device Management</string>
     <string name="device_admin_description">Allows SecurePay to enforce financing terms by restricting the device while the balance is overdue. Restrictions are removed automatically once payment is received.</string>
+    <string name="provisioning_complete">Device provisioning complete</string>
 </resources>

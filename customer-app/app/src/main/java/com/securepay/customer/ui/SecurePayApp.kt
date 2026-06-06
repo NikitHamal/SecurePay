@@ -12,11 +12,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.securepay.customer.admin.DevicePolicyController
+import com.securepay.customer.admin.SecurityChecker
 import com.securepay.customer.data.repository.DeviceRepository
 import com.securepay.customer.ui.activation.ActivationScreen
 import com.securepay.customer.ui.activation.ActivationViewModel
@@ -30,6 +32,7 @@ fun SecurePayApp(
     repository: DeviceRepository,
     policyController: DevicePolicyController
 ) {
+    val context = LocalContext.current
     val isRegistered by repository.isRegistered.collectAsState()
     val startDestination = if (isRegistered) Screen.Dashboard.route else Screen.Activation.route
 
@@ -43,6 +46,12 @@ fun SecurePayApp(
 
     val state by deviceViewModel.uiState.collectAsState()
     var lastEnforcedLocked by remember { mutableStateOf(false) }
+
+    var securityReport by remember { mutableStateOf<SecurityChecker.SecurityReport?>(null) }
+
+    LaunchedEffect(Unit) {
+        securityReport = SecurityChecker.runAllChecks(context)
+    }
 
     LaunchedEffect(state.isLocked) {
         val nowLocked = state.isLocked
@@ -72,7 +81,8 @@ fun SecurePayApp(
                 state = state,
                 onRefresh = deviceViewModel::simulatePayment,
                 onMessageShown = deviceViewModel::consumeMessage,
-                onViewPayments = { navController.navigate(Screen.Payments.route) }
+                onViewPayments = { navController.navigate(Screen.Payments.route) },
+                securityReport = securityReport
             )
 
             AnimatedVisibility(

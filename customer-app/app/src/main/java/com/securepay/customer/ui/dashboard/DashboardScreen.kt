@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.securepay.customer.admin.SecurityChecker
 import com.securepay.customer.data.model.DeviceStatus
 import com.securepay.customer.data.model.LoanAccount
 import com.securepay.customer.data.model.formatCentsAsCurrency
@@ -55,6 +57,7 @@ import com.securepay.customer.ui.components.StatusBadge
 import com.securepay.customer.ui.components.statusColor
 import com.securepay.customer.ui.theme.Amber
 import com.securepay.customer.ui.theme.CharcoalElevated
+import com.securepay.customer.ui.theme.Crimson
 import com.securepay.customer.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +66,8 @@ fun DashboardScreen(
     state: DeviceUiState,
     onRefresh: () -> Unit,
     onMessageShown: () -> Unit,
-    onViewPayments: () -> Unit
+    onViewPayments: () -> Unit,
+    securityReport: SecurityChecker.SecurityReport? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -128,6 +132,9 @@ fun DashboardScreen(
             ) {
                 if (state.isOffline) {
                     OfflineBanner()
+                }
+                if (securityReport != null && securityReport.hasWarnings) {
+                    SecurityWarningBanner(securityReport)
                 }
                 Text(
                     text = "Hello, ${account.customerName.split(" ").firstOrNull() ?: "Customer"}",
@@ -322,6 +329,40 @@ private fun OfflineBanner() {
             text = "Offline \u2014 showing cached data",
             style = MaterialTheme.typography.bodySmall,
             color = Amber,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SecurityWarningBanner(report: SecurityChecker.SecurityReport) {
+    val bannerColor = if (report.isRooted) Crimson else Amber
+    val bannerText = when {
+        report.isRooted -> "Rooted device \u2014 financing terms may not be enforceable"
+        report.isEmulator -> "Emulator environment detected"
+        report.isTampered -> "App integrity check failed"
+        report.isDebuggable -> "Debug build \u2014 not for production use"
+        else -> "Security warning detected"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bannerColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            Icons.Filled.Warning,
+            contentDescription = null,
+            tint = bannerColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = bannerText,
+            style = MaterialTheme.typography.bodySmall,
+            color = bannerColor,
             fontWeight = FontWeight.Medium
         )
     }
