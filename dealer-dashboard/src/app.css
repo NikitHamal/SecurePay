@@ -3,13 +3,74 @@
 @tailwind utilities;
 
 @layer base {
+  :root,
+  [data-theme='light'] {
+    --bg-base: #F8FAFB;
+    --bg-surface: #FFFFFF;
+    --bg-surface-50: #F1F5F9;
+    --bg-surface-100: #F1F5F9;
+    --bg-surface-200: #FFFFFF;
+    --bg-surface-300: #FFFFFF;
+    --bg-elevated: #F8FAFC;
+    --bg-sidebar: #FFFFFF;
+    --bg-input: #F1F5F9;
+    --bg-hover: rgba(15,23,42,0.04);
+    --border-default: rgba(15,23,42,0.08);
+    --border-strong: rgba(15,23,42,0.14);
+    --border-subtle: rgba(15,23,42,0.04);
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --text-dim: #CBD5E1;
+    --shadow-card: 0 1px 2px rgba(15,23,42,0.05);
+    --shadow-card-hover: 0 4px 12px rgba(15,23,42,0.08);
+    --scrollbar-thumb: rgba(15,23,42,0.12);
+    --scrollbar-thumb-hover: rgba(15,23,42,0.22);
+    --selection-bg: rgba(16,185,129,0.2);
+    --selection-text: #0F172A;
+    --overlay-bg: rgba(15,23,42,0.4);
+    --progress-track: #E2E8F0;
+    --avatar-text: #FFFFFF;
+  }
+
+  .dark,
+  [data-theme='dark'] {
+    --bg-base: #0A0C10;
+    --bg-surface: #151821;
+    --bg-surface-50: #1E222D;
+    --bg-surface-100: #1A1E27;
+    --bg-surface-200: #161A22;
+    --bg-surface-300: #12161E;
+    --bg-elevated: #1F2430;
+    --bg-sidebar: #0E1118;
+    --bg-input: #1A1E27;
+    --bg-hover: rgba(255,255,255,0.05);
+    --border-default: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.1);
+    --border-subtle: rgba(255,255,255,0.04);
+    --text-primary: #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --text-dim: #52525B;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.4);
+    --scrollbar-thumb: rgba(255,255,255,0.08);
+    --scrollbar-thumb-hover: rgba(255,255,255,0.15);
+    --selection-bg: rgba(16,185,129,0.3);
+    --selection-text: #fff;
+    --overlay-bg: rgba(0,0,0,0.6);
+    --progress-track: rgba(255,255,255,0.06);
+    --avatar-text: #0A0C10;
+  }
+
   html,
   body {
     height: 100%;
   }
 
   body {
-    @apply bg-charcoal text-text-primary font-sans;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -20,33 +81,126 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #121212;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2a2a2a;
+    background: var(--scrollbar-thumb);
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a3a3a;
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  ::selection {
+    background: var(--selection-bg);
+    color: var(--selection-text);
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-xl border border-white/5 bg-surface shadow-lg shadow-black/30;
+    @apply rounded-2xl border border-edge bg-surface-200 shadow-card;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  .card-hover:hover {
+    @apply border-edge-strong shadow-card-hover;
+  }
+
+  .glass {
+    @apply border border-edge bg-surface-200/70 backdrop-blur-xl;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium
+           transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-offset-surface-200 disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .btn-emerald {
-    @apply btn bg-emerald/15 text-emerald hover:bg-emerald/25 focus-visible:ring-emerald;
+    @apply btn bg-emerald/10 text-emerald hover:bg-emerald/20 focus-visible:ring-emerald;
+  }
+  .btn-crimson {
+    @apply btn bg-crimson/10 text-crimson hover:bg-crimson/20 focus-visible:ring-crimson;
+  }
+  .btn-ghost {
+    @apply btn text-ink-secondary hover:bg-hover hover:text-ink-primary;
+  }
+  .btn-primary {
+    @apply btn bg-emerald text-white hover:bg-emerald-50
+           focus-visible:ring-emerald;
+  }
+  .btn-outline {
+    @apply btn border border-edge text-ink-primary hover:bg-hover;
   }
 
-  .btn-crimson {
-    @apply btn bg-crimson/15 text-crimson hover:bg-crimson/25 focus-visible:ring-crimson;
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-edge
+           px-2.5 py-1 text-xs font-medium text-ink-secondary;
+    background: var(--bg-surface-100);
+  }
+  .chip-emerald {
+    @apply chip border-emerald-300/30 bg-emerald/10 text-emerald;
+  }
+  .chip-amber {
+    @apply chip border-amber-200/30 bg-amber/10 text-amber;
+  }
+  .chip-crimson {
+    @apply chip border-crimson-200/30 bg-crimson/10 text-crimson;
+  }
+  .chip-sky {
+    @apply chip border-sky/30 bg-sky/10 text-sky;
+  }
+  .chip-violet {
+    @apply chip border-violet/30 bg-violet/10 text-violet;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-edge bg-surface-100 px-3 py-2 text-sm text-ink-primary
+           placeholder:text-ink-muted focus:border-emerald-300/50 focus:outline-none
+           focus:ring-2 focus:ring-emerald/20;
+  }
+
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted;
+  }
+
+  .page {
+    @apply px-6 py-6 md:px-8 md:py-8;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-100 animate-shimmer;
+    background: linear-gradient(
+      90deg,
+      var(--bg-hover) 0%,
+      var(--border-strong) 50%,
+      var(--bg-hover) 100%
+    );
+    background-size: 200% 100%;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .bg-dot {
+    background-image: radial-gradient(var(--border-default) 1px, transparent 1px);
+    background-size: 14px 14px;
+  }
+  .bg-hover {
+    background-color: var(--bg-hover);
   }
 }
