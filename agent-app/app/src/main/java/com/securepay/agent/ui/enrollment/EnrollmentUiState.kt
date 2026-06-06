@@ -1,9 +1,8 @@
 package com.securepay.agent.ui.enrollment
 
-import com.securepay.agent.data.model.CustomerEnrollment
+import com.securepay.agent.data.model.AccountStatus
 import com.securepay.agent.data.model.Plan
 
-/** Wizard steps, in order. */
 enum class EnrollmentStep {
     KYC,
     DEVICE,
@@ -15,7 +14,6 @@ enum class EnrollmentStep {
     }
 }
 
-/** Outcome of submitting the assembled enrollment. */
 sealed interface SubmissionState {
     data object Idle : SubmissionState
     data object Submitting : SubmissionState
@@ -23,13 +21,23 @@ sealed interface SubmissionState {
     data class Error(val message: String) : SubmissionState
 }
 
-/**
- * Single source of truth for the enrollment wizard. Immutable; the view model
- * emits a fresh copy on every change.
- */
+data class EnrollmentDraft(
+    val customerName: String = "",
+    val nationalId: String = "",
+    val phoneNumber: String = "",
+    val imei: String = "",
+    val deviceModel: String = "",
+    val planName: String = "",
+    val totalLoanAmount: Int = 0,
+    val downPayment: Int = 0,
+    val dailyRate: Int = 0,
+    val termDays: Int = 0,
+    val status: AccountStatus = AccountStatus.ACTIVE
+)
+
 data class EnrollmentUiState(
     val stepIndex: Int = 0,
-    val draft: CustomerEnrollment = CustomerEnrollment(),
+    val draft: EnrollmentDraft = EnrollmentDraft(),
     val availablePlans: List<Plan> = emptyList(),
     val selectedPlan: Plan? = null,
     val downPaymentInput: String = "",
@@ -37,8 +45,6 @@ data class EnrollmentUiState(
 ) {
     val currentStep: EnrollmentStep
         get() = EnrollmentStep.ordered[stepIndex.coerceIn(0, EnrollmentStep.COUNT - 1)]
-
-    // ---- Per-field validation -------------------------------------------------
 
     val isNameValid: Boolean get() = draft.customerName.trim().length >= 3
     val isNationalIdValid: Boolean get() = draft.nationalId.trim().length in 6..20
@@ -52,10 +58,11 @@ data class EnrollmentUiState(
         get() {
             val value = downPaymentValue ?: return false
             val plan = selectedPlan ?: return false
-            return value in 0.0..plan.totalLoanAmount
+            val minCents = plan.minDownPayment
+            val maxCents = plan.totalAmount
+            val valueCents = (value * 100).toInt()
+            return valueCents in minCents..maxCents
         }
-
-    // ---- Per-step gating ------------------------------------------------------
 
     val isKycStepValid: Boolean get() = isNameValid && isNationalIdValid && isPhoneValid
     val isDeviceStepValid: Boolean get() = isImeiValid && isDeviceModelValid
@@ -72,7 +79,7 @@ data class EnrollmentUiState(
     val isLastStep: Boolean get() = stepIndex == EnrollmentStep.COUNT - 1
     val isSubmitting: Boolean get() = submission is SubmissionState.Submitting
 
-    private companion object {
+    companion object {
         const val IMEI_LENGTH = 15
     }
 }

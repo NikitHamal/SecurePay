@@ -26,4 +26,27 @@
     <string name="summary_total_loan">Total loan amount</string>
     <string name="summary_daily_rate">Daily rate</string>
     <string name="summary_term">Term (days)</string>
+
+    <string name="login_title">SecurePay</string>
+    <string name="login_subtitle">Field Agent Login</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Sign In</string>
+    <string name="login_demo">Use demo credentials</string>
+
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_active">Active</string>
+    <string name="dashboard_warning">Warning</string>
+    <string name="dashboard_locked">Locked</string>
+    <string name="dashboard_outstanding">Outstanding</string>
+    <string name="dashboard_collected_today">Collected Today</string>
+    <string name="dashboard_quick_actions">Quick Actions</string>
+
+    <string name="customers_title">Customers</string>
+    <string name="customers_search">Search customers…</string>
+
+    <string name="inventory_title">Inventory</string>
+    <string name="inventory_add_device">Add Device</string>
+
+    <string name="ledger_title">Payment Ledger</string>
 </resources>

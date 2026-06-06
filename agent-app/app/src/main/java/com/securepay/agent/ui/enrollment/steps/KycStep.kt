@@ -14,9 +14,6 @@ import androidx.compose.ui.unit.dp
 import com.securepay.agent.R
 import com.securepay.agent.ui.enrollment.EnrollmentUiState
 
-/**
- * Step 1 — Know Your Customer. Captures name, national ID and phone number.
- */
 @Composable
 fun KycStep(
     state: EnrollmentUiState,

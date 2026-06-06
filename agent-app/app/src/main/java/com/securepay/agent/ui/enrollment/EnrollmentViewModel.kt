@@ -1,13 +1,10 @@
 package com.securepay.agent.ui.enrollment
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.securepay.agent.data.model.CustomerEnrollment
+import com.securepay.agent.data.model.CreateAccountRequest
 import com.securepay.agent.data.model.Plan
-import com.securepay.agent.data.model.PlanCatalog
-import com.securepay.agent.data.repository.EnrollmentRepository
-import com.securepay.agent.data.repository.MockEnrollmentRepository
+import com.securepay.agent.data.remote.SecurePayRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,16 +12,31 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class EnrollmentViewModel(
-    private val repository: EnrollmentRepository = MockEnrollmentRepository(),
-    private val plans: List<Plan> = PlanCatalog.plans
+    private val repository: SecurePayRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        EnrollmentUiState(availablePlans = plans)
-    )
+    private val _uiState = MutableStateFlow(EnrollmentUiState())
     val uiState: StateFlow<EnrollmentUiState> = _uiState.asStateFlow()
 
-    // ---- KYC (step 1) ---------------------------------------------------------
+    private var plansLoaded = false
+
+    init {
+        loadPlans()
+    }
+
+    private fun loadPlans() {
+        if (plansLoaded) return
+        viewModelScope.launch {
+            val result = repository.listPlans()
+            result.fold(
+                onSuccess = { plans ->
+                    _uiState.update { it.copy(availablePlans = plans) }
+                    plansLoaded = true
+                },
+                onFailure = { }
+            )
+        }
+    }
 
     fun updateKycName(value: String) = _uiState.update {
         it.copy(draft = it.draft.copy(customerName = value))
@@ -38,10 +50,7 @@ class EnrollmentViewModel(
         it.copy(draft = it.draft.copy(phoneNumber = value))
     }
 
-    // ---- Device (step 2) ------------------------------------------------------
-
     fun updateImei(value: String) = _uiState.update {
-        // Keep only digits and cap at the 15-digit IMEI length.
         val sanitized = value.filter { ch -> ch.isDigit() }.take(IMEI_LENGTH)
         it.copy(draft = it.draft.copy(imei = sanitized))
     }
@@ -50,23 +59,20 @@ class EnrollmentViewModel(
         it.copy(draft = it.draft.copy(deviceModel = value))
     }
 
-    /** Fills a deterministic mock 15-digit IMEI, as if scanned from a barcode. */
     fun simulateScan() = _uiState.update {
         it.copy(draft = it.draft.copy(imei = MOCK_IMEI))
     }
 
-    // ---- Plan (step 3) --------------------------------------------------------
-
     fun selectPlan(plan: Plan) = _uiState.update { state ->
         state.copy(
             selectedPlan = plan,
-            // Pre-fill the suggested down payment when none has been typed yet.
             downPaymentInput = state.downPaymentInput.ifBlank {
-                plan.suggestedDownPayment.toBigDecimal().stripTrailingZeros().toPlainString()
+                val minCents = plan.minDownPayment
+                (minCents / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
             },
             draft = state.draft.copy(
                 planName = plan.name,
-                totalLoanAmount = plan.totalLoanAmount,
+                totalLoanAmount = plan.totalAmount,
                 dailyRate = plan.dailyRate,
                 termDays = plan.termDays
             )
@@ -78,11 +84,9 @@ class EnrollmentViewModel(
         val parsed = sanitized.toDoubleOrNull() ?: 0.0
         state.copy(
             downPaymentInput = sanitized,
-            draft = state.draft.copy(downPayment = parsed)
+            draft = state.draft.copy(downPayment = (parsed * 100).toInt())
         )
     }
-
-    // ---- Navigation -----------------------------------------------------------
 
     fun nextStep() = _uiState.update { state ->
         if (state.isCurrentStepValid && !state.isLastStep) {
@@ -96,42 +100,36 @@ class EnrollmentViewModel(
         if (!state.isFirstStep) state.copy(stepIndex = state.stepIndex - 1) else state
     }
 
-    // ---- Submission -----------------------------------------------------------
-
     fun submit() {
         val state = _uiState.value
-        if (!state.isKycStepValid || !state.isDeviceStepValid || !state.isPlanStepValid) {
-            return
-        }
+        if (!state.isKycStepValid || !state.isDeviceStepValid || !state.isPlanStepValid) return
         if (state.submission is SubmissionState.Submitting) return
+        val plan = state.selectedPlan ?: return
 
         _uiState.update { it.copy(submission = SubmissionState.Submitting) }
 
         viewModelScope.launch {
-            val enrollment: CustomerEnrollment = state.draft
-            val result = repository.submitEnrollment(enrollment)
+            val request = CreateAccountRequest(
+                customerName = state.draft.customerName,
+                nationalId = state.draft.nationalId,
+                phoneNumber = state.draft.phoneNumber,
+                imei = state.draft.imei,
+                planId = plan.id,
+                downPayment = if (state.draft.downPayment > 0) state.draft.downPayment else null
+            )
+
+            val result = repository.createAccount(request)
             _uiState.update { current ->
                 current.copy(
                     submission = result.fold(
-                        onSuccess = { id ->
-                            SubmissionState.Success(id).also {
-                                // Stamp the server id onto the immutable record.
-                            }
-                        },
-                        onFailure = { error ->
-                            SubmissionState.Error(error.message ?: "Submission failed")
-                        }
-                    ),
-                    draft = result.fold(
-                        onSuccess = { id -> current.draft.copy(id = id) },
-                        onFailure = { current.draft }
+                        onSuccess = { SubmissionState.Success(it.id) },
+                        onFailure = { SubmissionState.Error(it.message ?: "Enrollment failed") }
                     )
                 )
             }
         }
     }
 
-    /** Clears a transient error so the agent can retry. */
     fun clearSubmissionError() = _uiState.update {
         if (it.submission is SubmissionState.Error) it.copy(submission = SubmissionState.Idle) else it
     }
@@ -139,12 +137,5 @@ class EnrollmentViewModel(
     companion object {
         private const val IMEI_LENGTH = 15
         private const val MOCK_IMEI = "359881234567890"
-
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return EnrollmentViewModel() as T
-            }
-        }
     }
 }

@@ -10,23 +10,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.securepay.agent.data.model.EnrollmentStatus
-import com.securepay.agent.ui.theme.Amber
-import com.securepay.agent.ui.theme.EmeraldGreen
-import com.securepay.agent.ui.theme.VividCrimson
+import com.securepay.agent.data.model.AccountStatus
 
-/**
- * Reusable pill that renders an [EnrollmentStatus] using the shared palette.
- */
 @Composable
 fun StatusChip(
-    status: EnrollmentStatus,
+    status: AccountStatus,
     modifier: Modifier = Modifier
 ) {
     val color: Color = when (status) {
-        EnrollmentStatus.ACTIVE -> EmeraldGreen
-        EnrollmentStatus.WARNING -> Amber
-        EnrollmentStatus.LOCKED -> VividCrimson
+        AccountStatus.ACTIVE -> Color(0xFF10B981)
+        AccountStatus.WARNING -> Color(0xFFF59E0B)
+        AccountStatus.LOCKED -> Color(0xFFDC2626)
     }
 
     Text(
