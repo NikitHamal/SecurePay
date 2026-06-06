@@ -11,7 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -21,14 +26,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,8 +58,9 @@ import com.securepay.customer.ui.theme.TextSecondary
 @Composable
 fun DashboardScreen(
     state: DeviceUiState,
-    onSimulatePayment: () -> Unit,
-    onMessageShown: () -> Unit
+    onRefresh: () -> Unit,
+    onMessageShown: () -> Unit,
+    onViewPayments: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -72,6 +77,19 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("SecurePay", fontWeight = FontWeight.Bold) },
+                actions = {
+                    OutlinedButton(
+                        onClick = onViewPayments,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onBackground
+                        )
+                    ) {
+                        Icon(Icons.Filled.Receipt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("History", fontWeight = FontWeight.Medium)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground
@@ -79,31 +97,34 @@ fun DashboardScreen(
             )
         }
     ) { inner ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            val account = state.account
-            if (state.isLoading || account == null) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(12.dp))
-                    Text("Loading account\u2026", color = TextSecondary)
-                }
-            } else {
+        val account = state.account
+        if (state.isLoading || account == null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(inner),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(12.dp))
+                Text("Loading account\u2026", color = TextSecondary)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(inner)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Spacer(Modifier.height(4.dp))
                 CountdownCard(state = state, account = account)
                 BalanceCard(account = account)
                 PaymentTrigger(
                     isProcessing = state.isProcessingPayment,
-                    onClick = onSimulatePayment
+                    onClick = onRefresh
                 )
                 Spacer(Modifier.height(8.dp))
             }
