@@ -13,6 +13,8 @@ dealer-dashboard/.vite/
 dist/
 
 *.jks
+!keystore/*.jks
 *.keystore
+!keystore/*.keystore
 *.apk
 *.aab
