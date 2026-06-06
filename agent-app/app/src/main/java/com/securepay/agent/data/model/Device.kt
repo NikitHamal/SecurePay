@@ -14,12 +14,26 @@ data class Device(
 
 @Serializable
 data class DeviceCheckResponse(
-    val enrolled: Boolean,
+    val enrolled: Boolean = false,
+    val device: DeviceInfo? = null,
+    val account: AccountBrief? = null
+)
+
+@Serializable
+data class DeviceInfo(
+    val id: String = "",
     val imei: String = "",
-    val deviceModel: String? = null,
-    val status: String? = null,
-    val accountId: String? = null,
-    val customerName: String? = null,
-    val nextPaymentDue: Long? = null,
-    val dailyRate: Int? = null
+    val model: String = "",
+    val status: String = ""
+)
+
+@Serializable
+data class AccountBrief(
+    val id: String = "",
+    val customerName: String = "",
+    val status: String = "",
+    val nextPaymentDue: Long = 0L,
+    val amountPaid: Int = 0,
+    val totalLoanAmount: Int = 0,
+    val dailyRate: Int = 0
 )

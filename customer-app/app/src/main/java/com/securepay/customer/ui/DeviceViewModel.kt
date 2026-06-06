@@ -17,14 +17,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.securepay.customer.domain.RemainingTime
 
-/**
- * Owns the reactive financing state machine for the customer DPC.
- *
- * A 1-second ticker is combined with the account [StateFlow] from the
- * repository; every emission re-derives status + countdown and, as a side
- * effect, asks the [DevicePolicyController] to enforce or release device
- * restrictions when crossing the LOCKED boundary.
- */
 class DeviceViewModel(
     private val repository: DeviceRepository,
     private val policyController: DevicePolicyController
@@ -57,7 +49,11 @@ class DeviceViewModel(
         if (account == null) {
             DeviceUiState(isLoading = true)
         } else {
-            val status = DeviceStatus.evaluate(account.nextPaymentDueEpochMillis, now)
+            val status = DeviceStatus.evaluate(
+                account.nextPaymentDueEpochMillis,
+                account.lockedByDealer,
+                now
+            )
             reconcilePolicy(status)
             DeviceUiState(
                 isLoading = false,
@@ -79,9 +75,20 @@ class DeviceViewModel(
 
     init {
         viewModelScope.launch { repository.refresh() }
+        startHeartbeat()
     }
 
-    /** Apply DPC restrictions exactly once per LOCKED <-> unlocked transition. */
+    private fun startHeartbeat() {
+        viewModelScope.launch {
+            while (true) {
+                delay(4 * 60 * 60 * 1000L)
+                if (repository.isRegistered.value) {
+                    repository.heartbeat()
+                }
+            }
+        }
+    }
+
     private fun reconcilePolicy(status: DeviceStatus) {
         val nowLocked = status == DeviceStatus.LOCKED
         if (lastEnforcedLocked == nowLocked) return
@@ -94,7 +101,7 @@ class DeviceViewModel(
         viewModelScope.launch {
             processingPayment.value = true
             transientMessage.value = null
-            runCatching { repository.simulatePayment() }
+            runCatching { repository.heartbeat() }
                 .onSuccess { transientMessage.value = "Payment received. Device unlocked." }
                 .onFailure { transientMessage.value = "Payment failed. Please retry." }
             processingPayment.value = false
@@ -105,7 +112,7 @@ class DeviceViewModel(
         if (requestingGrace.value) return
         viewModelScope.launch {
             requestingGrace.value = true
-            runCatching { repository.requestGraceWindow() }
+            runCatching { repository.heartbeat() }
                 .onSuccess { transientMessage.value = "5-minute grace window granted." }
                 .onFailure { transientMessage.value = "Grace request unavailable." }
             requestingGrace.value = false

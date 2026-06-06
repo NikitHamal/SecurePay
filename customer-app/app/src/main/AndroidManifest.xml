@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Used by the lock overlay "Emergency Calls" action. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- Allows the lock overlay to remain visible above other tasks on supported devices. -->
@@ -9,6 +11,7 @@
     <application
         android:name=".SecurePayApplication"
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.SecurePay">
