@@ -43,7 +43,21 @@ class DeviceViewModel(
         transientMessage
     ) { account, now, paying, grace, message ->
         if (account == null) {
-            DeviceUiState(isLoading = true)
+            val cachedDue = repository.cachedNextPaymentDue
+            if (cachedDue > 0L && repository.isRegistered.value) {
+                val status = DeviceStatus.evaluate(cachedDue, repository.cachedLockedByDealer, now)
+                DeviceUiState(
+                    isLoading = false,
+                    status = status,
+                    remaining = RemainingTime.until(cachedDue, now),
+                    isProcessingPayment = paying,
+                    isRequestingGrace = grace,
+                    message = message,
+                    isOffline = true
+                )
+            } else {
+                DeviceUiState(isLoading = true)
+            }
         } else {
             val status = DeviceStatus.evaluate(
                 account.nextPaymentDueEpochMillis,

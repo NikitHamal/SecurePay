@@ -11,7 +11,8 @@ data class DeviceUiState(
     val remaining: RemainingTime = RemainingTime(0L),
     val isProcessingPayment: Boolean = false,
     val isRequestingGrace: Boolean = false,
-    val message: String? = null
+    val message: String? = null,
+    val isOffline: Boolean = false
 ) {
     val isLocked: Boolean get() = status == DeviceStatus.LOCKED
 }
