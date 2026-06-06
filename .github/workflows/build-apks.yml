@@ -56,7 +56,7 @@ jobs:
 
       - name: Install required Android packages
         run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       # Provision Gradle 8.9 (also seeds the dependency cache) and expose the
       # `gradle` command so we can materialise the wrapper deterministically.
@@ -119,7 +119,7 @@ jobs:
       - name: Sign release APK
         id: sign
         env:
-          BUILD_TOOLS_VERSION: '34.0.0'
+          BUILD_TOOLS_VERSION: '35.0.0'
           ALIAS: ${{ steps.signing.outputs.alias }}
           STORE_PASS: ${{ steps.signing.outputs.store_pass }}
           KEY_PASS: ${{ steps.signing.outputs.key_pass }}
