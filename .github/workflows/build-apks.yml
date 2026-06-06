@@ -77,7 +77,9 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android signing tools
-        run: sdkmanager "build-tools;35.0.0"
+        run: |
+          sdkmanager "build-tools;35.0.0"
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
 
       - name: Download unsigned APKs
         uses: actions/download-artifact@v4
