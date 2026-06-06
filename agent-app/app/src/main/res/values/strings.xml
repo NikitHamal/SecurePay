@@ -9,7 +9,7 @@
 
     <string name="action_back">Back</string>
     <string name="action_next">Next</string>
-    <string name="action_submit">Submit Enrollment</string>
+    <string name="action_submit">Submit</string>
 
     <string name="label_full_name">Full name</string>
     <string name="label_national_id">National ID</string>
