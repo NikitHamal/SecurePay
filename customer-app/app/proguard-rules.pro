@@ -1,0 +1,1 @@
+-keep class com.securepay.customer.policy.SecurePayDeviceAdminReceiver { *; }

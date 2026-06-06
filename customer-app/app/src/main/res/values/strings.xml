@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SecurePay</string>
+    <string name="device_admin_label">SecurePay Device Control</string>
+    <string name="device_admin_description">Enforces financing restrictions when the account is overdue.</string>
+</resources>
