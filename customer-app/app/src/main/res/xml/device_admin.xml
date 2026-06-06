@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Policies requested by the SecurePay device-financing DPC.
-     These map to DevicePolicyManager capabilities used to enforce the
-     LOCKED state until the financed balance is settled. -->
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
         <force-lock />
+        <wipe-data />
         <disable-keyguard-features />
         <watch-login />
+        <reset-password />
+        <limit-password />
+        <expire-password />
+        <set-screen-capture-disabled />
+        <set-permanent-password />
     </uses-policies>
 </device-admin>

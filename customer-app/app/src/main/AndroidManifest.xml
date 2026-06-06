@@ -3,10 +3,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Used by the lock overlay "Emergency Calls" action. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <!-- Allows the lock overlay to remain visible above other tasks on supported devices. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.NFC" />
+
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="false" />
 
     <application
         android:name=".SecurePayApplication"
@@ -27,8 +30,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Device Policy Controller receiver. Enables managed-device restrictions
-             (e.g. disabling USB debugging) when an account is LOCKED. -->
+        <activity
+            android:name=".admin.ProvisioningActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.SecurePay">
+            <intent-filter>
+                <action android:name="android.app.action.PROVISIONING_COMPLETED" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".admin.SecurePayDeviceAdminReceiver"
             android:description="@string/device_admin_description"

@@ -5,12 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 
-/**
- * Device administrator receiver for the SecurePay DPC. Registering this receiver
- * is what unlocks the [android.app.admin.DevicePolicyManager] capabilities used
- * by [DevicePolicyController] to enforce the LOCKED state (e.g. disabling USB
- * debugging and forcing the lock screen) until the financed balance is settled.
- */
 class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
@@ -24,6 +18,18 @@ class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
         return "Removing SecurePay management will violate your financing agreement " +
             "and may immediately restrict this device."
+    }
+
+    override fun onPasswordFailed(context: Context, intent: Intent) {
+        Log.w(TAG, "Password failed attempt detected")
+    }
+
+    override fun onPasswordSucceeded(context: Context, intent: Intent) {
+        Log.i(TAG, "Password succeeded")
+    }
+
+    override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
+        Log.i(TAG, "Profile provisioning complete")
     }
 
     companion object {
