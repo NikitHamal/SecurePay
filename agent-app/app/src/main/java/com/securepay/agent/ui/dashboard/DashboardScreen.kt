@@ -89,7 +89,7 @@ fun DashboardScreen(
                 },
                 actions = {
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout")
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
