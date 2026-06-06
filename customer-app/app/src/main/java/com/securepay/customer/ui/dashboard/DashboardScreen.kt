@@ -2,6 +2,7 @@ package com.securepay.customer.ui.dashboard
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +53,7 @@ import com.securepay.customer.data.model.formatCentsAsCurrency
 import com.securepay.customer.ui.DeviceUiState
 import com.securepay.customer.ui.components.StatusBadge
 import com.securepay.customer.ui.components.statusColor
+import com.securepay.customer.ui.theme.Amber
 import com.securepay.customer.ui.theme.CharcoalElevated
 import com.securepay.customer.ui.theme.TextSecondary
 
@@ -109,6 +112,10 @@ fun DashboardScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(12.dp))
                 Text("Loading account\u2026", color = TextSecondary)
+                if (state.isOffline) {
+                    Spacer(Modifier.height(8.dp))
+                    OfflineBanner()
+                }
             }
         } else {
             Column(
@@ -119,7 +126,14 @@ fun DashboardScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Spacer(Modifier.height(4.dp))
+                if (state.isOffline) {
+                    OfflineBanner()
+                }
+                Text(
+                    text = "Hello, ${account.customerName.split(" ").firstOrNull() ?: "Customer"}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextSecondary
+                )
                 CountdownCard(state = state, account = account)
                 BalanceCard(account = account)
                 PaymentTrigger(
@@ -285,5 +299,30 @@ private fun PaymentTrigger(isProcessing: Boolean, onClick: () -> Unit) {
             Spacer(Modifier.size(8.dp))
             Text("Check for Updates", fontWeight = FontWeight.SemiBold)
         }
+    }
+}
+
+@Composable
+private fun OfflineBanner() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Amber.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            Icons.Filled.CloudOff,
+            contentDescription = null,
+            tint = Amber,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = "Offline \u2014 showing cached data",
+            style = MaterialTheme.typography.bodySmall,
+            color = Amber,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

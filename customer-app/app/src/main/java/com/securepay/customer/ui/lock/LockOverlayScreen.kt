@@ -178,6 +178,7 @@ private fun LockedAccountSummary(account: LoanAccount) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        SummaryRow("Account Holder", account.customerName)
         SummaryRow("Device", account.deviceModel)
         SummaryRow("Account", account.id)
         SummaryRow("Outstanding", formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode))

@@ -33,6 +33,9 @@ class DeviceRepository(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    val cachedNextPaymentDue: Long get() = tokenManager.cachedNextPaymentDue
+    val cachedLockedByDealer: Boolean get() = tokenManager.cachedLockedByDealer
+
     suspend fun checkAndRegister(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try {
             val response = api.deviceCheck(imei)
@@ -53,7 +56,9 @@ class DeviceRepository(
         _isLoading.value = true
         try {
             val response = api.getAccount(accountId)
-            _account.value = response.toLoanAccount()
+            val account = response.toLoanAccount()
+            _account.value = account
+            tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer)
             _error.value = null
         } catch (e: Exception) {
             Log.e(TAG, "refresh failed", e)
