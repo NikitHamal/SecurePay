@@ -7,7 +7,9 @@ captures/
 *.apk
 *.aab
 *.jks
+!keystore/*.jks
 *.keystore
+!keystore/*.keystore
 
 node_modules/
 .svelte-kit/

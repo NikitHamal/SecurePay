@@ -86,19 +86,44 @@ jobs:
       - name: Extract commit short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
-      - name: Decode release signing key
+      - name: Prepare signing material
+        id: signing
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          DEFAULT_KEYSTORE: ${{ github.workspace }}/keystore/securepay-release.jks
         run: |
-          test -n "$SIGNING_KEY"
-          echo "$SIGNING_KEY" | base64 --decode > securepay-release.keystore
+          set -euo pipefail
+          mkdir -p signing
+          if [ -n "$SIGNING_KEY" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_STORE_PASSWORD" ]; then
+            echo "Using repository signing secrets."
+            printf '%s' "$SIGNING_KEY" | base64 --decode > signing/release.jks
+            ALIAS="$KEY_ALIAS"
+            STORE_PASS="$KEY_STORE_PASSWORD"
+            KEY_PASS="${KEY_PASSWORD:-$KEY_STORE_PASSWORD}"
+          elif [ -f "$DEFAULT_KEYSTORE" ]; then
+            echo "::warning::Signing secrets missing — using default repo keystore ($DEFAULT_KEYSTORE). Configure SIGNING_KEY/KEY_ALIAS/KEY_STORE_PASSWORD for production."
+            cp "$DEFAULT_KEYSTORE" signing/release.jks
+            ALIAS="securepay"
+            STORE_PASS="securepayci"
+            KEY_PASS="${KEY_PASSWORD:-securepayci}"
+          else
+            echo "::error::No signing material available: secrets empty and $DEFAULT_KEYSTORE not found."
+            exit 1
+          fi
+          echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"
+          echo "store_pass=$STORE_PASS" >> "$GITHUB_OUTPUT"
+          echo "key_pass=$KEY_PASS" >> "$GITHUB_OUTPUT"
 
       - name: Align and sign SecurePay APKs
         env:
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          ALIAS: ${{ steps.signing.outputs.alias }}
+          STORE_PASS: ${{ steps.signing.outputs.store_pass }}
+          KEY_PASS: ${{ steps.signing.outputs.key_pass }}
         run: |
           set -euo pipefail
-          test -n "$KEY_STORE_PASSWORD"
           mkdir -p dist aligned
 
           CUSTOMER_UNSIGNED="unsigned-apks/unsigned-customer-apk/app-release-unsigned.apk"
@@ -108,16 +133,18 @@ jobs:
           zipalign -p -f 4 "$AGENT_UNSIGNED" aligned/agent-release-aligned.apk
 
           apksigner sign \
-            --ks securepay-release.keystore \
-            --ks-pass "pass:$KEY_STORE_PASSWORD" \
-            --key-pass "pass:$KEY_STORE_PASSWORD" \
+            --ks signing/release.jks \
+            --ks-key-alias "$ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
             --out "dist/SecurePay-CustomerApp-${SHORT_SHA}.apk" \
             aligned/customer-release-aligned.apk
 
           apksigner sign \
-            --ks securepay-release.keystore \
-            --ks-pass "pass:$KEY_STORE_PASSWORD" \
-            --key-pass "pass:$KEY_STORE_PASSWORD" \
+            --ks signing/release.jks \
+            --ks-key-alias "$ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
             --out "dist/SecurePay-AgentApp-${SHORT_SHA}.apk" \
             aligned/agent-release-aligned.apk
 
