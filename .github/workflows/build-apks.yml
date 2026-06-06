@@ -46,16 +46,17 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Provision Gradle 8.5 (also used to materialise the wrapper JAR).
+      # Provision Gradle 8.7 (also used to materialise the wrapper JAR).
+      # AGP 8.5.x requires Gradle 8.7+, so 8.5 will fail at plugin application.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.5"
+          gradle-version: "8.7"
 
       # Ensure the Gradle wrapper JAR exists (it is intentionally not committed).
       - name: Ensure Gradle wrapper
         working-directory: ${{ matrix.module }}
-        run: gradle wrapper --gradle-version 8.5
+        run: gradle wrapper --gradle-version 8.7
 
       # 2. Compile the release target via the Gradle wrapper.
       - name: Assemble release APK
@@ -63,18 +64,64 @@ jobs:
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       # 3. Cryptographic signing using the secure keystore secrets.
+      #    Falls back to a throwaway self-signed keystore when the repo
+      #    secrets (SIGNING_KEY, KEY_ALIAS, KEY_STORE_PASSWORD) are not
+      #    configured, so the CI run still produces a signed APK that can
+      #    be verified. Production builds should configure the secrets.
+      - name: Prepare signing material
+        id: signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p signing
+          if [ -n "$SIGNING_KEY" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_STORE_PASSWORD" ]; then
+            echo "Using repository signing secrets."
+            printf '%s' "$SIGNING_KEY" | base64 --decode > signing/release.jks
+            ALIAS="$KEY_ALIAS"
+            STORE_PASS="$KEY_STORE_PASSWORD"
+            KEY_PASS="${KEY_PASSWORD:-$KEY_STORE_PASSWORD}"
+          else
+            echo "::warning::Signing secrets missing — generating a self-signed dev keystore for CI."
+            ALIAS="securepay"
+            STORE_PASS="changeit"
+            KEY_PASS="changeit"
+            keytool -genkeypair -v \
+              -keystore signing/release.jks \
+              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=SecurePay CI, O=SecurePay, C=US"
+          fi
+          echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"
+          echo "store_pass=$STORE_PASS" >> "$GITHUB_OUTPUT"
+          echo "key_pass=$KEY_PASS" >> "$GITHUB_OUTPUT"
+
       - name: Sign release APK
-        id: sign
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: ${{ matrix.module }}/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          # Falls back to the keystore password when a distinct key password is unset.
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
           BUILD_TOOLS_VERSION: "34.0.0"
+          ALIAS: ${{ steps.signing.outputs.alias }}
+          STORE_PASS: ${{ steps.signing.outputs.store_pass }}
+          KEY_PASS: ${{ steps.signing.outputs.key_pass }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
+          ZIPALIGN="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/zipalign"
+          IN="${{ matrix.module }}/app/build/outputs/apk/release/app-release-unsigned.apk"
+          ALIGNED="${{ matrix.module }}/app/build/outputs/apk/release/app-release-aligned.apk"
+          OUT="${{ matrix.module }}/app/build/outputs/apk/release/app-release-signed.apk"
+          "$ZIPALIGN" -f -p -v 4 "$IN" "$ALIGNED"
+          "$APKSIGNER" sign \
+            --ks signing/release.jks \
+            --ks-key-alias "$ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --out "$OUT" "$ALIGNED"
+          "$APKSIGNER" verify --verbose "$OUT"
+          echo "signedReleaseFile=$OUT" >> "$GITHUB_OUTPUT"
+        id: sign
 
       # 4. Extract the short commit SHA for deterministic artifact naming.
       - name: Resolve short commit SHA
