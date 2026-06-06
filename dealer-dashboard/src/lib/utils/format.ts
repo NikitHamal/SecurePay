@@ -48,3 +48,29 @@ export function formatCountdown(remainingMs: number): string {
   const pad = (n: number): string => n.toString().padStart(2, '0');
   return `${days}d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
+
+/** Format a phone number in `+254 7XX XXX XXX` style for readability. */
+export function formatPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 7) return phone;
+  if (digits.startsWith('254') && digits.length === 12) {
+    return `+254 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
+  }
+  return phone;
+}
+
+/**
+ * Format a relative time (e.g. "in 3h", "2d ago") for upcoming/past epochs.
+ */
+export function formatRelative(epochMillis: number, now: number = Date.now()): string {
+  const diff = epochMillis - now;
+  const past = diff < 0;
+  const abs = Math.abs(diff);
+  const hours = Math.floor(abs / (60 * 60 * 1000));
+  const days = Math.floor(hours / 24);
+  let label: string;
+  if (days > 0) label = `${days}d`;
+  else if (hours > 0) label = `${hours}h`;
+  else label = `${Math.max(1, Math.floor(abs / (60 * 1000)))}m`;
+  return past ? `${label} ago` : `in ${label}`;
+}

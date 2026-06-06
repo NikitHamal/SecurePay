@@ -1,21 +1,14 @@
 import { derived, writable, type Readable, type Writable } from 'svelte/store';
 import type { Customer, KpiSummary } from '$lib/types';
 import {
+  listCustomers as apiListCustomers,
   extendTimer as apiExtendTimer,
-  forceRemoteLock as apiForceRemoteLock,
-  listCustomers
-} from '$lib/api/mockApi';
+  forceRemoteLock as apiForceRemoteLock
+} from '$lib/api/client';
 
-/** Master list of customer accounts. */
 export const customers: Writable<Customer[]> = writable<Customer[]>([]);
-
-/** True while a network-style operation is in flight. */
 export const loading: Writable<boolean> = writable<boolean>(false);
-
-/** Holds the last error message, or null. */
 export const error: Writable<string | null> = writable<string | null>(null);
-
-/** IDs of accounts with an in-flight action (for per-row button state). */
 export const pending: Writable<Set<string>> = writable<Set<string>>(new Set());
 
 function setPending(id: string, isPending: boolean): void {
@@ -34,12 +27,11 @@ function replaceCustomer(updated: Customer): void {
   customers.update((list) => list.map((c) => (c.id === updated.id ? updated : c)));
 }
 
-/** Load (or reload) the full customer dataset. */
 export async function load(): Promise<void> {
   loading.set(true);
   error.set(null);
   try {
-    const data = await listCustomers();
+    const data = await apiListCustomers();
     customers.set(data);
   } catch (err) {
     error.set(err instanceof Error ? err.message : 'Failed to load customers');
@@ -48,7 +40,6 @@ export async function load(): Promise<void> {
   }
 }
 
-/** Extend a customer's payment timer by `hours` and update the store. */
 export async function extendTimer(id: string, hours: number): Promise<void> {
   setPending(id, true);
   error.set(null);
@@ -62,7 +53,6 @@ export async function extendTimer(id: string, hours: number): Promise<void> {
   }
 }
 
-/** Force a remote lock on a customer device and update the store. */
 export async function forceRemoteLock(id: string): Promise<void> {
   setPending(id, true);
   error.set(null);
@@ -76,7 +66,6 @@ export async function forceRemoteLock(id: string): Promise<void> {
   }
 }
 
-/** Derived KPI summary that recomputes whenever the customer list changes. */
 export const kpiSummary: Readable<KpiSummary> = derived(customers, ($customers) => {
   const summary: KpiSummary = {
     activeNodes: 0,
