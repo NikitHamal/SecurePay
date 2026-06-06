@@ -1,0 +1,177 @@
+name: Build & Sign SecurePay APKs
+
+# Builds, signs and publishes release APKs for both native Android clients.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-apks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1-3. Parallel compile + sign. The matrix fans out so customer-app and
+  #      agent-app compile concurrently on independent runners.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - module: customer-app
+            artifact: SecurePay-CustomerApp
+          - module: agent-app
+            artifact: SecurePay-AgentApp
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. Environmental setup: Java 17 toolchain.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # 1. Environmental setup: Android SDK + build tools.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Provision Gradle 8.7 (also used to materialise the wrapper JAR).
+      # AGP 8.5.x requires Gradle 8.7+, so 8.5 will fail at plugin application.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      # Ensure the Gradle wrapper JAR exists (it is intentionally not committed).
+      - name: Ensure Gradle wrapper
+        working-directory: ${{ matrix.module }}
+        run: gradle wrapper --gradle-version 8.7
+
+      # 2. Compile the release target via the Gradle wrapper.
+      - name: Assemble release APK
+        working-directory: ${{ matrix.module }}
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      # 3. Cryptographic signing using the secure keystore secrets.
+      #    Falls back to a throwaway self-signed keystore when the repo
+      #    secrets (SIGNING_KEY, KEY_ALIAS, KEY_STORE_PASSWORD) are not
+      #    configured, so the CI run still produces a signed APK that can
+      #    be verified. Production builds should configure the secrets.
+      - name: Prepare signing material
+        id: signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p signing
+          if [ -n "$SIGNING_KEY" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_STORE_PASSWORD" ]; then
+            echo "Using repository signing secrets."
+            printf '%s' "$SIGNING_KEY" | base64 --decode > signing/release.jks
+            ALIAS="$KEY_ALIAS"
+            STORE_PASS="$KEY_STORE_PASSWORD"
+            KEY_PASS="${KEY_PASSWORD:-$KEY_STORE_PASSWORD}"
+          else
+            echo "::warning::Signing secrets missing — generating a self-signed dev keystore for CI."
+            ALIAS="securepay"
+            STORE_PASS="changeit"
+            KEY_PASS="changeit"
+            keytool -genkeypair -v \
+              -keystore signing/release.jks \
+              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=SecurePay CI, O=SecurePay, C=US"
+          fi
+          echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"
+          echo "store_pass=$STORE_PASS" >> "$GITHUB_OUTPUT"
+          echo "key_pass=$KEY_PASS" >> "$GITHUB_OUTPUT"
+
+      - name: Sign release APK
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+          ALIAS: ${{ steps.signing.outputs.alias }}
+          STORE_PASS: ${{ steps.signing.outputs.store_pass }}
+          KEY_PASS: ${{ steps.signing.outputs.key_pass }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
+          ZIPALIGN="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/zipalign"
+          IN="${{ matrix.module }}/app/build/outputs/apk/release/app-release-unsigned.apk"
+          ALIGNED="${{ matrix.module }}/app/build/outputs/apk/release/app-release-aligned.apk"
+          OUT="${{ matrix.module }}/app/build/outputs/apk/release/app-release-signed.apk"
+          "$ZIPALIGN" -f -p -v 4 "$IN" "$ALIGNED"
+          "$APKSIGNER" sign \
+            --ks signing/release.jks \
+            --ks-key-alias "$ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --out "$OUT" "$ALIGNED"
+          "$APKSIGNER" verify --verbose "$OUT"
+          echo "signedReleaseFile=$OUT" >> "$GITHUB_OUTPUT"
+        id: sign
+
+      # 4. Extract the short commit SHA for deterministic artifact naming.
+      - name: Resolve short commit SHA
+        id: meta
+        run: echo "sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      # 4. Rename the signed binary to the required nomenclature.
+      - name: Rename signed APK
+        run: |
+          set -euo pipefail
+          mkdir -p staged
+          cp "${{ steps.sign.outputs.signedReleaseFile }}" \
+            "staged/${{ matrix.artifact }}-${{ steps.meta.outputs.sha }}.apk"
+          ls -lh staged
+
+      # Hand each signed binary to the bundling job.
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-${{ steps.meta.outputs.sha }}
+          path: staged/${{ matrix.artifact }}-${{ steps.meta.outputs.sha }}.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # 5. Bundle both signed APKs into a single downloadable workflow asset.
+  # ---------------------------------------------------------------------------
+  bundle:
+    name: Bundle release APKs
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve short commit SHA
+        id: meta
+        run: echo "sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Download both signed APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: SecurePay-*
+          merge-multiple: true
+
+      - name: Package both APKs into one asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: SecurePay-Release-APKs-${{ steps.meta.outputs.sha }}
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
