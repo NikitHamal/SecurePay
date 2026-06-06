@@ -1,6 +1,5 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
 
 const SESSION_DURATION_HOURS = 24;
 
@@ -12,15 +11,15 @@ export function verifyPassword(password: string, hash: string): boolean {
   return bcrypt.compareSync(password, hash);
 }
 
-export function createToken(dealerId: string, dealerName: string): string {
-  return jwt.sign({ sub: dealerId, name: dealerName }, JWT_SECRET, {
+export function createToken(dealerId: string, dealerName: string, jwtSecret: string): string {
+  return jwt.sign({ sub: dealerId, name: dealerName }, jwtSecret, {
     expiresIn: `${SESSION_DURATION_HOURS}h`
   });
 }
 
-export function verifyToken(token: string): { sub: string; name: string } | null {
+export function verifyToken(token: string, jwtSecret: string): { sub: string; name: string } | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, jwtSecret);
     return payload as { sub: string; name: string };
   } catch {
     return null;

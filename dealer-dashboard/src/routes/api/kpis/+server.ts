@@ -1,26 +1,23 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse } from '$lib/api/server';
 import type { KpiSummary } from '$lib/types';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
   const dealerId = locals.dealer.id;
+  const db = getDb({ platform });
 
-  const accountsResult = await db.execute({
-    sql: `
-      SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
-      FROM accounts a
-      JOIN devices d ON a.device_id = d.id
-      JOIN plans p ON a.plan_id = p.id
-      WHERE a.dealer_id = ?
-    `,
-    args: [dealerId]
-  });
+  const result = await db.prepare(`
+    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    FROM accounts a
+    JOIN devices d ON a.device_id = d.id
+    JOIN plans p ON a.plan_id = p.id
+    WHERE a.dealer_id = ?
+  `).bind(dealerId).all();
 
   const now = Date.now();
   let activeNodes = 0;
@@ -29,7 +26,7 @@ export const GET: RequestHandler = async ({ locals }) => {
   let totalOutstanding = 0;
   let collectedToday = 0;
 
-  for (const row of accountsResult.rows) {
+  for (const row of result.results) {
     const status = row.locked_by_dealer === 1
       ? 'LOCKED' as const
       : computeStatus(Number(row.next_payment_due), now);

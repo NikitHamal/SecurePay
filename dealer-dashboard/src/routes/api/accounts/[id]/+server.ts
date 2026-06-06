@@ -1,31 +1,26 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { computeStatus, errorResponse } from '$lib/api/server';
-import { v4 as uuidv4 } from 'uuid';
+import { getDb, computeStatus, errorResponse } from '$lib/api/server';
 import type { Customer, Status } from '$lib/types';
 
-export const GET: RequestHandler = async ({ locals, params }) => {
+export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
-  const result = await db.execute({
-    sql: `
-      SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
-      FROM accounts a
-      JOIN devices d ON a.device_id = d.id
-      JOIN plans p ON a.plan_id = p.id
-      WHERE a.id = ? AND a.dealer_id = ?
-    `,
-    args: [params.id, locals.dealer.id]
-  });
+  const db = getDb({ platform });
+  const row = await db.prepare(`
+    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    FROM accounts a
+    JOIN devices d ON a.device_id = d.id
+    JOIN plans p ON a.plan_id = p.id
+    WHERE a.id = ? AND a.dealer_id = ?
+  `).bind(params.id, locals.dealer.id).first();
 
-  if (result.rows.length === 0) {
+  if (!row) {
     return errorResponse('Account not found', 404);
   }
 
-  const row = result.rows[0];
   const nextPaymentDue = Number(row.next_payment_due);
   const amountPaid = Number(row.amount_paid);
   const totalLoanAmount = Number(row.total_loan_amount);
@@ -52,7 +47,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
   return json(customer);
 };
 
-export const PATCH: RequestHandler = async ({ locals, params, request }) => {
+export const PATCH: RequestHandler = async ({ locals, params, request, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
@@ -81,42 +76,36 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
   args.push(params.id);
   args.push(locals.dealer.id);
 
-  await db.execute({
-    sql: `UPDATE accounts SET ${updates.join(', ')} WHERE id = ? AND dealer_id = ?`,
-    args
-  });
+  const db = getDb({ platform });
+  await db.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ? AND dealer_id = ?`).bind(...args).run();
 
-  const result = await db.execute({
-    sql: `
-      SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
-      FROM accounts a
-      JOIN devices d ON a.device_id = d.id
-      JOIN plans p ON a.plan_id = p.id
-      WHERE a.id = ? AND a.dealer_id = ?
-    `,
-    args: [params.id, locals.dealer.id]
-  });
+  const row = await db.prepare(`
+    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    FROM accounts a
+    JOIN devices d ON a.device_id = d.id
+    JOIN plans p ON a.plan_id = p.id
+    WHERE a.id = ? AND a.dealer_id = ?
+  `).bind(params.id, locals.dealer.id).first();
 
-  const row = result.rows[0];
-  const nextDue = Number(row.next_payment_due);
-  const amtPaid = Number(row.amount_paid);
-  const totalLoan = Number(row.total_loan_amount);
-  const status: Status = row.locked_by_dealer === 1
+  const nextDue = Number(row!.next_payment_due);
+  const amtPaid = Number(row!.amount_paid);
+  const totalLoan = Number(row!.total_loan_amount);
+  const status: Status = row!.locked_by_dealer === 1
     ? 'LOCKED'
     : computeStatus(nextDue);
 
   const customer: Customer = {
-    id: row.id as string,
-    customerName: row.customer_name as string,
-    nationalId: row.national_id as string,
-    phoneNumber: row.phone_number as string,
-    imei: row.imei as string,
-    deviceModel: row.device_model as string,
-    planName: row.plan_name as string,
+    id: row!.id as string,
+    customerName: row!.customer_name as string,
+    nationalId: row!.national_id as string,
+    phoneNumber: row!.phone_number as string,
+    imei: row!.imei as string,
+    deviceModel: row!.device_model as string,
+    planName: row!.plan_name as string,
     totalLoanAmount: totalLoan,
     amountPaid: amtPaid,
     remainingBalance: Math.max(0, totalLoan - amtPaid),
-    dailyRate: Number(row.daily_rate),
+    dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status
   };

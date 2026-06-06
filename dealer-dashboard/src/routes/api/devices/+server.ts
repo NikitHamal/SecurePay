@@ -1,19 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { errorResponse } from '$lib/api/server';
+import { getDb, errorResponse } from '$lib/api/server';
+import { v4 as uuidv4 } from 'uuid';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
-  const result = await db.execute({
-    sql: 'SELECT * FROM devices WHERE dealer_id = ? ORDER BY created_at DESC',
-    args: [locals.dealer.id]
-  });
+  const db = getDb({ platform });
+  const result = await db.prepare('SELECT * FROM devices WHERE dealer_id = ? ORDER BY created_at DESC').bind(locals.dealer.id).all();
 
-  const devices = result.rows.map((row) => ({
+  const devices = result.results.map((row) => ({
     id: row.id as string,
     imei: row.imei as string,
     model: row.model as string,
@@ -25,7 +23,7 @@ export const GET: RequestHandler = async ({ locals }) => {
   return json(devices);
 };
 
-export const POST: RequestHandler = async ({ locals, request }) => {
+export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
@@ -40,23 +38,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return errorResponse('IMEI must be exactly 15 digits', 400);
   }
 
-  const existing = await db.execute({
-    sql: 'SELECT id FROM devices WHERE imei = ?',
-    args: [imei]
-  });
+  const db = getDb({ platform });
 
-  if (existing.rows.length > 0) {
+  const existing = await db.prepare('SELECT id FROM devices WHERE imei = ?').bind(imei).first();
+
+  if (existing) {
     return errorResponse('Device with this IMEI already exists', 409);
   }
 
-  const { v4: uuidv4 } = await import('uuid');
   const id = uuidv4();
   const now = Math.floor(Date.now() / 1000);
 
-  await db.execute({
-    sql: 'INSERT INTO devices (id, imei, model, dealer_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    args: [id, imei, model, locals.dealer.id, 'in_stock', now]
-  });
+  await db.prepare('INSERT INTO devices (id, imei, model, dealer_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, imei, model, locals.dealer.id, 'in_stock', now).run();
 
   return json({ id, imei, model, dealerId: locals.dealer.id, status: 'in_stock', createdAt: now * 1000 }, { status: 201 });
 };
