@@ -83,7 +83,7 @@ fun SecurePayApp(
         composable(Screen.Dashboard.route) {
             DashboardScreen(
                 state = state,
-                onRefresh = deviceViewModel::simulatePayment,
+                onRefresh = deviceViewModel::refreshStatus,
                 onMessageShown = deviceViewModel::consumeMessage,
                 onViewPayments = { navController.navigate(Screen.Payments.route) },
                 securityReport = securityReport

@@ -38,7 +38,7 @@
           id="email"
           type="email"
           bind:value={email}
-          placeholder="dealer@securepay.io"
+          placeholder="you@securepay.io"
           required
           class="input w-full"
         />
@@ -65,8 +65,6 @@
       </button>
     </form>
 
-    <p class="mt-4 text-center text-xs text-ink-tertiary">
-      Demo: dealer@securepay.io / dealer123
-    </p>
+    
   </div>
 </div>

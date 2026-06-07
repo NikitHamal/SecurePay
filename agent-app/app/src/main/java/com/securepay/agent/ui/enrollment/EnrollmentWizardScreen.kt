@@ -146,8 +146,7 @@ fun EnrollmentWizardScreen(
                             EnrollmentStep.DEVICE -> ScannerStep(
                                 state = state,
                                 onImeiChange = viewModel::updateImei,
-                                onDeviceModelChange = viewModel::updateDeviceModel,
-                                onSimulateScan = viewModel::simulateScan
+                                onDeviceModelChange = viewModel::updateDeviceModel
                             )
                             EnrollmentStep.PLAN -> PlanStep(
                                 state = state,

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { customers } from '$lib/stores/customers';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+  import { formatRelative } from '$lib/utils/format';
 
   export let searchPlaceholder: string = 'Search customers, IMEI, references…';
   export let showSearch: boolean = true;
@@ -15,11 +17,19 @@
   }
 
   let notificationsOpen = false;
-  const notifications = [
-    { id: 'n1', title: 'Brian Otieno due in 8h', time: 'now', tone: 'amber' },
-    { id: 'n2', title: 'Daniel Mutua overdue', time: '6h ago', tone: 'crimson' },
-    { id: 'n3', title: 'Grace Wanjiru locked', time: '2d ago', tone: 'crimson' }
-  ];
+
+  $: warnings = $customers
+    .filter((c) => c.status === 'WARNING' || c.status === 'LOCKED')
+    .sort((a, b) => a.nextPaymentDueEpochMillis - b.nextPaymentDueEpochMillis)
+    .slice(0, 5)
+    .map((c) => ({
+      id: c.id,
+      title: c.status === 'LOCKED'
+        ? `${c.customerName} overdue`
+        : `${c.customerName} due in ${formatRelative(c.nextPaymentDueEpochMillis - Date.now())}`,
+      time: c.status === 'LOCKED' ? 'overdue' : 'soon',
+      tone: c.status === 'LOCKED' ? 'crimson' as const : 'amber' as const
+    }));
 </script>
 
 <header class="sticky top-0 z-20 -mx-6 mb-6 px-6 py-3 md:-mx-8 md:px-8 bg-surface-200/80 backdrop-blur-xl border-b border-edge">
@@ -85,7 +95,7 @@
               </button>
             </div>
             <ul class="flex flex-col">
-              {#each notifications as n (n.id)}
+              {#each warnings as n (n.id)}
                 <li class="flex items-start gap-3 rounded-lg px-3 py-2 hover:bg-hover">
                   <span
                     class="mt-1 h-2 w-2 shrink-0 rounded-full"

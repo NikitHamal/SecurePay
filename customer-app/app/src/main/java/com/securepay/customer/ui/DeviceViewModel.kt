@@ -98,14 +98,14 @@ class DeviceViewModel(
         }
     }
 
-    fun simulatePayment() {
+    fun refreshStatus() {
         if (processingPayment.value) return
         viewModelScope.launch {
             processingPayment.value = true
             transientMessage.value = null
             runCatching { repository.heartbeat() }
-                .onSuccess { transientMessage.value = "Updated. Device status refreshed." }
-                .onFailure { transientMessage.value = "Update failed. Please retry." }
+                .onSuccess { transientMessage.value = "Status refreshed." }
+                .onFailure { transientMessage.value = "Refresh failed. Please retry." }
             processingPayment.value = false
         }
     }
@@ -115,8 +115,8 @@ class DeviceViewModel(
         viewModelScope.launch {
             requestingGrace.value = true
             runCatching { repository.heartbeat() }
-                .onSuccess { transientMessage.value = "5-minute grace window granted." }
-                .onFailure { transientMessage.value = "Grace request unavailable." }
+                .onSuccess { transientMessage.value = "Syncing with server…" }
+                .onFailure { transientMessage.value = "Request failed. Please retry." }
             requestingGrace.value = false
         }
     }

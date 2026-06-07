@@ -157,7 +157,7 @@ fun LockOverlayScreen(
                 } else {
                     Icon(Icons.Filled.Schedule, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    Text("Request 5-Minute Grace Window", fontWeight = FontWeight.SemiBold)
+                    Text("Sync & Recheck Status", fontWeight = FontWeight.SemiBold)
                 }
             }
 

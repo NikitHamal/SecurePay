@@ -5,6 +5,7 @@
   import { page } from '$app/stores';
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import { error, load } from '$lib/stores/customers';
+  import { loadPayments } from '$lib/stores/payments';
   import { dealer, isAuthenticated, initAuth } from '$lib/stores/auth';
 
   export let data: unknown = undefined;
@@ -28,6 +29,7 @@
   $: if ($isAuthenticated && !loaded) {
     loaded = true;
     load();
+    loadPayments();
   }
 </script>
 

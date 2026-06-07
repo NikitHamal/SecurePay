@@ -48,7 +48,6 @@ fun ScannerStep(
     state: EnrollmentUiState,
     onImeiChange: (String) -> Unit,
     onDeviceModelChange: (String) -> Unit,
-    onSimulateScan: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -99,13 +98,6 @@ fun ScannerStep(
                     }
                 }
             }
-        }
-
-        OutlinedButton(
-            onClick = onSimulateScan,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.action_simulate_scan))
         }
 
         OutlinedTextField(
