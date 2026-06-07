@@ -41,7 +41,7 @@ export interface KpiSummary {
   collectedToday: number;
 }
 
-/** A derived payment-ledger row (synthesized from customer accounts). */
+/** A payment-ledger row from the API. */
 export interface LedgerEntry {
   id: string;
   customerId: string;

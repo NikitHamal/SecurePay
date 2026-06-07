@@ -17,7 +17,6 @@
 
     <string name="label_imei">IMEI (15 digits)</string>
     <string name="label_device_model">Device model</string>
-    <string name="action_simulate_scan">Simulate Scan</string>
     <string name="camera_permission_rationale">Camera access is needed to scan the device IMEI. You can also enter it manually below.</string>
     <string name="action_grant_camera">Grant camera access</string>
 
@@ -32,7 +31,7 @@
     <string name="login_email">Email</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign In</string>
-    <string name="login_demo">Use demo credentials</string>
+    
 
     <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_active">Active</string>

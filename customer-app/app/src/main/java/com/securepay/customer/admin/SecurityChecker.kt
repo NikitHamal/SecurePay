@@ -167,8 +167,12 @@ object SecurityChecker {
             if (signersAreValid(signatures)) {
                 // Signature matches expected — not tampered
             } else {
-                Log.w(TAG, "APK signature mismatch — possible tampering")
-                return true
+                if (checkDebuggable(context)) {
+                    Log.w(TAG, "APK signature mismatch — allowing in debug build")
+                } else {
+                    Log.w(TAG, "APK signature mismatch — possible tampering")
+                    return true
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Signature verification failed", e)
@@ -181,10 +185,13 @@ object SecurityChecker {
 
     private fun signersAreValid(signatures: Array<android.content.pm.Signature>?): Boolean {
         if (signatures == null || signatures.isEmpty()) return false
-        // In release builds, the expected signing certificate hash should be hardcoded.
-        // For now, we just verify that signatures exist.
-        // TODO: Replace with actual release certificate SHA-256 hash before production.
-        return true
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        for (sig in signatures) {
+            val hash = digest.digest(sig.toByteArray())
+            val hex = hash.joinToString("") { "%02x".format(it) }
+            if (hex in EXPECTED_SIGNING_HASHES) return true
+        }
+        return false
     }
 
     fun generateHmac(key: String, data: String): String {
@@ -194,5 +201,14 @@ object SecurityChecker {
         return hash.joinToString("") { "%02x".format(it) }
     }
 
-    private const val TAG = "SecurityChecker"
+    companion object {
+        private const val TAG = "SecurityChecker"
+
+        private val EXPECTED_SIGNING_HASHES = setOf(
+            // Add your release signing certificate SHA-256 hash here before production.
+            // To get the hash: keytool -list -v -keystore your-release.jks | grep SHA-256
+            // Then format as lowercase hex without colons.
+            // Debug builds bypass this check via checkDebuggable().
+        )
+    }
 }

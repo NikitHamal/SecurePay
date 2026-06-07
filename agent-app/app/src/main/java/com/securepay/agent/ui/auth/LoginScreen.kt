@@ -154,17 +154,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = {
-                email = "dealer@securepay.io"
-                password = "dealer123"
-            }) {
-                Text(
-                    text = "Use demo credentials",
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            
         }
     }
 }

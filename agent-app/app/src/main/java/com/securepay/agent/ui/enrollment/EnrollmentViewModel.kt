@@ -59,10 +59,6 @@ class EnrollmentViewModel(
         it.copy(draft = it.draft.copy(deviceModel = value))
     }
 
-    fun simulateScan() = _uiState.update {
-        it.copy(draft = it.draft.copy(imei = MOCK_IMEI))
-    }
-
     fun selectPlan(plan: Plan) = _uiState.update { state ->
         state.copy(
             selectedPlan = plan,
@@ -136,6 +132,5 @@ class EnrollmentViewModel(
 
     companion object {
         private const val IMEI_LENGTH = 15
-        private const val MOCK_IMEI = "359881234567890"
     }
 }

@@ -106,7 +106,7 @@ fun ActivationScreen(
                 value = state.imei,
                 onValueChange = viewModel::updateImei,
                 label = { Text("IMEI Number") },
-                placeholder = { Text("e.g. 356938035643872") },
+                placeholder = { Text("Enter 15-digit IMEI") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
