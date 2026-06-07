@@ -54,11 +54,12 @@ import com.securepay.customer.ui.theme.Emerald
 fun ProvisioningScreen(
     provisioningManager: ProvisioningManager,
     policyController: DevicePolicyController,
+    appContext: android.content.Context,
     onProvisioningComplete: () -> Unit,
     onLaunchProvisioning: (android.content.Intent) -> Unit,
     onLaunchEnableAdmin: (android.content.Intent) -> Unit
 ) {
-    val viewModel = remember { ProvisioningViewModel(provisioningManager, policyController) }
+    val viewModel = remember { ProvisioningViewModel(provisioningManager, policyController, appContext) }
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -139,7 +140,10 @@ fun ProvisioningScreen(
                     onLaunchEnableAdmin(viewModel.getEnableAdminIntent())
                 },
                 onRequestDeviceOwner = {
-                    onLaunchProvisioning(viewModel.getDeviceOwnerIntent())
+                    val intent = viewModel.getDeviceOwnerIntent()
+                    if (intent != null) {
+                        onLaunchProvisioning(intent)
+                    }
                 },
                 onSkip = onProvisioningComplete,
                 onRunSecurityCheck = { viewModel.runSecurityCheck() }

@@ -51,7 +51,7 @@ class ProvisioningManager(context: Context) {
             Intent(DevicePolicyManager.ACTION_PROVISION_MANAGED_DEVICE).apply {
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, admin)
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME, appContext.packageName)
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_LABEL, "SecurePay")
+                putExtra("android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL", "SecurePay")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
         } catch (e: Exception) {
