@@ -36,9 +36,14 @@ class DeviceRepository(
     val cachedNextPaymentDue: Long get() = tokenManager.cachedNextPaymentDue
     val cachedLockedByDealer: Boolean get() = tokenManager.cachedLockedByDealer
 
+    val trustedTime: Long
+        get() = tokenManager.getTrustedTimeMillis()
+
     suspend fun checkAndRegister(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try {
+            val requestTime = System.currentTimeMillis()
             val response = api.deviceCheck(imei)
+            updateServerTimeOffset(requestTime)
             if (response.enrolled && response.account != null) {
                 tokenManager.saveDevice(response.account.id, imei)
                 _isRegistered.value = true
@@ -55,7 +60,9 @@ class DeviceRepository(
         val accountId = tokenManager.accountId ?: return@withContext
         _isLoading.value = true
         try {
+            val requestTime = System.currentTimeMillis()
             val response = api.getAccount(accountId)
+            updateServerTimeOffset(requestTime)
             val account = response.toLoanAccount()
             _account.value = account
             tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer)
@@ -82,7 +89,9 @@ class DeviceRepository(
         val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
         val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
         try {
+            val requestTime = System.currentTimeMillis()
             val response = api.deviceHeartbeat(mapOf("imei" to imei, "accountId" to accountId))
+            updateServerTimeOffset(requestTime)
             if (response.enrolled && response.account != null) {
                 refresh()
             }
@@ -91,6 +100,13 @@ class DeviceRepository(
             Log.e(TAG, "heartbeat failed", e)
             Result.failure(e)
         }
+    }
+
+    private fun updateServerTimeOffset(requestSentAt: Long) {
+        val localNow = System.currentTimeMillis()
+        val estimatedOneWayLatency = (localNow - requestSentAt) / 2
+        val offset = -estimatedOneWayLatency
+        tokenManager.saveServerTimeOffset(offset)
     }
 
     fun clearRegistration() {

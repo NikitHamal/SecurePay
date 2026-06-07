@@ -71,9 +71,6 @@ data class LoanAccount(
     val repaymentProgress: Float
         get() = if (totalLoanAmountCents <= 0) 1f
         else (amountPaidCents.toFloat() / totalLoanAmountCents).coerceIn(0f, 1f)
-
-    val displayStatus: DeviceStatus
-        get() = DeviceStatus.evaluate(nextPaymentDueEpochMillis, lockedByDealer, System.currentTimeMillis())
 }
 
 @Serializable

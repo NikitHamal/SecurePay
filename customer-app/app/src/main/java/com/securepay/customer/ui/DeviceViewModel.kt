@@ -23,13 +23,13 @@ class DeviceViewModel(
 
     private val ticker: StateFlow<Long> = flow {
         while (true) {
-            emit(System.currentTimeMillis())
+            emit(repository.trustedTime)
             delay(1_000)
         }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = System.currentTimeMillis()
+        initialValue = repository.trustedTime
     )
 
     private val processingPayment = MutableStateFlow(false)
@@ -48,8 +48,9 @@ class DeviceViewModel(
     ) { account, now, paying, grace, message ->
         if (account == null) {
             val cachedDue = repository.cachedNextPaymentDue
+            val cachedLock = repository.cachedLockedByDealer
             if (cachedDue > 0L && repository.isRegistered.value) {
-                val status = DeviceStatus.evaluate(cachedDue, repository.cachedLockedByDealer, now)
+                val status = DeviceStatus.evaluate(cachedDue, cachedLock, now)
                 DeviceUiState(
                     isLoading = false,
                     status = status,
@@ -88,24 +89,12 @@ class DeviceViewModel(
 
     init {
         viewModelScope.launch { repository.refresh() }
-        startHeartbeat()
     }
 
     fun runSecurityCheck(context: android.content.Context) {
         viewModelScope.launch {
             val report = SecurityChecker.runAllChecks(context)
             securityReport.value = report
-        }
-    }
-
-    private fun startHeartbeat() {
-        viewModelScope.launch {
-            while (true) {
-                delay(4 * 60 * 60 * 1000L)
-                if (repository.isRegistered.value) {
-                    repository.heartbeat()
-                }
-            }
         }
     }
 

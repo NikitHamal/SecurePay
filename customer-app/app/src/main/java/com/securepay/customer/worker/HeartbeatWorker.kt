@@ -7,9 +7,8 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.securepay.customer.data.remote.ApiModule
 import com.securepay.customer.data.remote.DeviceTokenManager
-import com.securepay.customer.data.remote.SecurePayApi
+import com.securepay.customer.data.repository.DeviceRepository
 import java.util.concurrent.TimeUnit
 
 class HeartbeatWorker(
@@ -28,8 +27,12 @@ class HeartbeatWorker(
         }
 
         return try {
-            val api = ApiModule.provideApi()
-            api.deviceHeartbeat(mapOf("imei" to imei, "accountId" to accountId))
+            val app = applicationContext as? com.securepay.customer.SecurePayApplication
+            val repository = app?.deviceRepository ?: run {
+                val api = com.securepay.customer.data.remote.ApiModule.provideApi(imei)
+                DeviceRepository(api, tokenManager)
+            }
+            repository.heartbeat()
             Log.i(TAG, "Heartbeat successful")
             Result.success()
         } catch (e: Exception) {
@@ -46,7 +49,13 @@ class HeartbeatWorker(
             val request = PeriodicWorkRequestBuilder<HeartbeatWorker>(
                 4, TimeUnit.HOURS,
                 30, TimeUnit.MINUTES
-            ).build()
+            )
+                .setConstraints(
+                    androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,

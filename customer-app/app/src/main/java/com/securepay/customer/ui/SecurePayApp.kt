@@ -50,7 +50,11 @@ fun SecurePayApp(
     var securityReport by remember { mutableStateOf<SecurityChecker.SecurityReport?>(null) }
 
     LaunchedEffect(Unit) {
-        securityReport = SecurityChecker.runAllChecks(context)
+        val report = SecurityChecker.runAllChecks(context)
+        securityReport = report
+        if (report.shouldLock) {
+            policyController.enforceLock()
+        }
     }
 
     LaunchedEffect(state.isLocked) {

@@ -38,6 +38,10 @@ class ActivationViewModel(
             _uiState.value = _uiState.value.copy(error = "Please enter your IMEI number")
             return
         }
+        if (!isValidImei(imei)) {
+            _uiState.value = _uiState.value.copy(error = "Invalid IMEI. Must be 15 digits.")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isChecking = true, error = null, notFound = false)
             val result = repository.checkAndRegister(imei)
@@ -82,6 +86,24 @@ class ActivationViewModel(
                 "Unknown ViewModel class: ${modelClass.name}"
             }
             return ActivationViewModel(repository) as T
+        }
+    }
+
+    companion object {
+        private fun isValidImei(imei: String): Boolean {
+            val digits = imei.filter { it.isDigit() }
+            if (digits.length != 15) return false
+            var sum = 0L
+            for (i in digits.indices) {
+                val d = digits[i].digitToInt()
+                sum += if (i % 2 == 1) {
+                    val doubled = d * 2
+                    if (doubled > 9) doubled - 9 else doubled
+                } else {
+                    d
+                }
+            }
+            return sum % 10 == 0L
         }
     }
 }
