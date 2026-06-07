@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import com.securepay.customer.MainActivity
+import com.securepay.customer.ui.provisioning.ProvisioningScreen
 import com.securepay.customer.ui.theme.SecurePayTheme
 
 class ProvisioningActivity : ComponentActivity() {
