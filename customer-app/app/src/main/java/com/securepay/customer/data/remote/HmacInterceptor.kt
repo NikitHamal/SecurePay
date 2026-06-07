@@ -3,6 +3,7 @@ package com.securepay.customer.data.remote
 import com.securepay.customer.admin.SecurityChecker
 import okhttp3.Interceptor
 import okhttp3.Response
+import okio.Buffer
 import java.util.Locale
 
 class HmacInterceptor(
@@ -17,8 +18,9 @@ class HmacInterceptor(
         val method = original.method.uppercase(Locale.US)
         val path = original.url.encodedPath
         val bodyHash = original.body?.let { body ->
-            val bytes = body.bytes()
-            SecurityChecker.generateHmac(deviceSecret, bytes.toString(Charsets.UTF_8))
+            val buffer = Buffer()
+            body.writeTo(buffer)
+            SecurityChecker.generateHmac(deviceSecret, buffer.readUtf8())
         } ?: ""
 
         val stringToSign = "$method\n$path\n$timestamp\n$nonce\n$bodyHash"
