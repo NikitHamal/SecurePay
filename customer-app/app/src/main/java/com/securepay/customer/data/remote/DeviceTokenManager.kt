@@ -46,8 +46,19 @@ class DeviceTokenManager(context: Context) {
             .apply()
     }
 
+    fun saveServerTimeOffset(offsetMillis: Long) {
+        prefs.edit()
+            .putLong(KEY_SERVER_TIME_OFFSET, offsetMillis)
+            .apply()
+    }
+
     val cachedNextPaymentDue: Long get() = prefs.getLong(KEY_CACHED_NEXT_DUE, 0L)
     val cachedLockedByDealer: Boolean get() = prefs.getBoolean(KEY_CACHED_LOCKED_BY_DEALER, false)
+    val serverTimeOffset: Long get() = prefs.getLong(KEY_SERVER_TIME_OFFSET, 0L)
+
+    fun getTrustedTimeMillis(): Long {
+        return System.currentTimeMillis() + serverTimeOffset
+    }
 
     fun clear() {
         prefs.edit().clear().apply()
@@ -62,5 +73,6 @@ class DeviceTokenManager(context: Context) {
         private const val KEY_IMEI = "device_imei"
         private const val KEY_CACHED_NEXT_DUE = "cached_next_payment_due"
         private const val KEY_CACHED_LOCKED_BY_DEALER = "cached_locked_by_dealer"
+        private const val KEY_SERVER_TIME_OFFSET = "server_time_offset_millis"
     }
 }

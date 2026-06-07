@@ -336,11 +336,11 @@ private fun OfflineBanner() {
 
 @Composable
 private fun SecurityWarningBanner(report: SecurityChecker.SecurityReport) {
-    val bannerColor = if (report.isRooted) Crimson else Amber
+    val bannerColor = if (report.shouldLock) Crimson else Amber
     val bannerText = when {
-        report.isRooted -> "Rooted device \u2014 financing terms may not be enforceable"
+        report.isRooted -> "SECURITY: Rooted device detected \u2014 device locked for your protection"
+        report.isTampered -> "SECURITY: App integrity check failed \u2014 device locked"
         report.isEmulator -> "Emulator environment detected"
-        report.isTampered -> "App integrity check failed"
         report.isDebuggable -> "Debug build \u2014 not for production use"
         else -> "Security warning detected"
     }
