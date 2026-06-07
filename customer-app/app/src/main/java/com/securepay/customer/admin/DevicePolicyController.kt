@@ -199,13 +199,13 @@ class DevicePolicyController(context: Context) {
                 "com.touchtype.swiftkey",
                 "com.ghisler.android.quickkeyboard"
             )
-            dpm.setPermittedInputMethods(admin, safeInputMethods)
+            dpm.setPermittedInputMethods(admin, safeInputMethods.toList())
         }.onFailure { Log.w(TAG, "setPermittedInputMethods denied: ${it.message}") }
     }
 
     private fun clearPermittedInputMethods() {
         if (!isDeviceOwner) return
-        runCatching { dpm.setPermittedInputMethods(admin, null as Set<String>?) }
+        runCatching { dpm.setPermittedInputMethods(admin, null as List<String>?) }
             .onFailure { Log.w(TAG, "clearPermittedInputMethods denied: ${it.message}") }
     }
 
