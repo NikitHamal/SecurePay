@@ -201,14 +201,12 @@ object SecurityChecker {
         return hash.joinToString("") { "%02x".format(it) }
     }
 
-    companion object {
-        private const val TAG = "SecurityChecker"
+    private const val TAG = "SecurityChecker"
 
-        private val EXPECTED_SIGNING_HASHES = setOf(
-            // Add your release signing certificate SHA-256 hash here before production.
-            // To get the hash: keytool -list -v -keystore your-release.jks | grep SHA-256
-            // Then format as lowercase hex without colons.
-            // Debug builds bypass this check via checkDebuggable().
-        )
-    }
+    private val EXPECTED_SIGNING_HASHES = setOf<String>(
+        // Add your release signing certificate SHA-256 hash here before production.
+        // To get the hash: keytool -list -v -keystore your-release.jks | grep SHA-256
+        // Then format as lowercase hex without colons.
+        // Debug builds bypass this check via checkDebuggable().
+    )
 }
