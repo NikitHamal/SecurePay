@@ -7,7 +7,7 @@ import android.content.Intent
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.os.Build
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 
 enum class ProvisioningState {
     NOT_PROVISIONED,
@@ -38,12 +38,12 @@ class ProvisioningManager(context: Context) {
 
     fun createDeviceOwnerProvisioningIntent(): Intent? {
         if (isDeviceOwner) {
-            Log.i(TAG, "Already device owner")
+            SecureLog.i(TAG, "Already device owner")
             return null
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            Log.w(TAG, "Device owner provisioning requires API 21+")
+            SecureLog.w(TAG, "Device owner provisioning requires API 21+")
             return null
         }
 
@@ -55,7 +55,7 @@ class ProvisioningManager(context: Context) {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Device owner provisioning not supported: ${e.message}")
+            SecureLog.e(TAG, "Device owner provisioning not supported: ${e.message}")
             null
         }
     }
@@ -82,7 +82,7 @@ class ProvisioningManager(context: Context) {
             )
             NdefMessage(records.toTypedArray())
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create NFC provisioning payload", e)
+            SecureLog.e(TAG, "Failed to create NFC provisioning payload", e)
             null
         }
     }

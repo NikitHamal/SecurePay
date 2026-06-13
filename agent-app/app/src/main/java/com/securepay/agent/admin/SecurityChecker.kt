@@ -1,7 +1,7 @@
 package com.securepay.agent.admin
 
 import android.content.Context
-import android.util.Log
+import com.securepay.agent.BuildConfig
 import java.io.File
 import java.security.MessageDigest
 import javax.crypto.Mac
@@ -132,11 +132,11 @@ object SecurityChecker {
 
         if (installer == null) {
             if (!checkDebuggable(context)) {
-                Log.w(TAG, "App sideloaded with no installer package — possible tampering")
+                SecureLog.w(TAG, "App sideloaded with no installer package — possible tampering")
                 return true
             }
         } else if (installer !in validInstallers) {
-            Log.w(TAG, "App installed from untrusted source: $installer")
+            SecureLog.w(TAG, "App installed from untrusted source: $installer")
             return true
         }
 
@@ -159,14 +159,14 @@ object SecurityChecker {
             if (signersAreValid(signatures)) {
             } else {
                 if (checkDebuggable(context)) {
-                    Log.w(TAG, "APK signature mismatch — allowing in debug build")
+                    SecureLog.w(TAG, "APK signature mismatch — allowing in debug build")
                 } else {
-                    Log.w(TAG, "APK signature mismatch — possible tampering")
+                    SecureLog.w(TAG, "APK signature mismatch — possible tampering")
                     return true
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Signature verification failed", e)
+            SecureLog.e(TAG, "Signature verification failed", e)
             if (!checkDebuggable(context)) return true
         }
 
@@ -193,6 +193,9 @@ object SecurityChecker {
 
     private const val TAG = "SecurityChecker"
 
-    private val EXPECTED_SIGNING_HASHES = setOf<String>(
-    )
+    private val EXPECTED_SIGNING_HASHES: Set<String>
+        get() {
+            val hash = BuildConfig.SIGNING_CERT_HASH
+            return if (hash.isNotBlank()) setOf(hash) else emptySet()
+        }
 }

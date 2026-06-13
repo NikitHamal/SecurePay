@@ -63,6 +63,7 @@ jobs:
         working-directory: ${{ matrix.module }}
         env:
           HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
+          SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       # 3. Cryptographic signing using the secure keystore secrets.

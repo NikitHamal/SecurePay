@@ -5,7 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 import com.securepay.customer.data.remote.DeviceTokenManager
 import com.securepay.customer.data.repository.DeviceRepository
 import kotlinx.coroutines.CoroutineScope
@@ -21,14 +21,14 @@ class NetworkMonitor(private val context: Context) {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            Log.i(TAG, "Network available, triggering immediate heartbeat")
+            SecureLog.i(TAG, "Network available, triggering immediate heartbeat")
             triggerHeartbeat()
         }
 
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
             if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                Log.i(TAG, "Validated internet available, triggering heartbeat")
+                SecureLog.i(TAG, "Validated internet available, triggering heartbeat")
                 triggerHeartbeat()
             }
         }
@@ -45,9 +45,9 @@ class NetworkMonitor(private val context: Context) {
         try {
             connectivityManager.registerNetworkCallback(request, networkCallback)
             isRegistered = true
-            Log.i(TAG, "Network monitoring started")
+            SecureLog.i(TAG, "Network monitoring started")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register network callback", e)
+            SecureLog.e(TAG, "Failed to register network callback", e)
         }
     }
 
@@ -56,7 +56,7 @@ class NetworkMonitor(private val context: Context) {
         try {
             connectivityManager.unregisterNetworkCallback(networkCallback)
             isRegistered = false
-            Log.i(TAG, "Network monitoring stopped")
+            SecureLog.i(TAG, "Network monitoring stopped")
         } catch (_: Exception) {
             // Already unregistered
         }
@@ -72,9 +72,9 @@ class NetworkMonitor(private val context: Context) {
         scope.launch {
             try {
                 repository.heartbeat()
-                Log.i(TAG, "Connectivity-restored heartbeat succeeded")
+                SecureLog.i(TAG, "Connectivity-restored heartbeat succeeded")
             } catch (e: Exception) {
-                Log.w(TAG, "Connectivity-restored heartbeat failed: ${e.message}")
+                SecureLog.w(TAG, "Connectivity-restored heartbeat failed: ${e.message}")
             }
         }
     }

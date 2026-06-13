@@ -6,7 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.os.UserManager
 import android.provider.Settings
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 
 class DevicePolicyController(context: Context) {
 
@@ -33,7 +33,7 @@ class DevicePolicyController(context: Context) {
 
     fun enforceLock() {
         if (!isAdminActive) {
-            Log.w(TAG, "enforceLock requested but device admin is not active.")
+            SecureLog.w(TAG, "enforceLock requested but device admin is not active.")
             return
         }
         disableUsbDebugging()
@@ -41,7 +41,7 @@ class DevicePolicyController(context: Context) {
         hardenKeyguard()
         setPermittedInputMethods()
         runCatching { dpm.lockNow() }
-            .onFailure { Log.w(TAG, "lockNow() denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "lockNow() denied: ${it.message}") }
     }
 
     fun releaseRestrictions() {
@@ -53,46 +53,46 @@ class DevicePolicyController(context: Context) {
                 admin,
                 DevicePolicyManager.KEYGUARD_DISABLE_FEATURES_NONE
             )
-        }.onFailure { Log.w(TAG, "Restoring keyguard features denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "Restoring keyguard features denied: ${it.message}") }
         clearPermittedInputMethods()
     }
 
     fun startLockTask(activity: android.app.Activity) {
         if (!isDeviceOwner) {
-            Log.w(TAG, "startLockTask requires device owner privilege")
+            SecureLog.w(TAG, "startLockTask requires device owner privilege")
             return
         }
         runCatching {
             dpm.setLockTaskPackages(admin, arrayOf(appContext.packageName))
             activity.startLockTask()
-        }.onFailure { Log.w(TAG, "startLockTask failed: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "startLockTask failed: ${it.message}") }
     }
 
     fun stopLockTask(activity: android.app.Activity) {
         if (!isDeviceOwner) return
         runCatching { activity.stopLockTask() }
-            .onFailure { Log.w(TAG, "stopLockTask failed: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "stopLockTask failed: ${it.message}") }
     }
 
     fun hideApp(packageName: String) {
         if (!isDeviceOwner) {
-            Log.i(TAG, "hideApp requires device owner — skipping")
+            SecureLog.i(TAG, "hideApp requires device owner — skipping")
             return
         }
         runCatching { dpm.setApplicationHidden(admin, packageName, true) }
-            .onFailure { Log.w(TAG, "hideApp($packageName) denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "hideApp($packageName) denied: ${it.message}") }
     }
 
     fun unhideApp(packageName: String) {
         if (!isDeviceOwner) return
         runCatching { dpm.setApplicationHidden(admin, packageName, false) }
-            .onFailure { Log.w(TAG, "unhideApp($packageName) denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "unhideApp($packageName) denied: ${it.message}") }
     }
 
     fun enableSystemApp(packageName: String) {
         if (!isDeviceOwner) return
         runCatching { dpm.enableSystemApp(admin, packageName) }
-            .onFailure { Log.w(TAG, "enableSystemApp($packageName) denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "enableSystemApp($packageName) denied: ${it.message}") }
     }
 
     fun setStayOnWhilePluggedIn() {
@@ -103,50 +103,50 @@ class DevicePolicyController(context: Context) {
                 Settings.Global.STAY_ON_WHILE_PLUGGED_IN,
                 "3"
             )
-        }.onFailure { Log.w(TAG, "setStayOnWhilePluggedIn denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "setStayOnWhilePluggedIn denied: ${it.message}") }
     }
 
     fun disableCamera() {
         if (!isDeviceOwner) {
             runCatching {
                 dpm.setCameraDisabled(admin, true)
-            }.onFailure { Log.w(TAG, "disableCamera denied: ${it.message}") }
+            }.onFailure { SecureLog.w(TAG, "disableCamera denied: ${it.message}") }
             return
         }
         runCatching { dpm.setCameraDisabled(admin, true) }
-            .onFailure { Log.w(TAG, "disableCamera (DO) denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "disableCamera (DO) denied: ${it.message}") }
     }
 
     fun enableCamera() {
         runCatching { dpm.setCameraDisabled(admin, false) }
-            .onFailure { Log.w(TAG, "enableCamera denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "enableCamera denied: ${it.message}") }
     }
 
     fun setMaximumTimeToLock(timeoutMs: Long) {
         if (!isAdminActive) return
         runCatching { dpm.setMaximumTimeToLock(admin, timeoutMs) }
-            .onFailure { Log.w(TAG, "setMaximumTimeToLock denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "setMaximumTimeToLock denied: ${it.message}") }
     }
 
     fun setPasswordQuality() {
         if (!isAdminActive) return
         runCatching {
             dpm.setPasswordQuality(admin, DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED)
-        }.onFailure { Log.w(TAG, "setPasswordQuality denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "setPasswordQuality denied: ${it.message}") }
     }
 
     fun wipeDevice(reason: String) {
         if (!isDeviceOwner) {
-            Log.w(TAG, "wipeDevice requires device owner — skipping")
+            SecureLog.w(TAG, "wipeDevice requires device owner — skipping")
             return
         }
         runCatching { dpm.wipeData(DevicePolicyManager.WIPE_EXTERNAL_STORAGE) }
-            .onFailure { Log.w(TAG, "wipeDevice denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "wipeDevice denied: ${it.message}") }
     }
 
     private fun disableUsbDebugging() {
         if (!isDeviceOwner) {
-            Log.i(TAG, "Not device owner — skipping ADB lockdown (admin-only mode).")
+            SecureLog.i(TAG, "Not device owner — skipping ADB lockdown (admin-only mode).")
             return
         }
         runCatching {
@@ -154,7 +154,7 @@ class DevicePolicyController(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 dpm.addUserRestriction(admin, UserManager.DISALLOW_DEBUGGING_FEATURES)
             }
-        }.onFailure { Log.w(TAG, "Disabling USB debugging denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "Disabling USB debugging denied: ${it.message}") }
     }
 
     private fun restoreUsbDebugging() {
@@ -163,19 +163,19 @@ class DevicePolicyController(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 dpm.clearUserRestriction(admin, UserManager.DISALLOW_DEBUGGING_FEATURES)
             }
-        }.onFailure { Log.w(TAG, "Restoring USB debugging denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "Restoring USB debugging denied: ${it.message}") }
     }
 
     private fun blockScreenCapture() {
         if (!isAdminActive) return
         runCatching { dpm.setScreenCaptureDisabled(admin, true) }
-            .onFailure { Log.w(TAG, "blockScreenCapture denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "blockScreenCapture denied: ${it.message}") }
     }
 
     private fun allowScreenCapture() {
         if (!isAdminActive) return
         runCatching { dpm.setScreenCaptureDisabled(admin, false) }
-            .onFailure { Log.w(TAG, "allowScreenCapture denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "allowScreenCapture denied: ${it.message}") }
     }
 
     private fun hardenKeyguard() {
@@ -185,7 +185,7 @@ class DevicePolicyController(context: Context) {
                 DevicePolicyManager.KEYGUARD_DISABLE_TRUST_AGENTS or
                     DevicePolicyManager.KEYGUARD_DISABLE_FINGERPRINT
             )
-        }.onFailure { Log.w(TAG, "Hardening keyguard denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "Hardening keyguard denied: ${it.message}") }
     }
 
     private fun setPermittedInputMethods() {
@@ -200,13 +200,13 @@ class DevicePolicyController(context: Context) {
                 "com.ghisler.android.quickkeyboard"
             )
             dpm.setPermittedInputMethods(admin, safeInputMethods.toList())
-        }.onFailure { Log.w(TAG, "setPermittedInputMethods denied: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "setPermittedInputMethods denied: ${it.message}") }
     }
 
     private fun clearPermittedInputMethods() {
         if (!isDeviceOwner) return
         runCatching { dpm.setPermittedInputMethods(admin, null as List<String>?) }
-            .onFailure { Log.w(TAG, "clearPermittedInputMethods denied: ${it.message}") }
+            .onFailure { SecureLog.w(TAG, "clearPermittedInputMethods denied: ${it.message}") }
     }
 
     companion object {
