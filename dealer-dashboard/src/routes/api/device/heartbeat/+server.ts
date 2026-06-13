@@ -2,7 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse } from '$lib/api/server';
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
+  if (!locals.hmacVerified) {
+    return errorResponse('HMAC verification required', 401);
+  }
+
   const body = await request.json();
   const { imei } = body;
 

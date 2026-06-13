@@ -2,7 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse } from '$lib/api/server';
 
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url, platform, locals }) => {
+  if (!locals.hmacVerified) {
+    return errorResponse('HMAC verification required', 401);
+  }
+
   const imei = url.searchParams.get('imei');
 
   if (!imei) {

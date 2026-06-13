@@ -61,6 +61,8 @@ jobs:
       # 2. Compile the release target via the Gradle wrapper.
       - name: Assemble release APK
         working-directory: ${{ matrix.module }}
+        env:
+          HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       # 3. Cryptographic signing using the secure keystore secrets.
