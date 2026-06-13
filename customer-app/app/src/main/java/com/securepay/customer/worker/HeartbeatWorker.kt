@@ -1,7 +1,7 @@
 package com.securepay.customer.worker
 
 import android.content.Context
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder

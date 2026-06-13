@@ -6,7 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.os.UserManager
 import android.provider.Settings
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 
 class DevicePolicyController(context: Context) {
 

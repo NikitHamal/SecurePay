@@ -3,7 +3,7 @@ package com.securepay.customer.worker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 import com.securepay.customer.admin.DevicePolicyController
 import com.securepay.customer.data.model.DeviceStatus
 import com.securepay.customer.data.remote.DeviceTokenManager

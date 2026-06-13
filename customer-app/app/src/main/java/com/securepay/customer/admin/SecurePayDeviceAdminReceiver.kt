@@ -3,7 +3,7 @@ package com.securepay.customer.admin
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 
 class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
 
