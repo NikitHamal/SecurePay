@@ -5,7 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 import com.securepay.customer.data.remote.DeviceTokenManager
 import com.securepay.customer.data.repository.DeviceRepository
 import kotlinx.coroutines.CoroutineScope

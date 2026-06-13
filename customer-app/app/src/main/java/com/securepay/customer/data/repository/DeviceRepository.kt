@@ -1,6 +1,6 @@
 package com.securepay.customer.data.repository
 
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 import com.securepay.customer.data.model.AccountResponse
 import com.securepay.customer.data.model.DeviceCheckResponse
 import com.securepay.customer.data.model.LoanAccount

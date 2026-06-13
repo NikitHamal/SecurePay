@@ -7,7 +7,7 @@ import android.content.Intent
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.os.Build
-import com.securepay.customer.util.SecureSecureLog
+import com.securepay.customer.util.SecureLog
 
 enum class ProvisioningState {
     NOT_PROVISIONED,
