@@ -1,6 +1,6 @@
 package com.securepay.customer.data.repository
 
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 import com.securepay.customer.data.model.AccountResponse
 import com.securepay.customer.data.model.DeviceCheckResponse
 import com.securepay.customer.data.model.LoanAccount
@@ -51,7 +51,7 @@ class DeviceRepository(
             }
             Result.success(response)
         } catch (e: Exception) {
-            Log.e(TAG, "deviceCheck failed", e)
+            SecureLog.e(TAG, "deviceCheck failed", e)
             Result.failure(e)
         }
     }
@@ -68,7 +68,7 @@ class DeviceRepository(
             tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer)
             _error.value = null
         } catch (e: Exception) {
-            Log.e(TAG, "refresh failed", e)
+            SecureLog.e(TAG, "refresh failed", e)
             _error.value = e.message ?: "Failed to refresh account"
         } finally {
             _isLoading.value = false
@@ -81,7 +81,7 @@ class DeviceRepository(
             val response = api.getPayments(accountId)
             _payments.value = response.payments
         } catch (e: Exception) {
-            Log.e(TAG, "refreshPayments failed", e)
+            SecureLog.e(TAG, "refreshPayments failed", e)
         }
     }
 
@@ -97,7 +97,7 @@ class DeviceRepository(
             }
             Result.success(_account.value)
         } catch (e: Exception) {
-            Log.e(TAG, "heartbeat failed", e)
+            SecureLog.e(TAG, "heartbeat failed", e)
             Result.failure(e)
         }
     }

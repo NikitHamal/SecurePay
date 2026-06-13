@@ -14,10 +14,13 @@ object SecureLog {
     }
 
     fun w(tag: String, msg: String) {
-        Log.w(tag, msg)
+        if (BuildConfig.DEBUG) Log.w(tag, msg)
     }
 
     fun e(tag: String, msg: String, throwable: Throwable? = null) {
-        Log.e(tag, msg, throwable)
+        if (BuildConfig.DEBUG) {
+            if (throwable != null) Log.e(tag, msg, throwable)
+            else Log.e(tag, msg)
+        }
     }
 }

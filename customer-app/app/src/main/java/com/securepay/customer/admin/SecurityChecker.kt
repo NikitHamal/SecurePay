@@ -1,7 +1,8 @@
 package com.securepay.customer.admin
 
 import android.content.Context
-import android.util.Log
+import com.securepay.customer.BuildConfig
+import com.securepay.customer.util.SecureLog
 import java.io.File
 import java.security.MessageDigest
 import javax.crypto.Mac
@@ -139,11 +140,11 @@ object SecurityChecker {
             // Sideloaded — no installer info
             // Allow in debug builds for development, block in release
             if (!checkDebuggable(context)) {
-                Log.w(TAG, "App sideloaded with no installer package — possible tampering")
+                SecureLog.w(TAG, "App sideloaded with no installer package — possible tampering")
                 return true
             }
         } else if (installer !in validInstallers) {
-            Log.w(TAG, "App installed from untrusted source: $installer")
+            SecureLog.w(TAG, "App installed from untrusted source: $installer")
             return true
         }
 
@@ -168,14 +169,14 @@ object SecurityChecker {
                 // Signature matches expected — not tampered
             } else {
                 if (checkDebuggable(context)) {
-                    Log.w(TAG, "APK signature mismatch — allowing in debug build")
+                    SecureLog.w(TAG, "APK signature mismatch — allowing in debug build")
                 } else {
-                    Log.w(TAG, "APK signature mismatch — possible tampering")
+                    SecureLog.w(TAG, "APK signature mismatch — possible tampering")
                     return true
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Signature verification failed", e)
+            SecureLog.e(TAG, "Signature verification failed", e)
             // If we can't verify, assume tampered in release builds
             if (!checkDebuggable(context)) return true
         }
@@ -203,10 +204,9 @@ object SecurityChecker {
 
     private const val TAG = "SecurityChecker"
 
-    private val EXPECTED_SIGNING_HASHES = setOf<String>(
-        // Add your release signing certificate SHA-256 hash here before production.
-        // To get the hash: keytool -list -v -keystore your-release.jks | grep SHA-256
-        // Then format as lowercase hex without colons.
-        // Debug builds bypass this check via checkDebuggable().
-    )
+    private val EXPECTED_SIGNING_HASHES: Set<String>
+        get() {
+            val hash = BuildConfig.SIGNING_CERT_HASH
+            return if (hash.isNotBlank()) setOf(hash) else emptySet()
+        }
 }

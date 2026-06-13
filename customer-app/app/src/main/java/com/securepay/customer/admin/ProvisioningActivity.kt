@@ -5,7 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,14 +23,14 @@ class ProvisioningActivity : ComponentActivity() {
     private val provisioningLauncher: ActivityResultLauncher<Intent> = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        Log.i(TAG, "Provisioning flow completed, rechecking state")
+        SecureLog.i(TAG, "Provisioning flow completed, rechecking state")
         recreate()
     }
 
     private val enableAdminLauncher: ActivityResultLauncher<Intent> = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        Log.i(TAG, "Enable admin flow completed, rechecking state")
+        SecureLog.i(TAG, "Enable admin flow completed, rechecking state")
         recreate()
     }
 
@@ -50,13 +50,13 @@ class ProvisioningActivity : ComponentActivity() {
     }
 
     private fun onProvisioningComplete() {
-        Log.i(TAG, "Device owner provisioning completed!")
+        SecureLog.i(TAG, "Device owner provisioning completed!")
         val componentName = ComponentName(this, SecurePayDeviceAdminReceiver::class.java)
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
 
         runCatching {
             dpm.setProfileName(componentName, "SecurePay")
-        }.onFailure { Log.w(TAG, "setProfileName failed: ${it.message}") }
+        }.onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
 
         val mainIntent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)

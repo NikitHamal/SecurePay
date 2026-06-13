@@ -3,16 +3,16 @@ package com.securepay.customer.admin
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 
 class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
-        Log.i(TAG, "SecurePay device administration enabled.")
+        SecureLog.i(TAG, "SecurePay device administration enabled.")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
-        Log.i(TAG, "SecurePay device administration disabled.")
+        SecureLog.i(TAG, "SecurePay device administration disabled.")
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
@@ -21,15 +21,15 @@ class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
     }
 
     override fun onPasswordFailed(context: Context, intent: Intent) {
-        Log.w(TAG, "Password failed attempt detected")
+        SecureLog.w(TAG, "Password failed attempt detected")
     }
 
     override fun onPasswordSucceeded(context: Context, intent: Intent) {
-        Log.i(TAG, "Password succeeded")
+        SecureLog.i(TAG, "Password succeeded")
     }
 
     override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
-        Log.i(TAG, "Profile provisioning complete")
+        SecureLog.i(TAG, "Profile provisioning complete")
     }
 
     companion object {

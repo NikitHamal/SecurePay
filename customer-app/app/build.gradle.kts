@@ -31,6 +31,7 @@ android {
             isShrinkResources = true
             buildConfigField("String", "API_BASE_URL", "\"https://securepay-dashboard.pages.dev/api/\"")
             buildConfigField("String", "HMAC_SECRET", "\"${System.getenv("HMAC_SECRET") ?: ""}\"")
+            buildConfigField("String", "SIGNING_CERT_HASH", "\"${System.getenv("SIGNING_CERT_HASH") ?: ""}\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

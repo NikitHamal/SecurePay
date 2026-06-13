@@ -1,7 +1,7 @@
 package com.securepay.customer.worker
 
 import android.content.Context
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -22,7 +22,7 @@ class HeartbeatWorker(
         val imei = tokenManager.imei
 
         if (accountId == null || imei == null) {
-            Log.w(TAG, "Not registered, skipping heartbeat")
+            SecureLog.w(TAG, "Not registered, skipping heartbeat")
             return Result.success()
         }
 
@@ -33,10 +33,10 @@ class HeartbeatWorker(
                 DeviceRepository(api, tokenManager)
             }
             repository.heartbeat()
-            Log.i(TAG, "Heartbeat successful")
+            SecureLog.i(TAG, "Heartbeat successful")
             Result.success()
         } catch (e: Exception) {
-            Log.e(TAG, "Heartbeat failed, will retry", e)
+            SecureLog.e(TAG, "Heartbeat failed, will retry", e)
             Result.retry()
         }
     }

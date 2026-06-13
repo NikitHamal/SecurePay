@@ -3,7 +3,7 @@ package com.securepay.customer.worker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.securepay.customer.util.SecureSecureLog
 import com.securepay.customer.admin.DevicePolicyController
 import com.securepay.customer.data.model.DeviceStatus
 import com.securepay.customer.data.remote.DeviceTokenManager
@@ -13,7 +13,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in BOOT_ACTIONS) return
 
-        Log.i(TAG, "Boot received: ${intent.action}, scheduling heartbeat and enforcing lock state")
+        SecureLog.i(TAG, "Boot received: ${intent.action}, scheduling heartbeat and enforcing lock state")
 
         HeartbeatWorker.schedule(context)
 
@@ -21,7 +21,7 @@ class BootReceiver : BroadcastReceiver() {
         val tokenManager = DeviceTokenManager(context)
 
         if (!tokenManager.isRegistered) {
-            Log.i(TAG, "Device not registered, skipping lock enforcement")
+            SecureLog.i(TAG, "Device not registered, skipping lock enforcement")
             return
         }
 
@@ -29,17 +29,17 @@ class BootReceiver : BroadcastReceiver() {
         val cachedLockedByDealer = tokenManager.cachedLockedByDealer
 
         if (cachedDue <= 0L) {
-            Log.w(TAG, "No cached payment due data, cannot determine lock state")
+            SecureLog.w(TAG, "No cached payment due data, cannot determine lock state")
             return
         }
 
         val trustedTime = tokenManager.getTrustedTimeMillis()
         val status = DeviceStatus.evaluate(cachedDue, cachedLockedByDealer, trustedTime)
         if (status == DeviceStatus.LOCKED) {
-            Log.w(TAG, "Device should be LOCKED based on cached data, enforcing lock")
+            SecureLog.w(TAG, "Device should be LOCKED based on cached data, enforcing lock")
             policyController.enforceLock()
         } else {
-            Log.i(TAG, "Device status: $status, releasing restrictions")
+            SecureLog.i(TAG, "Device status: $status, releasing restrictions")
             policyController.releaseRestrictions()
         }
     }
