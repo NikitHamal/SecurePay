@@ -26,7 +26,9 @@
   $: linePath = points
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`)
     .join(' ');
-  $: areaPath = `${linePath} L${points[points.length - 1].x},${padding.top + innerH} L${points[0].x},${padding.top + innerH} Z`;
+  $: areaPath = points.length > 0
+    ? `${linePath} L${points[points.length - 1].x},${padding.top + innerH} L${points[0].x},${padding.top + innerH} Z`
+    : '';
 
   $: yTicks = Array.from({ length: 4 }, (_, i) => min + (range * (4 - i)) / 4);
 </script>

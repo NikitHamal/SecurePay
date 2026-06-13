@@ -24,11 +24,13 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.66:5173/api/\"")
+            buildConfigField("String", "HMAC_SECRET", "\"dev-hmac-secret-change-in-release\"")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             buildConfigField("String", "API_BASE_URL", "\"https://securepay-dashboard.pages.dev/api/\"")
+            buildConfigField("String", "HMAC_SECRET", "\"${System.getenv("HMAC_SECRET") ?: ""}\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

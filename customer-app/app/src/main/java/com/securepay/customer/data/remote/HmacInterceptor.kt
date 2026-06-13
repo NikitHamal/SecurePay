@@ -1,5 +1,6 @@
 package com.securepay.customer.data.remote
 
+import com.securepay.customer.BuildConfig
 import com.securepay.customer.admin.SecurityChecker
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -16,15 +17,15 @@ class HmacInterceptor(
         val nonce = java.util.UUID.randomUUID().toString()
 
         val method = original.method.uppercase(Locale.US)
-        val path = original.url.encodedPath
+        val path = original.url.encodedPath + original.url.query.let { if (it.isNullOrEmpty()) "" else "?$it" }
         val bodyHash = original.body?.let { body ->
             val buffer = Buffer()
             body.writeTo(buffer)
-            SecurityChecker.generateHmac(deviceSecret, buffer.readUtf8())
+            SecurityChecker.generateHmac(BuildConfig.HMAC_SECRET, buffer.readUtf8())
         } ?: ""
 
         val stringToSign = "$method\n$path\n$timestamp\n$nonce\n$bodyHash"
-        val signature = SecurityChecker.generateHmac(deviceSecret, stringToSign)
+        val signature = SecurityChecker.generateHmac(BuildConfig.HMAC_SECRET, stringToSign)
 
         val authenticated = original.newBuilder()
             .header("X-Signature", signature)

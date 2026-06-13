@@ -2,7 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
 
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url, platform, locals }) => {
+  if (!locals.hmacVerified) {
+    return errorResponse('HMAC verification required', 401);
+  }
+
   const accountId = url.searchParams.get('accountId');
 
   if (!accountId) {
@@ -17,11 +21,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     return errorResponse('Account not found', 404);
   }
 
-  const rows = await db.prepare(
+  const result = await db.prepare(
     'SELECT id, account_id, amount, method, reference, created_at FROM payments WHERE account_id = ? ORDER BY created_at DESC LIMIT 50'
-  ).bind(accountId).all();
+  ).bind(accountId).run();
 
-  const payments = (rows.rows as any[]).map((row) => ({
+  const payments = (result.results as any[]).map((row) => ({
     id: row.id,
     accountId: row.account_id,
     amount: Number(row.amount),
