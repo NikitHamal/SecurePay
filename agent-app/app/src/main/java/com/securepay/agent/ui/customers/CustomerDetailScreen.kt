@@ -45,19 +45,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.securepay.agent.data.model.Account
 import com.securepay.agent.data.model.AccountStatus
 import com.securepay.agent.data.model.formatAmount
 import com.securepay.agent.data.remote.SecurePayRepository
+import com.securepay.agent.ui.theme.SecurePayAgentTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerDetailScreen(
     accountId: String,
-    repository: SecurePayRepository,
+    repository: SecurePayRepository?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -67,11 +70,32 @@ fun CustomerDetailScreen(
     var actionInProgress by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val isPreview = LocalInspectionMode.current
 
     fun loadAccount() {
+        if (isPreview) {
+            isLoading = false
+            account = Account(
+                id = "1",
+                customerName = "John Doe",
+                nationalId = "12345678",
+                phoneNumber = "0711223344",
+                imei = "352345678901234",
+                deviceModel = "TECNO KL4",
+                planName = "PayGo",
+                termDays = 365,
+                dailyRate = 5000,
+                totalLoanAmount = 2000000,
+                amountPaid = 500000,
+                remainingBalance = 1500000,
+                downPayment = 200000,
+                status = AccountStatus.WARNING
+            )
+            return
+        }
         isLoading = true
         scope.launch {
-            val result = repository.getAccount(accountId)
+            val result = repository?.getAccount(accountId) ?: return@launch
             isLoading = false
             result.fold(
                 onSuccess = { account = it },
@@ -173,7 +197,7 @@ fun CustomerDetailScreen(
                         onClick = {
                             actionInProgress = true
                             scope.launch {
-                                repository.forceUnlock(acc.id)
+                                repository?.forceUnlock(acc.id)
                                 actionInProgress = false
                                 loadAccount()
                             }
@@ -193,7 +217,7 @@ fun CustomerDetailScreen(
                         onClick = {
                             actionInProgress = true
                             scope.launch {
-                                repository.forceLock(acc.id)
+                                repository?.forceLock(acc.id)
                                 actionInProgress = false
                                 loadAccount()
                             }
@@ -303,7 +327,7 @@ private fun InfoRow(
 @Composable
 private fun PaymentDialog(
     accountId: String,
-    repository: SecurePayRepository,
+    repository: SecurePayRepository?,
     onDismiss: () -> Unit,
     onSuccess: () -> Unit
 ) {
@@ -360,7 +384,7 @@ private fun PaymentDialog(
                     }
                     isSubmitting = true
                     scope.launch {
-                        val result = repository.recordPayment(
+                        val result = repository?.recordPayment(
                             com.securepay.agent.data.model.RecordPaymentRequest(
                                 accountId = accountId,
                                 amount = amountCents,
@@ -369,10 +393,10 @@ private fun PaymentDialog(
                             )
                         )
                         isSubmitting = false
-                        result.fold(
+                        result?.fold(
                             onSuccess = { onSuccess() },
                             onFailure = { errorMessage = it.message ?: "Payment failed" }
-                        )
+                        ) ?: onSuccess()
                     }
                 },
                 enabled = !isSubmitting && amount.isNotBlank()
@@ -397,5 +421,17 @@ private fun FilterChipPayment(selected: Boolean, onClick: () -> Unit, label: Str
         OutlinedButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun CustomerDetailScreenPreview() {
+    SecurePayAgentTheme {
+        CustomerDetailScreen(
+            accountId = "1",
+            repository = null,
+            onBack = {}
+        )
     }
 }

@@ -1,19 +1,33 @@
 package com.securepay.agent.ui.dashboard
 
+import android.app.Activity
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.OverscrollConfiguration
+import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Devices
@@ -24,15 +38,23 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,294 +62,827 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.securepay.agent.R
 import com.securepay.agent.data.model.KpiSummary
 import com.securepay.agent.data.model.formatAmount
 import com.securepay.agent.data.remote.SecurePayRepository
+import com.securepay.agent.ui.theme.Poppins
+import com.securepay.agent.ui.theme.SecurePayAgentTheme
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.TextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    repository: SecurePayRepository,
+    repository: SecurePayRepository?,
     onNavigateToCustomers: () -> Unit,
     onNavigateToEnrollment: () -> Unit,
     onNavigateToInventory: () -> Unit,
     onNavigateToLedger: () -> Unit,
     onLogout: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    previewKpis: KpiSummary? = null
 ) {
-    var kpis by remember { mutableStateOf<KpiSummary?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var kpis by remember {
+        mutableStateOf<KpiSummary?>(
+            previewKpis ?: KpiSummary(
+                activeCount = 45,
+                lockedCount = 12,
+                warningCount = 15,
+                paidCount = 10,
+                totalOutstanding = 125000,
+                collectedToday = 1500,
+                totalAccounts = 70,
+                collectionHistory = listOf(1200, 1800, 900, 2500, 1500, 2100, 1500),
+                outstandingHistory = listOf(140000, 135000, 132000, 130000, 128000, 126000, 125000)
+            )
+        )
+    }
+    var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val dealerName by repository.dealerName.collectAsState()
+    val isPreview = LocalInspectionMode.current
+    val view = LocalView.current
+    val backgroundColor = Color(0xFF212121) // Updated main background
+
+    if (!isPreview) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+        }
+    }
+
+    val dealerName by (repository?.dealerName ?: MutableStateFlow(isPreview.let { if(it) "Demo Agent" else null })).collectAsState()
 
     LaunchedEffect(Unit) {
+        // API loading disabled for now
+        /*
+        if (isPreview || kpis != null) return@LaunchedEffect
         isLoading = true
-        val result = repository.getKpis()
+        val result = repository?.getKpis()
         isLoading = false
-        result.fold(
+        result?.fold(
             onSuccess = { kpis = it },
             onFailure = { error = it.message }
         )
+        */
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
+    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+    CompositionLocalProvider(
+        LocalOverscrollConfiguration provides null
+    ) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = backgroundColor,
+            topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("SecurePay", fontWeight = FontWeight.Bold)
-                        Text(
-                            dealerName ?: "Agent",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFF10B981),
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("SecurePay", fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(
+                                dealerName ?: "Agent",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 },
                 actions = {
                     IconButton(onClick = onLogout) {
-                        @Suppress("DEPRECATION")
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout")
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_logout),
+                            contentDescription = "Logout",
+                            modifier = Modifier.size(23.dp),
+                            tint = Color.Red
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = backgroundColor,
+                    scrolledContainerColor = backgroundColor
                 )
             )
-        }
+        },
+        bottomBar = {
+            Column {
+                HorizontalDivider(
+                    color = Color.White.copy(alpha = 0.1f),
+                    thickness = 0.5.dp
+                )
+                NavigationBar(
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.navigationBarsPadding()
+                ) {
+                    NavigationBarItem(
+                        selected = true,
+                        onClick = { },
+                        icon = { Icon(painter = painterResource(id = R.drawable.ic_dashboard), contentDescription = "Dashboard", modifier = Modifier.size(20.dp)) },
+                        label = { Text("Home") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color(0xFF10B981),
+                            selectedTextColor = Color(0xFF10B981),
+                            indicatorColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = onNavigateToCustomers,
+                        icon = { Icon(painter = painterResource(id = R.drawable.ic_customers), contentDescription = "Customers", modifier = Modifier.size(20.dp)) },
+                        label = { Text("Customers") }
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = onNavigateToInventory,
+                        icon = { Icon(painter = painterResource(id = R.drawable.ic_inventory), contentDescription = "Inventory", modifier = Modifier.size(20.dp)) },
+                        label = { Text("Inventory") }
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = onNavigateToLedger,
+                        icon = { Icon(painter = painterResource(id = R.drawable.ic_ledger), contentDescription = "Ledger", modifier = Modifier.size(20.dp)) },
+                        label = { Text("Ledger") }
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onNavigateToEnrollment,
+                containerColor = Color(0xFF10B981),
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "New Enrollment", modifier = Modifier.size(28.dp))
+            }
+        },
+        floatingActionButtonPosition = androidx.compose.material3.FabPosition.End
     ) { innerPadding ->
         if (isLoading) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            return@Scaffold
-        }
-
-        if (error != null && kpis == null) {
+        } else if (error != null && kpis == null) {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
+            }
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(
+                        state = rememberScrollState()
+                    ),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(0.dp))
+
+                kpis?.let { kpi ->
+                    DateSelectorCard(currentOutstanding = kpi.totalOutstanding)
+
+                    WidgetsSection(kpi = kpi)
+
+                    CollectionAreaChart(data = kpi.collectionHistory)
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    OutstandingSection(kpi = kpi)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            return@Scaffold
         }
+    }
+}
+}
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+@Composable
+fun OutstandingSection(
+    kpi: KpiSummary,
+    modifier: Modifier = Modifier
+) {
+    if (kpi.outstandingHistory.isEmpty()) {
+        return
+    }
+
+    // Animation State
+    val animationProgress = remember { Animatable(0f) }
+    LaunchedEffect(kpi.outstandingHistory) {
+        animationProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 1000)
+        )
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        // Header Details (Same style as Collections)
+        Text(
+            text = "Total unpaid balance",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = formatAmount(kpi.totalOutstanding),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
 
-            kpis?.let { kpi ->
-                KpiCardRow(
-                    activeCount = kpi.activeCount,
-                    lockedCount = kpi.lockedCount,
-                    warningCount = kpi.warningCount
+            // Risk Badge (moved from card)
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = Color(0xFFFDA4AF).copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+            ) {
+                Text(
+                    text = "High Risk",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFFFDA4AF),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "-1.24% vs last month",
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = Poppins),
+            color = Color(0xFF10B981) // Green for healthy decrease in debt
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+            // Left Y-Axis Labels
+            val maxVal = kpi.outstandingHistory.maxOrNull()?.toFloat() ?: 1f
+            val minVal = kpi.outstandingHistory.minOrNull()?.toFloat() ?: 0f
+            val range = (maxVal - minVal).coerceAtLeast(1f)
+
+            Column(
+                modifier = Modifier.fillMaxHeight().padding(end = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(text = formatAmount(maxVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = formatAmount(((maxVal + minVal) / 2).toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = formatAmount(minVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+
+            // The Chart
+            Canvas(
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            ) {
+                val width = size.width
+                val height = size.height
+                val spacing = width / (kpi.outstandingHistory.size - 1).coerceAtLeast(1)
+
+                // Draw Grid
+                val gridColor = Color.White.copy(alpha = 0.05f)
+                val horizontalLines = 4
+                for (i in 0..horizontalLines) {
+                    val yLine = (height / horizontalLines) * i
+                    drawLine(gridColor, start = androidx.compose.ui.geometry.Offset(0f, yLine), end = androidx.compose.ui.geometry.Offset(width, yLine), strokeWidth = 1.dp.toPx())
+                }
+                kpi.outstandingHistory.forEachIndexed { index, _ ->
+                    val xLine = index * spacing
+                    drawLine(gridColor, start = androidx.compose.ui.geometry.Offset(xLine, 0f), end = androidx.compose.ui.geometry.Offset(xLine, height), strokeWidth = 1.dp.toPx())
+                }
+
+                val path = Path()
+                val fillPath = Path()
+
+                kpi.outstandingHistory.forEachIndexed { index, value ->
+                    val x = index * spacing
+                    val targetY = height - ((value - minVal) / range * height)
+                    val y = height - ((height - targetY) * animationProgress.value)
+
+                    if (index == 0) {
+                        path.moveTo(x, y)
+                        fillPath.moveTo(x, height)
+                        fillPath.lineTo(x, y)
+                    } else {
+                        val prevX = (index - 1) * spacing
+                        val prevVal = kpi.outstandingHistory[index - 1]
+                        val prevTargetY = height - ((prevVal - minVal) / range * height)
+                        val prevY = height - ((height - prevTargetY) * animationProgress.value)
+
+                        val controlPoint1 = (prevX + x) / 2
+                        path.cubicTo(controlPoint1, prevY, controlPoint1, y, x, y)
+                        fillPath.cubicTo(controlPoint1, prevY, controlPoint1, y, x, y)
+                    }
+                }
+
+                fillPath.lineTo(width, height)
+                fillPath.lineTo(0f, height)
+                fillPath.close()
+
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF10B981).copy(alpha = 0.2f),
+                            Color(0xFF10B981).copy(alpha = 0.0f)
+                        )
+                    )
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    KpiTile(
-                        title = "Outstanding",
-                        value = formatAmount(kpi.totalOutstanding),
-                        modifier = Modifier.weight(1f)
+                drawPath(
+                    path = path,
+                    color = Color(0xFF10B981),
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                )
+
+                // Animated Dots
+                kpi.outstandingHistory.forEachIndexed { index, value ->
+                    val x = index * spacing
+                    val targetY = height - ((value - minVal) / range * height)
+                    val y = height - ((height - targetY) * animationProgress.value)
+
+                    drawCircle(
+                        color = Color.White.copy(alpha = animationProgress.value),
+                        radius = 4.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(x, y)
                     )
-                    KpiTile(
-                        title = "Collected Today",
-                        value = formatAmount(kpi.collectedToday),
-                        modifier = Modifier.weight(1f)
+                    drawCircle(
+                        color = Color(0xFF10B981).copy(alpha = animationProgress.value),
+                        radius = 4.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(x, y),
+                        style = Stroke(width = 2.dp.toPx())
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            ActionCard(
-                icon = Icons.Filled.Add,
-                title = "New Enrollment",
-                subtitle = "Register a new customer device",
-                onClick = onNavigateToEnrollment
-            )
-
-            ActionCard(
-                icon = Icons.Filled.People,
-                title = "Customers",
-                subtitle = "View and manage accounts",
-                onClick = onNavigateToCustomers
-            )
-
-            ActionCard(
-                icon = Icons.Filled.Devices,
-                title = "Inventory",
-                subtitle = "Manage device stock",
-                onClick = onNavigateToInventory
-            )
-
-            ActionCard(
-                icon = Icons.Filled.Receipt,
-                title = "Ledger",
-                subtitle = "Payment history and records",
-                onClick = onNavigateToLedger
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
 
-@Composable
-private fun KpiCardRow(
-    activeCount: Int,
-    lockedCount: Int,
-    warningCount: Int,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        StatusCard(
-            title = "Active",
-            count = activeCount,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f)
-        )
-        StatusCard(
-            title = "Warning",
-            count = warningCount,
-            color = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.weight(1f)
-        )
-        StatusCard(
-            title = "Locked",
-            count = lockedCount,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun StatusCard(
-    title: String,
-    count: Int,
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun KpiTile(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = modifier.fillMaxWidth()
-    ) {
+        // Bottom Labels
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(start = 45.dp, top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                Text(text = day, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
         }
+    }
+}
+
+@Composable
+fun WidgetsSection(
+    kpi: KpiSummary,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "Your widgets",
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            WidgetCard(
+                title = "Active",
+                count = kpi.activeCount,
+                color = Color.White,
+                modifier = Modifier.weight(1f)
+            )
+            WidgetCard(
+                title = "Warning",
+                count = kpi.warningCount,
+                color = Color(0xFFFDE047),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            WidgetCard(
+                title = "Paid Off",
+                count = kpi.paidCount,
+                color = Color(0xFF60A5FA),
+                modifier = Modifier.weight(1f)
+            )
+            WidgetCard(
+                title = "Locked",
+                count = kpi.lockedCount,
+                color = Color(0xFFFDA4AF),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun WidgetCard(
+    title: String,
+    count: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF2A2A2A) // Lighter for depth
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
+fun DateSelectorCard(
+    currentOutstanding: Int,
+    modifier: Modifier = Modifier
+) {
+    val today = remember { LocalDate.now(ZoneOffset.UTC) }
+    val days = remember {
+        val firstDayOfMonth = today.withDayOfMonth(1)
+        (0 until today.lengthOfMonth()).map { i ->
+            val date = firstDayOfMonth.plusDays(i.toLong())
+            date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH) to
+                    date.dayOfMonth.toString()
+        }
+    }
+
+    var selectedIndex by remember {
+        mutableStateOf(today.dayOfMonth - 1)
+    }
+
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(Unit) {
+        val itemWidthPx = 160
+        val centerOffset = 500
+        val scrollPosition = (selectedIndex * itemWidthPx) - centerOffset
+        scrollState.animateScrollTo(scrollPosition.coerceAtLeast(0))
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF2A2A2A) // Lighter for depth
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp)
+        ) {
+            Text(
+                text = "Sales Overview",
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(
+                        state = scrollState
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                days.forEachIndexed { index, item ->
+                    val selected = index == selectedIndex
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .background(
+                                color = if (selected) Color(0xFF10B981) else Color.Transparent,
+                                shape = RoundedCornerShape(360.dp)
+                            )
+                            .clickable {
+                                selectedIndex = index
+                            }
+                            .padding(
+                                horizontal = 4.dp,
+                                vertical = 8.dp
+                            )
+                    ) {
+                        Text(
+                            text = item.first,
+                            color = if (selected)
+                                Color.White
+                            else
+                                Color.Gray,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(
+                                    color = if (selected) Color.White else Color.Transparent,
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = item.second,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selected)
+                                    Color.Black
+                                else
+                                    Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CollectionAreaChart(
+    data: List<Int>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No collection data", color = Color.Gray)
+        }
+    } else {
+        // Animation State
+        val animationProgress = remember { Animatable(0f) }
+        LaunchedEffect(data) {
+            animationProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 1000)
+            )
+        }
+
+        Column(modifier = modifier.padding(horizontal = 16.dp)) {
+            // New Header Details
+            Text(
+                text = "Collections today",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "GH₵ 12,000",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "3.89% vs GH₵ 5,432.74 prev. 90 days",
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = Poppins),
+                color = Color(0xFF10B981) // Green for growth
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                // Left Y-Axis Labels (Amounts)
+                val maxVal = data.maxOrNull()?.toFloat() ?: 1f
+                Column(
+                    modifier = Modifier.fillMaxHeight().padding(end = 8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(text = formatAmount(maxVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(text = formatAmount((maxVal / 2).toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(text = "0", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                }
+
+                // The Chart
+                Canvas(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    val minVal = 0f
+                    val range = maxVal.coerceAtLeast(1f)
+                    val width = size.width
+                    val height = size.height
+                    val spacing = width / (data.size - 1).coerceAtLeast(1)
+
+                    // Draw Horizontal Grid Lines (Many lines for detail)
+                    val gridColor = Color.White.copy(alpha = 0.05f)
+                    val numberOfLines = 5
+                    for (i in 0..numberOfLines) {
+                        val y = (height / numberOfLines) * i
+                        drawLine(
+                            color = gridColor,
+                            start = androidx.compose.ui.geometry.Offset(0f, y),
+                            end = androidx.compose.ui.geometry.Offset(width, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
+                    // Draw Vertical Grid Lines (One for each day)
+                    data.forEachIndexed { index, _ ->
+                        val x = index * spacing
+                        drawLine(
+                            color = gridColor,
+                            start = androidx.compose.ui.geometry.Offset(x, 0f),
+                            end = androidx.compose.ui.geometry.Offset(x, height),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
+                    val path = Path()
+                    val fillPath = Path()
+
+                    data.forEachIndexed { index, value ->
+                        val x = index * spacing
+                        // Animate Y position
+                        val targetY = height - ((value - minVal) / range * height)
+                        val y = height - ((height - targetY) * animationProgress.value)
+
+                        if (index == 0) {
+                            path.moveTo(x, y)
+                            fillPath.moveTo(x, height)
+                            fillPath.lineTo(x, y)
+                        } else {
+                            val prevX = (index - 1) * spacing
+                            val prevY = height - ((data[index - 1] - minVal) / range * height)
+                            val controlPoint1 = (prevX + x) / 2
+                            path.cubicTo(controlPoint1, prevY, controlPoint1, y, x, y)
+                            fillPath.cubicTo(controlPoint1, prevY, controlPoint1, y, x, y)
+                        }
+                    }
+
+                    fillPath.lineTo(width, height)
+                    fillPath.lineTo(0f, height)
+                    fillPath.close()
+
+                    drawPath(
+                        path = fillPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF10B981).copy(alpha = 0.2f),
+                                Color(0xFF10B981).copy(alpha = 0.0f)
+                            )
+                        )
+                    )
+
+                    drawPath(
+                        path = path,
+                        color = Color(0xFF10B981),
+                        style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    )
+
+                    // Draw dots with animation
+                    data.forEachIndexed { index, value ->
+                        val x = index * spacing
+                        val targetY = height - ((value - minVal) / range * height)
+                        val y = height - ((height - targetY) * animationProgress.value)
+
+                        drawCircle(
+                            color = Color.White.copy(alpha = animationProgress.value),
+                            radius = 4.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(x, y)
+                        )
+                        drawCircle(
+                            color = Color(0xFF10B981).copy(alpha = animationProgress.value),
+                            radius = 4.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(x, y),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    }
+                }
+            }
+
+            // Bottom X-Axis Labels (Days)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 45.dp, top = 8.dp), // Offset to align with Canvas
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                    Text(
+                        text = day,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun DashboardLoadingPreview() {
+    SecurePayAgentTheme {
+        DashboardScreen(
+            repository = null,
+            onNavigateToCustomers = {},
+            onNavigateToEnrollment = {},
+            onNavigateToInventory = {},
+            onNavigateToLedger = {},
+            onLogout = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun DashboardDataPreview() {
+    val mockKpi = KpiSummary(
+        activeCount = 45,
+        lockedCount = 12,
+        warningCount = 15,
+        paidCount = 10,
+        totalOutstanding = 125000,
+        collectedToday = 1500,
+        totalAccounts = 70,
+        collectionHistory = listOf(1200, 1800, 900, 2500, 1500, 2100, 1500),
+        outstandingHistory = listOf(140000, 135000, 132000, 130000, 128000, 126000, 125000)
+    )
+    SecurePayAgentTheme {
+        DashboardScreen(
+            repository = null,
+            previewKpis = mockKpi,
+            onNavigateToCustomers = {},
+            onNavigateToEnrollment = {},
+            onNavigateToInventory = {},
+            onNavigateToLedger = {},
+            onLogout = {}
+        )
     }
 }
