@@ -113,14 +113,19 @@ fun SecurePayNavHost(
         composable(Screen.Inventory.route) {
             InventoryScreen(
                 repository = repository,
-                onBack = { navController.popBackStack() }
+                onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
+                onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
+                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) }
             )
         }
 
         composable(Screen.Ledger.route) {
             LedgerScreen(
                 repository = repository,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
+                onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
+                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) }
             )
         }
     }
