@@ -2,6 +2,7 @@ package com.securepay.agent.ui.customers
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,9 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.People
@@ -47,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -75,7 +80,7 @@ fun CustomersScreen(
     modifier: Modifier = Modifier
 ) {
     var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(false) } // API disabled
     var error by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf<String?>(null) }
@@ -83,14 +88,16 @@ fun CustomersScreen(
     val isPreview = LocalInspectionMode.current
 
     fun load() {
-        if (isPreview) {
-            isLoading = false
-            accounts = listOf(
-                Account(id = "1", customerName = "John Doe", phoneNumber = "0711223344", deviceModel = "TECNO KL4", remainingBalance = 1500000, status = AccountStatus.ACTIVE),
-                Account(id = "2", customerName = "Jane Smith", phoneNumber = "0722334455", deviceModel = "Samsung A14", remainingBalance = 2000000, status = AccountStatus.WARNING)
-            )
-            return
-        }
+        // Mock data active
+        isLoading = false
+        accounts = listOf(
+            Account(id = "1", customerName = "John Doe", phoneNumber = "0711223344", deviceModel = "TECNO KL4", remainingBalance = 1500000, status = AccountStatus.ACTIVE),
+            Account(id = "2", customerName = "Jane Smith", phoneNumber = "0722334455", deviceModel = "Samsung A14", remainingBalance = 2000000, status = AccountStatus.WARNING),
+            Account(id = "3", customerName = "Peter Mwangi", phoneNumber = "0733445566", deviceModel = "Infinix X3", remainingBalance = 850000, status = AccountStatus.ACTIVE),
+            Account(id = "4", customerName = "Grace Wanjiku", phoneNumber = "0744556677", deviceModel = "Nokia G21", remainingBalance = 3200000, status = AccountStatus.LOCKED),
+            Account(id = "5", customerName = "David Ochieng", phoneNumber = "0755667788", deviceModel = "TECNO Pop 7", remainingBalance = 1200000, status = AccountStatus.WARNING)
+        )
+        /*
         isLoading = true
         scope.launch {
             val result = repository?.listAccounts(statusFilter) ?: return@launch
@@ -100,6 +107,7 @@ fun CustomersScreen(
                 onFailure = { error = it.message }
             )
         }
+        */
     }
 
     LaunchedEffect(statusFilter) { load() }
@@ -168,23 +176,38 @@ fun CustomersScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
-            OutlinedTextField(
+            Spacer(modifier = Modifier.height(16.dp))
+
+            BasicTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Search customers...", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Color.Gray) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = cardColor,
-                    unfocusedContainerColor = cardColor,
-                    focusedBorderColor = Color(0xFF10B981),
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Color(0xFF10B981)
-                ),
-                shape = RoundedCornerShape(360.dp)
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                cursorBrush = SolidColor(Color(0xFF10B981)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .background(cardColor, RoundedCornerShape(360.dp)),
+                decorationBox = { innerTextField ->
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_search),
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.padding(start = 16.dp).size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.weight(1f)) {
+                            if (searchQuery.isEmpty()) {
+                                Text("Search customers...", color = Color.Gray)
+                            }
+                            innerTextField()
+                        }
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))

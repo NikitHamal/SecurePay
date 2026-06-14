@@ -2,6 +2,7 @@ package com.securepay.agent.ui.dashboard
 
 import android.app.Activity
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.LocalOverscrollConfiguration
@@ -469,7 +470,7 @@ fun WidgetsSection(
             .padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Your widgets",
+            text = "Your Widgets",
             style = MaterialTheme.typography.titleSmall,
             color = Color.White,
             fontWeight = FontWeight.Bold
@@ -524,6 +525,17 @@ fun WidgetCard(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    var startAnimation by remember { mutableStateOf(false) }
+    LaunchedEffect(count) {
+        startAnimation = true
+    }
+
+    val animatedCount by animateIntAsState(
+        targetValue = if (startAnimation) count else 0,
+        animationSpec = tween(durationMillis = 1000),
+        label = "countAnimation"
+    )
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
@@ -542,7 +554,7 @@ fun WidgetCard(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = count.toString(),
+                text = animatedCount.toString(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = color
