@@ -291,7 +291,6 @@ fun OutstandingSection(
         return
     }
 
-    // Animation State
     val animationProgress = remember { Animatable(0f) }
     LaunchedEffect(kpi.outstandingHistory) {
         animationProgress.animateTo(
@@ -305,7 +304,6 @@ fun OutstandingSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        // Header Details (Same style as Collections)
         Text(
             text = "Total unpaid balance",
             style = MaterialTheme.typography.labelMedium,
@@ -324,7 +322,6 @@ fun OutstandingSection(
                 color = Color.White
             )
 
-            // Risk Badge (moved from card)
             Box(
                 modifier = Modifier
                     .background(
@@ -351,7 +348,6 @@ fun OutstandingSection(
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(modifier = Modifier.fillMaxWidth().height(160.dp)) {
-            // Left Y-Axis Labels
             val maxVal = kpi.outstandingHistory.maxOrNull()?.toFloat() ?: 1f
             val minVal = kpi.outstandingHistory.minOrNull()?.toFloat() ?: 0f
             val range = (maxVal - minVal).coerceAtLeast(1f)
@@ -366,7 +362,6 @@ fun OutstandingSection(
                 Text(text = formatAmount(minVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
 
-            // The Chart
             Canvas(
                 modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
@@ -430,7 +425,6 @@ fun OutstandingSection(
                     style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
 
-                // Animated Dots
                 kpi.outstandingHistory.forEachIndexed { index, value ->
                     val x = index * spacing
                     val targetY = height - ((value - minVal) / range * height)
@@ -451,7 +445,6 @@ fun OutstandingSection(
             }
         }
 
-        // Bottom Labels
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -535,7 +528,7 @@ fun WidgetCard(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A) // Lighter for depth
+            containerColor = Color(0xFF2A2A2A)
         ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -592,7 +585,7 @@ fun DateSelectorCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A) // Lighter for depth
+            containerColor = Color(0xFF2A2A2A)
         ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -711,13 +704,12 @@ fun CollectionAreaChart(
             Text(
                 text = "3.89% vs GH₵ 5,432.74 prev. 90 days",
                 style = MaterialTheme.typography.labelSmall.copy(fontFamily = Poppins),
-                color = Color(0xFF10B981) // Green for growth
+                color = Color(0xFF10B981)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Row(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                // Left Y-Axis Labels (Amounts)
                 val maxVal = data.maxOrNull()?.toFloat() ?: 1f
                 Column(
                     modifier = Modifier.fillMaxHeight().padding(end = 8.dp),
@@ -739,7 +731,6 @@ fun CollectionAreaChart(
                     val height = size.height
                     val spacing = width / (data.size - 1).coerceAtLeast(1)
 
-                    // Draw Horizontal Grid Lines (Many lines for detail)
                     val gridColor = Color.White.copy(alpha = 0.05f)
                     val numberOfLines = 5
                     for (i in 0..numberOfLines) {
@@ -752,7 +743,6 @@ fun CollectionAreaChart(
                         )
                     }
 
-                    // Draw Vertical Grid Lines (One for each day)
                     data.forEachIndexed { index, _ ->
                         val x = index * spacing
                         drawLine(
@@ -768,7 +758,6 @@ fun CollectionAreaChart(
 
                     data.forEachIndexed { index, value ->
                         val x = index * spacing
-                        // Animate Y position
                         val targetY = height - ((value - minVal) / range * height)
                         val y = height - ((height - targetY) * animationProgress.value)
 
@@ -805,7 +794,6 @@ fun CollectionAreaChart(
                         style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                     )
 
-                    // Draw dots with animation
                     data.forEachIndexed { index, value ->
                         val x = index * spacing
                         val targetY = height - ((value - minVal) / range * height)
@@ -826,11 +814,10 @@ fun CollectionAreaChart(
                 }
             }
 
-            // Bottom X-Axis Labels (Days)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 45.dp, top = 8.dp), // Offset to align with Canvas
+                    .padding(start = 45.dp, top = 8.dp), 
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->

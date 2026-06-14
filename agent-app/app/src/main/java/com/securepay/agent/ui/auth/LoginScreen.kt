@@ -155,13 +155,7 @@ fun LoginScreen(
                         },
                         placeholder = { Text("Enter your email") },
                         singleLine = true,
-//                        leadingIcon = {
-//                            Icon(
-//                                painter = painterResource(id = R.drawable.ic_email),
-//                                contentDescription = null,
-//                                modifier = Modifier.size(24.dp)
-//                            )
-//                        },
+                        
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         isError = errorMessage != null,
                         shape = RoundedCornerShape(360.dp),
