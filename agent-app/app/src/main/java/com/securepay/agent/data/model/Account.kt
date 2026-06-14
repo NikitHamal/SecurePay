@@ -25,7 +25,7 @@ data class Account(
     val lockedByDealer: Int = 0,
     val downPayment: Int = 0,
     val termDays: Int = 0,
-    val currencyCode: String = "KES",
+    val currencyCode: String = "GHS",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
 )
@@ -41,8 +41,8 @@ fun Account.displayStatus(): String = when (status) {
 }
 
 fun formatAmount(cents: Int): String {
-    val ksh = cents / 100.0
-    return "KES ${String.format("%,.0f", ksh)}"
+    val amount = cents / 100.0
+    return "GH₵ ${String.format("%,.0f", amount)}"
 }
 
 fun Account.formatDailyRate(): String = formatAmount(dailyRate)
