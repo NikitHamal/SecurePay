@@ -262,21 +262,17 @@ fun DashboardScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Spacer(modifier = Modifier.height(0.dp))
-
                 kpis?.let { kpi ->
                     DateSelectorCard(currentOutstanding = kpi.totalOutstanding)
 
                     WidgetsSection(kpi = kpi)
 
-                    CollectionAreaChart(data = kpi.collectionHistory)
+                    SoldPhonesHistogram(data = listOf(8, 12, 19, 14, 25, 20, 31))
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    CollectionAreaChart(data = kpi.collectionHistory)
 
                     OutstandingSection(kpi = kpi)
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -838,6 +834,101 @@ fun CollectionAreaChart(
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SoldPhonesHistogram(
+    data: List<Int>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) return
+
+    // Animation State
+    val animationProgress = remember { Animatable(0f) }
+    LaunchedEffect(data) {
+        animationProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 1000)
+        )
+    }
+
+    Column(modifier = modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = "Phones sold (Weekly)",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "${data.sum()} total",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+            val maxVal = data.maxOrNull()?.toFloat() ?: 1f
+            Column(
+                modifier = Modifier.width(40.dp).fillMaxHeight().padding(end = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(text = maxVal.toInt().toString(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = (maxVal / 2).toInt().toString(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = "0", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+
+            Canvas(
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            ) {
+                val range = maxVal.coerceAtLeast(1f)
+                val width = size.width
+                val height = size.height
+                val barWidth = width / (data.size * 2f)
+
+                // Draw Grid
+                val gridColor = Color.White.copy(alpha = 0.05f)
+                val numberOfLines = 4
+                for (i in 0..numberOfLines) {
+                    val y = (height / numberOfLines) * i
+                    drawLine(gridColor, start = androidx.compose.ui.geometry.Offset(0f, y), end = androidx.compose.ui.geometry.Offset(width, y), strokeWidth = 1.dp.toPx())
+                }
+
+                data.forEachIndexed { index, value ->
+                    val x = index * (width / data.size) + (width / data.size) / 2f - barWidth / 2f
+                    val targetHeight = (value / range) * height
+                    val animatedHeight = targetHeight * animationProgress.value
+                    val y = height - animatedHeight
+
+                    drawRoundRect(
+                        color = Color(0xFF10B981),
+                        topLeft = androidx.compose.ui.geometry.Offset(x, y),
+                        size = androidx.compose.ui.geometry.Size(barWidth, animatedHeight),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.width(40.dp)) // Match Y-axis width
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Text(text = day, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
                 }
             }
         }
