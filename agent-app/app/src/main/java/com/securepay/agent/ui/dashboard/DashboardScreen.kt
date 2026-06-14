@@ -263,11 +263,36 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 kpis?.let { kpi ->
-                    DateSelectorCard(currentOutstanding = kpi.totalOutstanding)
+                    val today = remember { LocalDate.now(ZoneOffset.UTC) }
+                    var selectedIndex by remember { mutableStateOf(today.dayOfMonth - 1) }
+
+                    DateSelectorCard(
+                        currentOutstanding = kpi.totalOutstanding,
+                        selectedIndex = selectedIndex,
+                        onDateSelected = { selectedIndex = it }
+                    )
 
                     WidgetsSection(kpi = kpi)
 
-                    SoldPhonesHistogram(data = listOf(8, 12, 19, 14, 25, 20, 31))
+                    val hourlyMockData = remember(selectedIndex) {
+                        // Deterministic mock data based on day index
+                        val seed = selectedIndex + 1
+                        listOf(
+                            (seed * 2) % 10,
+                            (seed * 3) % 12,
+                            (seed * 5) % 15,
+                            (seed * 8) % 20,
+                            (seed * 4) % 14,
+                            (seed * 2) % 8,
+                            (seed * 1) % 5
+                        )
+                    }
+
+                    SoldPhonesHistogram(
+                        data = hourlyMockData,
+                        title = "Hourly sales (Day ${selectedIndex + 1})",
+                        labels = listOf("6AM", "9AM", "12PM", "3PM", "6PM", "9PM", "12AM")
+                    )
 
                     CollectionAreaChart(data = kpi.collectionHistory)
 
@@ -562,6 +587,8 @@ fun WidgetCard(
 @Composable
 fun DateSelectorCard(
     currentOutstanding: Int,
+    selectedIndex: Int,
+    onDateSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
@@ -572,10 +599,6 @@ fun DateSelectorCard(
             date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH) to
                     date.dayOfMonth.toString()
         }
-    }
-
-    var selectedIndex by remember {
-        mutableStateOf(today.dayOfMonth - 1)
     }
 
     val scrollState = rememberScrollState()
@@ -628,7 +651,7 @@ fun DateSelectorCard(
                                 shape = RoundedCornerShape(360.dp)
                             )
                             .clickable {
-                                selectedIndex = index
+                                onDateSelected(index)
                             }
                             .padding(
                                 horizontal = 4.dp,
@@ -843,6 +866,8 @@ fun CollectionAreaChart(
 @Composable
 fun SoldPhonesHistogram(
     data: List<Int>,
+    title: String = "Phones sold (Weekly)",
+    labels: List<String> = listOf("M", "T", "W", "T", "F", "S", "S"),
     modifier: Modifier = Modifier
 ) {
     if (data.isEmpty()) return
@@ -858,7 +883,7 @@ fun SoldPhonesHistogram(
 
     Column(modifier = modifier.padding(horizontal = 16.dp)) {
         Text(
-            text = "Phones sold (Weekly)",
+            text = title,
             style = MaterialTheme.typography.labelMedium,
             color = Color.Gray
         )
@@ -925,9 +950,9 @@ fun SoldPhonesHistogram(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                labels.forEach { label ->
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Text(text = day, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     }
                 }
             }
