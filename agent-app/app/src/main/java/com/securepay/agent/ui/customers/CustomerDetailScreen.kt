@@ -1,6 +1,9 @@
 package com.securepay.agent.ui.customers
 
+import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,14 +34,18 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,55 +53,96 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.securepay.agent.data.model.Account
 import com.securepay.agent.data.model.AccountStatus
 import com.securepay.agent.data.model.formatAmount
 import com.securepay.agent.data.remote.SecurePayRepository
+import com.securepay.agent.ui.theme.SecurePayAgentTheme
 import kotlinx.coroutines.launch
+
+private val backgroundColor = Color(0xFF212121)
+private val cardColor = Color(0xFF2A2A2A)
+private val emerald = Color(0xFF10B981)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerDetailScreen(
     accountId: String,
-    repository: SecurePayRepository,
+    repository: SecurePayRepository?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var account by remember { mutableStateOf<Account?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(false) } // API disabled
     var error by remember { mutableStateOf<String?>(null) }
     var actionInProgress by remember { mutableStateOf(false) }
-    var showPaymentDialog by remember { mutableStateOf(false) }
+    var showPaymentSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val isPreview = LocalInspectionMode.current
+    val view = LocalView.current
+
+    if (!isPreview) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            window.navigationBarColor = backgroundColor.toArgb()
+        }
+    }
 
     fun loadAccount() {
+        // Mock data active
+        isLoading = false
+        account = Account(
+            id = "1",
+            customerName = "John Doe",
+            nationalId = "12345678",
+            phoneNumber = "0711223344",
+            imei = "352345678901234",
+            deviceModel = "TECNO KL4",
+            planName = "PayGo",
+            termDays = 365,
+            dailyRate = 5000,
+            totalLoanAmount = 2000000,
+            amountPaid = 500000,
+            remainingBalance = 1500000,
+            downPayment = 200000,
+            status = AccountStatus.WARNING
+        )
+        /*
         isLoading = true
         scope.launch {
-            val result = repository.getAccount(accountId)
+            val result = repository?.getAccount(accountId) ?: return@launch
             isLoading = false
             result.fold(
                 onSuccess = { account = it },
                 onFailure = { error = it.message }
             )
         }
+        */
     }
 
     LaunchedEffect(accountId) { loadAccount() }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = backgroundColor,
         topBar = {
             TopAppBar(
-                title = { Text(account?.customerName ?: "Account") },
+                title = { Text(account?.customerName ?: "Account", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = backgroundColor
                 )
             )
         }
@@ -104,7 +153,7 @@ fun CustomerDetailScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = emerald)
             }
             return@Scaffold
         }
@@ -129,6 +178,8 @@ fun CustomerDetailScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(modifier = Modifier.height(0.dp))
+
             StatusBanner(status = acc.status)
 
             InfoCard(title = "Customer Information") {
@@ -159,9 +210,14 @@ fun CustomerDetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { showPaymentDialog = true },
-                    modifier = Modifier.weight(1f),
-                    enabled = !actionInProgress
+                    onClick = { showPaymentSheet = true },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    enabled = !actionInProgress,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = emerald,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(360.dp)
                 ) {
                     Icon(Icons.Filled.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -173,16 +229,17 @@ fun CustomerDetailScreen(
                         onClick = {
                             actionInProgress = true
                             scope.launch {
-                                repository.forceUnlock(acc.id)
+                                repository?.forceUnlock(acc.id)
                                 actionInProgress = false
                                 loadAccount()
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).height(48.dp),
                         enabled = !actionInProgress,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
+                            contentColor = emerald
+                        ),
+                        shape = RoundedCornerShape(360.dp)
                     ) {
                         Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
@@ -193,16 +250,17 @@ fun CustomerDetailScreen(
                         onClick = {
                             actionInProgress = true
                             scope.launch {
-                                repository.forceLock(acc.id)
+                                repository?.forceLock(acc.id)
                                 actionInProgress = false
                                 loadAccount()
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).height(48.dp),
                         enabled = !actionInProgress,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
+                            contentColor = Color(0xFFEF4444)
+                        ),
+                        shape = RoundedCornerShape(360.dp)
                     ) {
                         Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
@@ -215,13 +273,13 @@ fun CustomerDetailScreen(
         }
     }
 
-    if (showPaymentDialog) {
-        PaymentDialog(
+    if (showPaymentSheet) {
+        PaymentBottomSheet(
             accountId = accountId,
             repository = repository,
-            onDismiss = { showPaymentDialog = false },
+            onDismiss = { showPaymentSheet = false },
             onSuccess = {
-                showPaymentDialog = false
+                showPaymentSheet = false
                 loadAccount()
             }
         )
@@ -231,12 +289,14 @@ fun CustomerDetailScreen(
 @Composable
 private fun StatusBanner(status: AccountStatus) {
     val (text, color) = when (status) {
-        AccountStatus.ACTIVE -> "Active" to MaterialTheme.colorScheme.primary
-        AccountStatus.WARNING -> "Warning — Payment Due Soon" to MaterialTheme.colorScheme.tertiary
-        AccountStatus.LOCKED -> "Locked — Payment Overdue" to MaterialTheme.colorScheme.error
+        AccountStatus.ACTIVE -> "Active" to emerald
+        AccountStatus.WARNING -> "Warning — Payment Due Soon" to Color(0xFFFBBF24)
+        AccountStatus.LOCKED -> "Locked — Payment Overdue" to Color(0xFFEF4444)
     }
     Card(
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f))
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Text(
             text = text,
@@ -254,14 +314,15 @@ private fun InfoCard(
     content: @Composable () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
+                color = emerald
             )
             Spacer(modifier = Modifier.height(12.dp))
             content()
@@ -282,28 +343,29 @@ private fun InfoRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
             Spacer(modifier = Modifier.width(8.dp))
         }
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.Gray,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            color = Color.White
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PaymentDialog(
+private fun PaymentBottomSheet(
     accountId: String,
-    repository: SecurePayRepository,
+    repository: SecurePayRepository?,
     onDismiss: () -> Unit,
     onSuccess: () -> Unit
 ) {
@@ -313,44 +375,82 @@ private fun PaymentDialog(
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    androidx.compose.material3.AlertDialog(
+    val inputColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color.White,
+        unfocusedTextColor = Color.White,
+        focusedContainerColor = backgroundColor,
+        unfocusedContainerColor = backgroundColor,
+        focusedBorderColor = emerald,
+        unfocusedBorderColor = Color.Transparent,
+        cursorColor = emerald
+    )
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Record Payment") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        sheetState = sheetState,
+        containerColor = cardColor
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp, top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Record Payment", style = MaterialTheme.typography.titleLarge, color = Color.White)
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Amount (KES)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it.filter { c -> c.isDigit() } },
-                    label = { Text("Amount (KES)") },
+                    placeholder = { Text("Enter amount", color = Color.Gray.copy(alpha = 0.5f)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = inputColors,
+                    shape = RoundedCornerShape(360.dp)
                 )
+            }
 
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Payment Method", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("M-PESA", "CASH", "BANK").forEach { m ->
-                        FilterChipPayment(
-                            selected = method == m,
+                        val isSelected = method == m
+                        Button(
                             onClick = { method = m },
-                            label = m
-                        )
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) emerald else backgroundColor,
+                                contentColor = if (isSelected) Color.White else Color.Gray
+                            ),
+                            shape = RoundedCornerShape(360.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(m, style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
+            }
 
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Reference (optional)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                 OutlinedTextField(
                     value = reference,
                     onValueChange = { reference = it },
-                    label = { Text("Reference (optional)") },
+                    placeholder = { Text("Enter reference", color = Color.Gray.copy(alpha = 0.5f)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = inputColors,
+                    shape = RoundedCornerShape(360.dp)
                 )
-
-                if (errorMessage != null) {
-                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
             }
-        },
-        confirmButton = {
+
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color(0xFFEF4444), style = MaterialTheme.typography.bodySmall)
+            }
+
             Button(
                 onClick = {
                     val amountCents = amount.toIntOrNull()
@@ -360,7 +460,7 @@ private fun PaymentDialog(
                     }
                     isSubmitting = true
                     scope.launch {
-                        val result = repository.recordPayment(
+                        val result = repository?.recordPayment(
                             com.securepay.agent.data.model.RecordPaymentRequest(
                                 accountId = accountId,
                                 amount = amountCents,
@@ -369,33 +469,35 @@ private fun PaymentDialog(
                             )
                         )
                         isSubmitting = false
-                        result.fold(
+                        result?.fold(
                             onSuccess = { onSuccess() },
                             onFailure = { errorMessage = it.message ?: "Payment failed" }
-                        )
+                        ) ?: onSuccess()
                     }
                 },
-                enabled = !isSubmitting && amount.isNotBlank()
+                enabled = !isSubmitting && amount.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = emerald,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(360.dp)
             ) {
-                if (isSubmitting) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-                else Text("Record")
+                if (isSubmitting) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = Color.White)
+                else Text("Record Payment")
             }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
         }
-    )
+    }
 }
 
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-private fun FilterChipPayment(selected: Boolean, onClick: () -> Unit, label: String) {
-    if (selected) {
-        Button(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
-        }
-    } else {
-        OutlinedButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
-        }
+fun CustomerDetailScreenPreview() {
+    SecurePayAgentTheme {
+        CustomerDetailScreen(
+            accountId = "1",
+            repository = null,
+            onBack = {}
+        )
     }
 }

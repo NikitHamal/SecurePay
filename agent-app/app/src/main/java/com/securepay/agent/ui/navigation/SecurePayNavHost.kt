@@ -2,6 +2,9 @@ package com.securepay.agent.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
@@ -32,13 +35,21 @@ fun SecurePayNavHost(
 
     val startDestination = if (isLoggedIn != null) Screen.Dashboard.route else Screen.Login.route
 
+    fun navigateToTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = { slideInHorizontally(initialOffsetX = { it / 3 }) },
-        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) },
-        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) },
-        popExitTransition = { slideOutHorizontally(targetOffsetX = { it / 3 }) }
+        enterTransition = { fadeIn(animationSpec = tween(300)) },
+        exitTransition = { fadeOut(animationSpec = tween(300)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+        popExitTransition = { fadeOut(animationSpec = tween(300)) }
     ) {
         composable(Screen.Login.route) {
             LoginScreen(
@@ -54,10 +65,10 @@ fun SecurePayNavHost(
         composable(Screen.Dashboard.route) {
             DashboardScreen(
                 repository = repository,
-                onNavigateToCustomers = { navController.navigate(Screen.Customers.route) },
+                onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
                 onNavigateToEnrollment = { navController.navigate(Screen.Enrollment.route) },
-                onNavigateToInventory = { navController.navigate(Screen.Inventory.route) },
-                onNavigateToLedger = { navController.navigate(Screen.Ledger.route) },
+                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
+                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
@@ -70,6 +81,9 @@ fun SecurePayNavHost(
             CustomersScreen(
                 repository = repository,
                 onBack = { navController.popBackStack() },
+                onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
+                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
+                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
                 onCustomerClick = { accountId ->
                     navController.navigate(Screen.CustomerDetail.createRoute(accountId))
                 }
@@ -99,14 +113,19 @@ fun SecurePayNavHost(
         composable(Screen.Inventory.route) {
             InventoryScreen(
                 repository = repository,
-                onBack = { navController.popBackStack() }
+                onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
+                onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
+                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) }
             )
         }
 
         composable(Screen.Ledger.route) {
             LedgerScreen(
                 repository = repository,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
+                onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
+                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) }
             )
         }
     }

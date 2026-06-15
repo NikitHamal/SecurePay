@@ -9,7 +9,8 @@ data class Device(
     val model: String = "",
     val dealerId: String = "",
     val status: String = "in_stock",
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+    val stock: Int = 0
 )
 
 @Serializable

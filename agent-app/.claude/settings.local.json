@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(dir *)",
+      "Bash(bun add *)"
+    ]
+  },
+  "model": "coding-stack",
+  "baseUrl": "http://127.0.0.1:20128",
+  "authToken": "sk-0ff39f3a498d5746-4kdkok-e9d961d5"
+}
