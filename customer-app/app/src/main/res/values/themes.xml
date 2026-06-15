@@ -2,7 +2,7 @@
 <resources>
     <!-- Base application theme. The Compose M3 theme drives runtime colors;
          this keeps the splash/window background charcoal to avoid white flashes. -->
-    <style name="Theme.SecurePay" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.TBUser" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/charcoal</item>
         <item name="android:statusBarColor">@color/charcoal</item>
         <item name="android:navigationBarColor">@color/charcoal</item>
