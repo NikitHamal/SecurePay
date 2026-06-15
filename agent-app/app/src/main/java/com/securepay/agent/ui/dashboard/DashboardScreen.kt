@@ -100,12 +100,12 @@ fun DashboardScreen(
     modifier: Modifier = Modifier,
     previewKpis: KpiSummary? = null
 ) {
+    val isPreview = LocalInspectionMode.current
     var kpis by remember {
         mutableStateOf<KpiSummary?>(previewKpis)
     }
-    var isLoading by remember { mutableStateOf(previewKpis == null && !LocalInspectionMode.current) }
+    var isLoading by remember { mutableStateOf(previewKpis == null && !isPreview) }
     var error by remember { mutableStateOf<String?>(null) }
-    val isPreview = LocalInspectionMode.current
     val view = LocalView.current
     val backgroundColor = Color(0xFF212121) // Updated main background
 
