@@ -1,5 +1,7 @@
 package com.securepay.agent.ui.enrollment
 
+import android.app.Activity
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
@@ -39,12 +41,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.securepay.agent.R
+import com.securepay.agent.ui.theme.SecurePayAgentTheme
 import com.securepay.agent.data.remote.SecurePayRepository
 import com.securepay.agent.ui.components.StepIndicator
 import com.securepay.agent.ui.enrollment.steps.KycStep
@@ -54,7 +63,7 @@ import com.securepay.agent.ui.enrollment.steps.ScannerStep
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnrollmentWizardScreen(
-    repository: SecurePayRepository,
+    repository: SecurePayRepository?,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -77,19 +86,33 @@ fun EnrollmentWizardScreen(
         }
     }
 
+    val isPreview = LocalInspectionMode.current
+    val view = LocalView.current
+    val backgroundColor = Color(0xFF212121)
+
+    if (!isPreview) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = backgroundColor.toArgb()
+            window.navigationBarColor = backgroundColor.toArgb()
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = backgroundColor,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.wizard_title)) },
+                title = { Text(stringResource(R.string.wizard_title), color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = backgroundColor,
+                    scrolledContainerColor = backgroundColor
                 )
             )
         }
@@ -184,16 +207,16 @@ private fun WizardControls(
         OutlinedButton(
             onClick = onBack,
             enabled = !state.isFirstStep && !state.isSubmitting,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).height(52.dp)
         ) {
-            Text(stringResource(R.string.action_back))
+            Text(stringResource(R.string.action_back), color = Color.White)
         }
 
         if (state.isLastStep) {
             Button(
                 onClick = onSubmit,
                 enabled = state.isPlanStepValid && !state.isSubmitting,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).height(52.dp)
             ) {
                 if (state.isSubmitting) {
                     CircularProgressIndicator(
@@ -208,7 +231,7 @@ private fun WizardControls(
             Button(
                 onClick = onNext,
                 enabled = state.isCurrentStepValid,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).height(52.dp)
             ) {
                 Text(stringResource(R.string.action_next))
             }
@@ -236,15 +259,27 @@ private fun EnrollmentSuccess(
         Text(
             text = "Enrollment submitted!",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground
+            color = Color.White
         )
         Text(
             text = "Reference: $enrollmentId",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.Gray
         )
         Button(onClick = onDone, modifier = Modifier.padding(top = 16.dp)) {
             Text("Done")
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun EnrollmentWizardScreenPreview() {
+    SecurePayAgentTheme {
+        EnrollmentWizardScreen(
+            repository = null,
+            onComplete = {},
+            onCancel = {}
+        )
     }
 }

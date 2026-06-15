@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import com.securepay.agent.R
 
 /**
  * A horizontal three-step indicator. The active step is emerald, completed
@@ -38,6 +42,7 @@ fun StepIndicator(
         verticalAlignment = Alignment.Top
     ) {
         labels.forEachIndexed { index, label ->
+            val isCompleted = index < currentIndex
             val isDone = index <= currentIndex
             val targetColor =
                 if (isDone) MaterialTheme.colorScheme.primary
@@ -60,19 +65,28 @@ fun StepIndicator(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(barColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = (index + 1).toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (isDone) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                    if (isCompleted) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check_filled),
+                            contentDescription = "Completed",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.Unspecified
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(barColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = (index + 1).toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isDone) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Text(

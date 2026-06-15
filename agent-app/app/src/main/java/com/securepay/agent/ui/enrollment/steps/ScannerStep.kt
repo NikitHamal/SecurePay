@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,10 +40,16 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.securepay.agent.R
 import com.securepay.agent.ui.enrollment.EnrollmentUiState
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
+import com.securepay.agent.ui.theme.SecurePayAgentTheme
+import com.securepay.agent.ui.enrollment.EnrollmentDraft
 
 @Composable
 fun ScannerStep(
@@ -68,7 +76,7 @@ fun ScannerStep(
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = Color(0xFF2A2A2A)
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -100,27 +108,55 @@ fun ScannerStep(
             }
         }
 
-        OutlinedTextField(
-            value = state.draft.imei,
-            onValueChange = onImeiChange,
-            label = { Text(stringResource(R.string.label_imei)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = state.draft.imei.isNotEmpty() && !state.isImeiValid,
-            supportingText = {
-                Text("${state.draft.imei.length}/15 digits")
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.label_imei), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            OutlinedTextField(
+                value = state.draft.imei,
+                onValueChange = onImeiChange,
+                placeholder = { Text("Enter IMEI", color = Color.Gray.copy(alpha = 0.5f)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = state.draft.imei.isNotEmpty() && !state.isImeiValid,
+                supportingText = {
+                    Text("${state.draft.imei.length}/15 digits", color = Color.Gray)
+                },
+                textStyle = TextStyle(fontSize = 15.sp),
+                modifier = Modifier.fillMaxWidth().height(70.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color(0xFF2A2A2A),
+                    unfocusedContainerColor = Color(0xFF2A2A2A),
+                    focusedBorderColor = Color(0xFF10B981),
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = Color(0xFF10B981)
+                ),
+                shape = RoundedCornerShape(360.dp)
+            )
+        }
 
-        OutlinedTextField(
-            value = state.draft.deviceModel,
-            onValueChange = onDeviceModelChange,
-            label = { Text(stringResource(R.string.label_device_model)) },
-            singleLine = true,
-            isError = state.draft.deviceModel.isNotEmpty() && !state.isDeviceModelValid,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.label_device_model), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            OutlinedTextField(
+                value = state.draft.deviceModel,
+                onValueChange = onDeviceModelChange,
+                placeholder = { Text("Enter device model", color = Color.Gray.copy(alpha = 0.5f), fontSize = 15.sp) },
+                singleLine = true,
+                isError = state.draft.deviceModel.isNotEmpty() && !state.isDeviceModelValid,
+                textStyle = TextStyle(fontSize = 15.sp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color(0xFF2A2A2A),
+                    unfocusedContainerColor = Color(0xFF2A2A2A),
+                    focusedBorderColor = Color(0xFF10B981),
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = Color(0xFF10B981)
+                ),
+                shape = RoundedCornerShape(360.dp)
+            )
+        }
     }
 }
 
@@ -163,3 +199,15 @@ private fun hasCameraPermission(context: Context): Boolean =
         context,
         Manifest.permission.CAMERA
     ) == PackageManager.PERMISSION_GRANTED
+
+@ComposePreview(showBackground = true)
+@Composable
+fun ScannerStepPreview() {
+    SecurePayAgentTheme {
+        ScannerStep(
+            state = EnrollmentUiState(draft = EnrollmentDraft(imei = "123456789012345", deviceModel = "Solar X1")),
+            onImeiChange = {},
+            onDeviceModelChange = {}
+        )
+    }
+}
