@@ -80,7 +80,7 @@ fun CustomersScreen(
     modifier: Modifier = Modifier
 ) {
     var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) } // API disabled
+    var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf<String?>(null) }
@@ -88,26 +88,19 @@ fun CustomersScreen(
     val isPreview = LocalInspectionMode.current
 
     fun load() {
-        // Mock data active
-        isLoading = false
-        accounts = listOf(
-            Account(id = "1", customerName = "John Doe", phoneNumber = "0711223344", deviceModel = "TECNO KL4", remainingBalance = 1500000, status = AccountStatus.ACTIVE),
-            Account(id = "2", customerName = "Jane Smith", phoneNumber = "0722334455", deviceModel = "Samsung A14", remainingBalance = 2000000, status = AccountStatus.WARNING),
-            Account(id = "3", customerName = "Peter Mwangi", phoneNumber = "0733445566", deviceModel = "Infinix X3", remainingBalance = 850000, status = AccountStatus.ACTIVE),
-            Account(id = "4", customerName = "Grace Wanjiku", phoneNumber = "0744556677", deviceModel = "Nokia G21", remainingBalance = 3200000, status = AccountStatus.LOCKED),
-            Account(id = "5", customerName = "David Ochieng", phoneNumber = "0755667788", deviceModel = "TECNO Pop 7", remainingBalance = 1200000, status = AccountStatus.WARNING)
-        )
-        /*
+        if (isPreview) return
         isLoading = true
         scope.launch {
-            val result = repository?.listAccounts(statusFilter) ?: return@launch
+            val result = repository?.listAccounts(statusFilter) ?: run {
+                isLoading = false
+                return@launch
+            }
             isLoading = false
             result.fold(
                 onSuccess = { accounts = it },
                 onFailure = { error = it.message }
             )
         }
-        */
     }
 
     LaunchedEffect(statusFilter) { load() }

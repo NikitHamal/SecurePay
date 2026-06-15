@@ -80,7 +80,7 @@ fun CustomerDetailScreen(
     modifier: Modifier = Modifier
 ) {
     var account by remember { mutableStateOf<Account?>(null) }
-    var isLoading by remember { mutableStateOf(false) } // API disabled
+    var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var actionInProgress by remember { mutableStateOf(false) }
     var showPaymentSheet by remember { mutableStateOf(false) }
@@ -97,35 +97,19 @@ fun CustomerDetailScreen(
     }
 
     fun loadAccount() {
-        // Mock data active
-        isLoading = false
-        account = Account(
-            id = "1",
-            customerName = "John Doe",
-            nationalId = "12345678",
-            phoneNumber = "0711223344",
-            imei = "352345678901234",
-            deviceModel = "TECNO KL4",
-            planName = "PayGo",
-            termDays = 365,
-            dailyRate = 5000,
-            totalLoanAmount = 2000000,
-            amountPaid = 500000,
-            remainingBalance = 1500000,
-            downPayment = 200000,
-            status = AccountStatus.WARNING
-        )
-        /*
+        if (isPreview) return
         isLoading = true
         scope.launch {
-            val result = repository?.getAccount(accountId) ?: return@launch
+            val result = repository?.getAccount(accountId) ?: run {
+                isLoading = false
+                return@launch
+            }
             isLoading = false
             result.fold(
                 onSuccess = { account = it },
                 onFailure = { error = it.message }
             )
         }
-        */
     }
 
     LaunchedEffect(accountId) { loadAccount() }

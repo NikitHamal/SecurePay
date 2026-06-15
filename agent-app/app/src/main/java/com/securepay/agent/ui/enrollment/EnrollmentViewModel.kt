@@ -26,21 +26,7 @@ class EnrollmentViewModel(
 
     private fun loadPlans() {
         if (plansLoaded) return
-        
-        // Mock data active
-        _uiState.update { 
-            it.copy(
-                availablePlans = listOf(
-                    Plan("p1", "PayGo Basic", 15000, 300, 50, 1500),
-                    Plan("p2", "PayGo Pro", 25000, 365, 68, 2500),
-                    Plan("p3", "PayGo Max", 40000, 400, 100, 5000)
-                ) 
-            ) 
-        }
-        plansLoaded = true
-        /*
         if (repository == null) {
-            _uiState.update { it.copy(availablePlans = listOf(Plan("p1", "Mock Plan", 15000, 300, 50, 1500))) }
             plansLoaded = true
             return
         }
@@ -54,7 +40,6 @@ class EnrollmentViewModel(
                 onFailure = { }
             )
         }
-        */
     }
 
     fun updateKycName(value: String) = _uiState.update {

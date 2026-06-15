@@ -75,24 +75,17 @@ fun InventoryScreen(
     modifier: Modifier = Modifier
 ) {
     var devices by remember { mutableStateOf<List<Device>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) } // API disabled
+    var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun load() {
-        // Mock data active
-        isLoading = false
-        devices = listOf(
-            Device(id = "1", imei = "123456789012345", model = "Solar X1", status = "in_stock", stock = 50),
-            Device(id = "2", imei = "543210987654321", model = "Solar X2", status = "sold", stock = 0),
-            Device(id = "3", imei = "987654321098765", model = "Solar X1", status = "in_stock", stock = 120),
-            Device(id = "4", imei = "111222333444555", model = "Solar Base", status = "recalled", stock = 0),
-            Device(id = "5", imei = "222333444555666", model = "Solar X3", status = "in_stock", stock = 30)
-        )
-        /*
         isLoading = true
-        if (repository == null) { ... }
+        if (repository == null) {
+            isLoading = false
+            return
+        }
         scope.launch {
             val result = repository.listDevices()
             isLoading = false
@@ -101,7 +94,6 @@ fun InventoryScreen(
                 onFailure = { error = it.message }
             )
         }
-        */
     }
 
     LaunchedEffect(Unit) { load() }
