@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.securepay.agent"
+    namespace = "com.touchbase.agent"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.securepay.agent"
+        applicationId = "com.touchbase.agent"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

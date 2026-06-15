@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SecurePayAgent"
+rootProject.name = "TBAgent"
 include(":app")

@@ -8,8 +8,8 @@ SecurePay is a **pay-as-you-go smartphone financing platform** (M-KOPA-style). A
 
 | App | Stack | Purpose |
 |-----|-------|---------|
-| `customer-app/` | Kotlin, Jetpack Compose, M3 | Customer's phone — DPC lock/unlock, daily payment UI |
-| `agent-app/` | Kotlin, Jetpack Compose, M3 | Dealer's field tool — enroll new customers, scan IMEIs |
+| `customer-app/` | Kotlin, Jetpack Compose, M3 | TB User — DPC lock/unlock, daily payment UI |
+| `agent-app/` | Kotlin, Jetpack Compose, M3 | TB Agent — dealer's field tool, enroll new customers, scan IMEIs |
 | `dealer-dashboard/` | SvelteKit, TypeScript, TailwindCSS | Dealer web console — manage accounts, view ledger, force-lock |
 
 ## Architecture
@@ -279,7 +279,7 @@ turso db shell securepay < schema.sql
 - **Mock APIs** are being replaced — `mockApi.ts` and `MockSecurePayApi.kt` are transitional
 - **Colors**: Charcoal `#121212`, Surface `#1E1E1E`, Emerald `#10B981`, Amber `#F59E0B`, Crimson `#DC2626`
 - **Svelte components** go in `src/lib/components/`; charts in `src/lib/components/charts/`
-- **Kotlin packages** use `com.securepay.customer` and `com.securepay.agent`
+- **Kotlin packages** use `com.touchbase.user` (customer-app) and `com.touchbase.agent` (agent-app)
 - **No comments in code** unless explicitly requested
 - **API routes** go in `src/routes/api/*/+server.ts` — each REST endpoint is a SvelteKit server route
 - **Auth middleware** is in `src/hooks.server.ts` — validates JWT from `Authorization: Bearer` header

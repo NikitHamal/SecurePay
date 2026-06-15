@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SecurePayCustomer"
+rootProject.name = "TBUser"
 include(":app")

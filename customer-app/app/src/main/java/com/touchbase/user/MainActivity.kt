@@ -1,0 +1,115 @@
+﻿package com.touchbase.user
+
+import android.content.Intent
+import android.os.Bundle
+import com.touchbase.user.util.SecureLog
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import com.touchbase.user.admin.DevicePolicyController
+import com.touchbase.user.data.model.DeviceStatus
+import com.touchbase.user.admin.ProvisioningManager
+import com.touchbase.user.admin.SecurityChecker
+import com.touchbase.user.data.remote.DeviceTokenManager
+import com.touchbase.user.ui.SecurePayApp
+import com.touchbase.user.ui.theme.SecurePayTheme
+import com.touchbase.user.util.BatteryOptimizationHelper
+import com.touchbase.user.worker.HeartbeatWorker
+import com.touchbase.user.worker.NetworkMonitor
+
+class MainActivity : ComponentActivity() {
+
+    private lateinit var policyController: DevicePolicyController
+    private lateinit var provisioningManager: ProvisioningManager
+    private lateinit var networkMonitor: NetworkMonitor
+
+    private val enableAdminLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        checkAndContinue()
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        policyController = DevicePolicyController(this)
+        provisioningManager = ProvisioningManager(this)
+        networkMonitor = NetworkMonitor(this)
+
+        runSecurityChecks()
+        enforceCachedLockState()
+        checkAndContinue()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        enforceCachedLockState()
+    }
+
+    private fun runSecurityChecks() {
+        val report = SecurityChecker.runAllChecks(this)
+        if (report.isRooted) {
+            SecureLog.w(TAG, "SECURITY: Rooted device detected â€” enforcing lock")
+            policyController.enforceLock()
+        }
+        if (report.isTampered) {
+            SecureLog.w(TAG, "SECURITY: Tampered app detected â€” enforcing lock")
+            policyController.enforceLock()
+        }
+        if (report.isEmulator) {
+            SecureLog.w(TAG, "SECURITY: Emulator environment detected")
+        }
+        if (report.isDebuggable) {
+            SecureLog.i(TAG, "SECURITY: Running debug build")
+        }
+    }
+
+    private fun enforceCachedLockState() {
+        val tokenManager = DeviceTokenManager(this)
+        if (!tokenManager.isRegistered) return
+
+        val cachedDue = tokenManager.cachedNextPaymentDue
+        if (cachedDue <= 0L) return
+
+        val trustedTime = tokenManager.getTrustedTimeMillis()
+        val status = DeviceStatus.evaluate(cachedDue, tokenManager.cachedLockedByDealer, trustedTime)
+        if (status == DeviceStatus.LOCKED) {
+            SecureLog.w(TAG, "Cached state indicates LOCKED â€” enforcing lock on startup")
+            policyController.enforceLock()
+        }
+    }
+
+    private fun checkAndContinue() {
+        if (!policyController.isAdminActive) {
+            SecureLog.i(TAG, "Device admin not active, requesting activation")
+            enableAdminLauncher.launch(policyController.enableAdminIntent())
+            return
+        }
+
+        HeartbeatWorker.schedule(this)
+        networkMonitor.startMonitoring()
+        BatteryOptimizationHelper.requestIfRegistered(this)
+
+        val repository = (application as SecurePayApplication).deviceRepository
+
+        setContent {
+            SecurePayTheme {
+                SecurePayApp(
+                    repository = repository,
+                    policyController = policyController
+                )
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        networkMonitor.stopMonitoring()
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+}
