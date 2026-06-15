@@ -127,7 +127,21 @@ object SecurityChecker {
         val validInstallers = setOf(
             "com.android.vending",
             "com.google.android.feedback",
-            "com.securepay.customer"
+            "com.securepay.agent",
+            "com.android.packageinstaller",
+            "com.google.android.packageinstaller",
+            "com.samsung.android.packageinstaller",
+            "com.miui.packageinstaller",
+            "com.xiaomi.packageinstaller",
+            "com.oppo.packageinstaller",
+            "com.coloros.packageinstaller",
+            "com.huawei.appmarket",
+            "com.hihuawei.packageinstaller",
+            "com.vivo.packageinstaller",
+            "com.oneplus.packageinstaller",
+            "com.realme.packageinstaller",
+            "com.asus.packageinstaller",
+            "com.lge.packageinstaller"
         )
 
         if (installer == null) {
@@ -136,8 +150,11 @@ object SecurityChecker {
                 return true
             }
         } else if (installer !in validInstallers) {
-            SecureLog.w(TAG, "App installed from untrusted source: $installer")
-            return true
+            if (!checkDebuggable(context)) {
+                SecureLog.w(TAG, "App installed from untrusted source: $installer")
+                return true
+            }
+            SecureLog.w(TAG, "App installed from untrusted source (debug): $installer")
         }
 
         try {
