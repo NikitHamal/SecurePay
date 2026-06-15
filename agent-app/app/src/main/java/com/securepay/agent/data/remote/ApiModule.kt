@@ -21,12 +21,9 @@ object ApiModule {
     private const val PRODUCTION_HOST = "securepay-dashboard.pages.dev"
 
     private val certificatePinner = CertificatePinner.Builder()
-        // Full Google Trust Services chain for securepay-dashboard.pages.dev.
-        // All three (leaf + intermediate + root) are pinned so a leaf rotation
-        // by Cloudflare does not break the app.
-        .add(PRODUCTION_HOST, "sha256/jBqfNvskKyGlqbyIS8u9xDE1GpTNnO88vExuhOj+RgA=") // leaf: CN=securepay-dashboard.pages.dev
-        .add(PRODUCTION_HOST, "sha256/H7AMYAvicN2+UcFPBz3kJXCDmGrTItZh4ujUBK8hoWg=") // intermediate: CN=WE1, Google Trust Services
-        .add(PRODUCTION_HOST, "sha256/YSoUL4CBzo5aJ/ES9gSZTsavsgtHsiLLnTG+BKUdork=") // root: CN=GTS Root R4
+        .add(PRODUCTION_HOST, "sha256/DjLQVN7foWzyfDfw8rzJplr0P6Qt3ZARrePtjWGnmBo=") // leaf: CN=securepay-dashboard.pages.dev
+        .add(PRODUCTION_HOST, "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=") // intermediate: CN=WE1, Google Trust Services
+        .add(PRODUCTION_HOST, "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=") // root: CN=GTS Root R4
         .build()
 
     fun provideApi(tokenManager: TokenManager): SecurePayApi {

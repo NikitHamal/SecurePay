@@ -11,11 +11,9 @@
     <domain-config>
         <domain includeSubdomains="true">securepay-dashboard.pages.dev</domain>
         <pin-set>
-            <!-- Full Google Trust Services chain. Leaf + intermediate + root
-                 so a Cloudflare leaf rotation does not break the app. -->
-            <pin digest="SHA-256">jBqfNvskKyGlqbyIS8u9xDE1GpTNnO88vExuhOj+RgA=</pin>
-            <pin digest="SHA-256">H7AMYAvicN2+UcFPBz3kJXCDmGrTItZh4ujUBK8hoWg=</pin>
-            <pin digest="SHA-256">YSoUL4CBzo5aJ/ES9gSZTsavsgtHsiLLnTG+BKUdork=</pin>
+            <pin digest="SHA-256">DjLQVN7foWzyfDfw8rzJplr0P6Qt3ZARrePtjWGnmBo=</pin>
+            <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
+            <pin digest="SHA-256">mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=</pin>
         </pin-set>
         <trust-anchors>
             <certificates src="system" />
