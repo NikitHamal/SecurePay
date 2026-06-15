@@ -101,21 +101,9 @@ fun DashboardScreen(
     previewKpis: KpiSummary? = null
 ) {
     var kpis by remember {
-        mutableStateOf<KpiSummary?>(
-            previewKpis ?: KpiSummary(
-                activeCount = 45,
-                lockedCount = 12,
-                warningCount = 15,
-                paidCount = 10,
-                totalOutstanding = 125000,
-                collectedToday = 1500,
-                totalAccounts = 70,
-                collectionHistory = listOf(1200, 1800, 900, 2500, 1500, 2100, 1500),
-                outstandingHistory = listOf(140000, 135000, 132000, 130000, 128000, 126000, 125000)
-            )
-        )
+        mutableStateOf<KpiSummary?>(previewKpis)
     }
-    var isLoading by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(previewKpis == null && !LocalInspectionMode.current) }
     var error by remember { mutableStateOf<String?>(null) }
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
@@ -131,9 +119,7 @@ fun DashboardScreen(
     val dealerName by (repository?.dealerName ?: MutableStateFlow(isPreview.let { if(it) "Demo Agent" else null })).collectAsState()
 
     LaunchedEffect(Unit) {
-        // API loading disabled for now
-        /*
-        if (isPreview || kpis != null) return@LaunchedEffect
+        if (isPreview || previewKpis != null) return@LaunchedEffect
         isLoading = true
         val result = repository?.getKpis()
         isLoading = false
@@ -141,7 +127,6 @@ fun DashboardScreen(
             onSuccess = { kpis = it },
             onFailure = { error = it.message }
         )
-        */
     }
 
     @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -274,27 +259,7 @@ fun DashboardScreen(
 
                     WidgetsSection(kpi = kpi)
 
-                    val hourlyMockData = remember(selectedIndex) {
-                        // Deterministic mock data based on day index
-                        val seed = selectedIndex + 1
-                        listOf(
-                            (seed * 2) % 10,
-                            (seed * 3) % 12,
-                            (seed * 5) % 15,
-                            (seed * 8) % 20,
-                            (seed * 4) % 14,
-                            (seed * 2) % 8,
-                            (seed * 1) % 5
-                        )
-                    }
-
-                    SoldPhonesHistogram(
-                        data = hourlyMockData,
-                        title = "Hourly sales (Day ${selectedIndex + 1})",
-                        labels = listOf("6AM", "9AM", "12PM", "3PM", "6PM", "9PM", "12AM")
-                    )
-
-                    CollectionAreaChart(data = kpi.collectionHistory)
+                    CollectionAreaChart(data = kpi.collectionHistory, collectedToday = kpi.collectedToday)
 
                     OutstandingSection(kpi = kpi)
                 }
@@ -360,13 +325,6 @@ fun OutstandingSection(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = "-1.24% vs last month",
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = Poppins),
-            color = Color(0xFF10B981) // Green for healthy decrease in debt
-        )
-
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(modifier = Modifier.fillMaxWidth().height(160.dp)) {
@@ -698,6 +656,7 @@ fun DateSelectorCard(
 @Composable
 fun CollectionAreaChart(
     data: List<Int>,
+    collectedToday: Int = 0,
     modifier: Modifier = Modifier
 ) {
     if (data.isEmpty()) {
@@ -726,17 +685,12 @@ fun CollectionAreaChart(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "GH₵ 12,000",
+                text = formatAmount(collectedToday),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
             Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "3.89% vs GH₵ 5,432.74 prev. 90 days",
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = Poppins),
-                color = Color(0xFF10B981)
-            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
