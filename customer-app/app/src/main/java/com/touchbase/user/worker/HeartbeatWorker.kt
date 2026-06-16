@@ -1,6 +1,7 @@
 ﻿package com.touchbase.user.worker
 
 import android.content.Context
+import android.content.Intent
 import com.touchbase.user.util.SecureLog
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -34,6 +35,20 @@ class HeartbeatWorker(
             }
             repository.heartbeat()
             SecureLog.i(TAG, "Heartbeat successful")
+
+            val account = repository.account.value
+            val cachedDue = if (account != null) account.nextPaymentDueEpochMillis else tokenManager.cachedNextPaymentDue
+            val lockedByDealer = account?.lockedByDealer ?: tokenManager.cachedLockedByDealer
+            val trustedNow = tokenManager.getTrustedTimeMillis()
+            val status = com.touchbase.user.data.model.DeviceStatus.evaluate(cachedDue, lockedByDealer, trustedNow)
+            if (status == com.touchbase.user.data.model.DeviceStatus.LOCKED) {
+                SecureLog.w(TAG, "Post-heartbeat status LOCKED — ensuring lock enforced")
+                val intent = Intent(applicationContext, com.touchbase.user.ui.lock.LockTaskActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                runCatching { applicationContext.startActivity(intent) }
+            }
+
             Result.success()
         } catch (e: Exception) {
             SecureLog.e(TAG, "Heartbeat failed, will retry", e)

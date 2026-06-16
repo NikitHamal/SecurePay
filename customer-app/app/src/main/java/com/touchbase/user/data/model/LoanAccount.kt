@@ -10,6 +10,15 @@ data class DeviceCheckResponse(
 )
 
 @Serializable
+data class ActivateResponse(
+    val enrolled: Boolean = false,
+    val activated: Boolean = false,
+    val imei: String = "",
+    val device: DeviceInfo? = null,
+    val account: AccountBrief? = null
+)
+
+@Serializable
 data class DeviceInfo(
     val id: String = "",
     val imei: String = "",

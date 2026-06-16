@@ -55,4 +55,10 @@ interface SecurePayApi {
 
     @POST("device/heartbeat")
     suspend fun deviceHeartbeat(@Body body: Map<String, String>): DeviceCheckResponse
+
+    @POST("provisioning/qr")
+    suspend fun generateProvisioningQr(@Body request: GenerateQrRequest): ProvisioningQrResponse
+
+    @GET("provisioning/qr/{token}")
+    suspend fun getProvisioningStatus(@Path("token") token: String): ProvisioningStatusResponse
 }

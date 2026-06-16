@@ -2,6 +2,7 @@
 
 import com.touchbase.user.util.SecureLog
 import com.touchbase.user.data.model.AccountResponse
+import com.touchbase.user.data.model.ActivateResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.PaymentEntry
@@ -52,6 +53,24 @@ class DeviceRepository(
             Result.success(response)
         } catch (e: Exception) {
             SecureLog.e(TAG, "deviceCheck failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun activate(activationCode: String): Result<ActivateResponse> = withContext(Dispatchers.IO) {
+        try {
+            val requestTime = System.currentTimeMillis()
+            val response = api.activate(mapOf("activationCode" to activationCode))
+            updateServerTimeOffset(requestTime)
+            if (response.activated && response.account != null) {
+                val imei = response.imei.ifBlank { response.device?.imei.orEmpty() }
+                tokenManager.saveDevice(response.account.id, imei)
+                _isRegistered.value = true
+                refresh()
+            }
+            Result.success(response)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "activate failed", e)
             Result.failure(e)
         }
     }

@@ -92,4 +92,20 @@ class SecurePayRepository(
     suspend fun deviceCheck(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try { Result.success(api.deviceCheck(imei)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
+
+    suspend fun generateProvisioningQr(
+        imei: String,
+        wifiSsid: String?,
+        wifiPassword: String?
+    ): Result<ProvisioningQrResponse> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.generateProvisioningQr(GenerateQrRequest(imei, wifiSsid, wifiPassword)))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
+    }
+
+    suspend fun getProvisioningStatus(token: String): Result<ProvisioningStatusResponse> = withContext(Dispatchers.IO) {
+        try { Result.success(api.getProvisioningStatus(token)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
 }

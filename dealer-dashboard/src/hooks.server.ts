@@ -2,7 +2,7 @@ import type { Handle } from '@sveltejs/kit';
 import { verifyToken } from '$lib/auth';
 import { verifyHmacSignature, getHmacSecret } from '$lib/hmac';
 
-const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments'];
+const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/activate'];
 
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.hmacVerified = false;

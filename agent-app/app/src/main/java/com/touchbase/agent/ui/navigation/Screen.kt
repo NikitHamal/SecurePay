@@ -10,4 +10,8 @@ sealed class Screen(val route: String) {
     data object Enrollment : Screen("enrollment")
     data object Inventory : Screen("inventory")
     data object Ledger : Screen("ledger")
+    data object Provisioning : Screen("provisioning?imei={imei}") {
+        const val route = "provisioning?imei={imei}"
+        fun createRoute(imei: String = "") = "provisioning?imei=$imei"
+    }
 }

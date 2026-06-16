@@ -45,6 +45,17 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.lock.LockTaskActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="false"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:theme="@style/Theme.TBUser" />
+
         <receiver
             android:name=".admin.SecurePayDeviceAdminReceiver"
             android:description="@string/device_admin_description"

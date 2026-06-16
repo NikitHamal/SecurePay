@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -77,6 +78,7 @@ fun CustomerDetailScreen(
     accountId: String,
     repository: SecurePayRepository?,
     onBack: () -> Unit,
+    onProvisionDevice: (imei: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var account by remember { mutableStateOf<Account?>(null) }
@@ -251,6 +253,19 @@ fun CustomerDetailScreen(
                         Text("Force Lock")
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = { onProvisionDevice(acc.imei) },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = emerald),
+                shape = RoundedCornerShape(360.dp)
+            ) {
+                Icon(Icons.Filled.QrCode2, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Re-provision / Generate QR")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
