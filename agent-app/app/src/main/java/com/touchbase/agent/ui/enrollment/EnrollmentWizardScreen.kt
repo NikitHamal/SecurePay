@@ -66,6 +66,7 @@ fun EnrollmentWizardScreen(
     repository: SecurePayRepository?,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
+    onProvisionDevice: (imei: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel = remember { EnrollmentViewModel(repository) }
@@ -134,7 +135,9 @@ fun EnrollmentWizardScreen(
             if (submission is SubmissionState.Success) {
                 EnrollmentSuccess(
                     enrollmentId = submission.enrollmentId,
+                    imei = state.draft.imei,
                     onDone = onComplete,
+                    onProvision = { onProvisionDevice(state.draft.imei) },
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -242,7 +245,9 @@ private fun WizardControls(
 @Composable
 private fun EnrollmentSuccess(
     enrollmentId: String,
+    imei: String,
     onDone: () -> Unit,
+    onProvision: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -266,7 +271,14 @@ private fun EnrollmentSuccess(
             style = MaterialTheme.typography.bodyLarge,
             color = Color.Gray
         )
-        Button(onClick = onDone, modifier = Modifier.padding(top = 16.dp)) {
+        Button(
+            onClick = onProvision,
+            enabled = imei.length == 15,
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text("Provision this device")
+        }
+        OutlinedButton(onClick = onDone) {
             Text("Done")
         }
     }

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Password
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,9 +33,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.touchbase.user.ui.theme.Emerald
 import com.touchbase.user.ui.theme.TextSecondary
 
@@ -48,8 +51,8 @@ fun ActivationScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.isEnrolled) {
-        if (state.isEnrolled) onActivated()
+    LaunchedEffect(state.isActivated) {
+        if (state.isActivated) onActivated()
     }
 
     LaunchedEffect(state.error) {
@@ -80,7 +83,7 @@ fun ActivationScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Filled.PhoneAndroid,
+                imageVector = Icons.Filled.Password,
                 contentDescription = null,
                 tint = Emerald,
                 modifier = Modifier.size(72.dp)
@@ -88,29 +91,35 @@ fun ActivationScreen(
 
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "Activate Your Device",
+                text = "Enter your activation code",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Enter the IMEI number printed on your device packaging or dial *#06# to find it.",
+                text = "Find the 6-digit code on your dealer's screen after they provisioned this device.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
 
             Spacer(Modifier.height(32.dp))
             OutlinedTextField(
-                value = state.imei,
-                onValueChange = viewModel::updateImei,
-                label = { Text("IMEI Number") },
-                placeholder = { Text("Enter 15-digit IMEI") },
+                value = state.activationCode,
+                onValueChange = viewModel::updateCode,
+                label = { Text("Activation Code") },
+                placeholder = { Text("6-digit code") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.headlineLarge.copy(
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 8.sp,
+                    textAlign = TextAlign.Center
+                ),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Emerald,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -121,7 +130,7 @@ fun ActivationScreen(
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick = viewModel::checkAndActivate,
-                enabled = state.imei.isNotBlank() && !state.isChecking,
+                enabled = state.activationCode.length == 6 && !state.isChecking,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

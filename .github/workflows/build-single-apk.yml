@@ -22,6 +22,16 @@ on:
         required: false
       KEY_PASSWORD:
         required: false
+      R2_ACCESS_KEY_ID:
+        required: false
+      R2_SECRET_ACCESS_KEY:
+        required: false
+      R2_ENDPOINT:
+        required: false
+      R2_BUCKET:
+        required: false
+      R2_PUBLIC_URL:
+        required: false
 
 jobs:
   build:
@@ -130,3 +140,78 @@ jobs:
           path: staged/${{ inputs.artifact }}-${{ steps.meta.outputs.sha }}.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish to Cloudflare R2 (customer-app only)
+        if: ${{ inputs.module == 'customer-app' && env.R2_ACCESS_KEY_ID != '' }}
+        id: publish
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+          ALIAS: ${{ steps.signing.outputs.alias }}
+          STORE_PASS: ${{ steps.signing.outputs.store_pass }}
+          KEY_PASS: ${{ steps.signing.outputs.key_pass }}
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ACCESS_KEY_ID}" ] || [ -z "${R2_SECRET_ACCESS_KEY}" ] || [ -z "${R2_ENDPOINT}" ] || [ -z "${R2_BUCKET}" ] || [ -z "${R2_PUBLIC_URL}" ]; then
+            echo "::notice::R2 secrets not configured — skipping APK publish. QR provisioning will be unavailable until these secrets are set."
+            exit 0
+          fi
+
+          APK="staged/${{ inputs.artifact }}-${{ steps.meta.outputs.sha }}.apk"
+
+          # Android provisioning checksums use SHA-256 over (a) the APK bytes and
+          # (b) the signing certificate, each base64url-encoded WITHOUT padding.
+          # See: developer.android.com/work/manage-devices/provision-devices
+          sha256_hex() { sha256sum "$1" | cut -d' ' -f1; }
+          hex_to_b64url_nopad() {
+            python3 -c "import sys,base64; print(base64.urlsafe_b64encode(bytes.fromhex(sys.stdin.read().strip())).decode().rstrip('='))"
+          }
+
+          APK_SHA_HEX=$(sha256_hex "$APK")
+          APK_SHA_B64U=$(printf '%s' "$APK_SHA_HEX" | hex_to_b64url_nopad)
+
+          # Derive the signing-cert SHA-256 (base64url, no pad) from the signed APK.
+          APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          CERT_HEX=$("$APKSIGNER" verify --print-certs "$APK" \
+            | grep -iE 'Signer #1 certificate SHA-256' | head -1 \
+            | sed -E 's/.*SHA-256[: ]+([0-9a-fA-F:]+).*/\1/' | tr -d ': ')
+          if [ -z "${CERT_HEX}" ]; then
+            echo "::error::Could not extract signing certificate SHA-256 from signed APK"
+            exit 1
+          fi
+          CERT_SHA_B64U=$(printf '%s' "$CERT_HEX" | hex_to_b64url_nopad)
+
+          echo "APK sha256(hex)=$APK_SHA_HEX  -> checksum=$APK_SHA_B64U"
+          echo "Cert sha256(hex)=$CERT_HEX   -> signature=$CERT_SHA_B64U"
+
+          # Upload APK + manifest to R2 over its S3-compatible API.
+          AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+          AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+          AWS_DEFAULT_REGION="auto" \
+          aws s3 cp "$APK" "s3://$R2_BUCKET/tb-user-latest.apk" \
+            --endpoint-url "$R2_ENDPOINT" --content-type "application/vnd.android.package-archive"
+
+          PUB_URL="${R2_PUBLIC_URL%/}/tb-user-latest.apk"
+          UPDATED_AT=$(date +%s)
+          cat > latest.json <<EOF
+          {
+            "url": "$PUB_URL",
+            "sha256Base64": "$APK_SHA_B64U",
+            "signatureChecksumBase64": "$CERT_SHA_B64U",
+            "versionName": "1.0.0",
+            "versionCode": 1,
+            "updatedAt": $UPDATED_AT
+          }
+          EOF
+
+          AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+          AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+          AWS_DEFAULT_REGION="auto" \
+          aws s3 cp latest.json "s3://$R2_BUCKET/latest.json" \
+            --endpoint-url "$R2_ENDPOINT" --content-type "application/json"
+
+          echo "Published APK to $PUB_URL"
+          echo "Manifest: $(cat latest.json)"

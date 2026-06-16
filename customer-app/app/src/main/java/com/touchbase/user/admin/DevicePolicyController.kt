@@ -64,14 +64,31 @@ class DevicePolicyController(context: Context) {
         }
         runCatching {
             dpm.setLockTaskPackages(admin, arrayOf(appContext.packageName))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                dpm.setLockTaskFeatures(
+                    admin,
+                    DevicePolicyManager.LOCK_TASK_FEATURE_NONE
+                )
+            }
             activity.startLockTask()
         }.onFailure { SecureLog.w(TAG, "startLockTask failed: ${it.message}") }
     }
 
     fun stopLockTask(activity: android.app.Activity) {
-        if (!isDeviceOwner) return
-        runCatching { activity.stopLockTask() }
-            .onFailure { SecureLog.w(TAG, "stopLockTask failed: ${it.message}") }
+        if (!isDeviceOwner) {
+            activity.finish()
+            return
+        }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                dpm.setLockTaskFeatures(
+                    admin,
+                    DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO
+                )
+            }
+            activity.stopLockTask()
+        }.onFailure { SecureLog.w(TAG, "stopLockTask failed: ${it.message}") }
+        activity.finish()
     }
 
     fun hideApp(packageName: String) {

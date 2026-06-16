@@ -24,6 +24,9 @@ import com.touchbase.agent.ui.inventory.InventoryScreen
 import com.touchbase.agent.ui.ledger.LedgerScreen
 import com.touchbase.agent.ui.customers.CustomerDetailScreen
 import com.touchbase.agent.ui.customers.CustomersScreen
+import com.touchbase.agent.ui.provisioning.ProvisioningScreen
+import com.touchbase.agent.ui.provisioning.ProvisioningViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun SecurePayNavHost(
@@ -98,7 +101,10 @@ fun SecurePayNavHost(
             CustomerDetailScreen(
                 accountId = accountId,
                 repository = repository,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onProvisionDevice = { imei ->
+                    navController.navigate(Screen.Provisioning.createRoute(imei))
+                }
             )
         }
 
@@ -106,7 +112,29 @@ fun SecurePayNavHost(
             EnrollmentWizardScreen(
                 repository = repository,
                 onComplete = { navController.popBackStack() },
-                onCancel = { navController.popBackStack() }
+                onCancel = { navController.popBackStack() },
+                onProvisionDevice = { imei ->
+                    navController.navigate(Screen.Provisioning.createRoute(imei))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Provisioning.route,
+            arguments = listOf(navArgument("imei") {
+                type = NavType.StringType
+                defaultValue = ""
+                nullable = true
+            })
+        ) { backStackEntry ->
+            val imei = backStackEntry.arguments?.getString("imei").orEmpty()
+            val viewModel: ProvisioningViewModel = viewModel(
+                factory = ProvisioningViewModel.Factory(repository, imei)
+            )
+            ProvisioningScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
             )
         }
 

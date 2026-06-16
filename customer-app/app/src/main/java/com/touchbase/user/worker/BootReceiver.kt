@@ -36,12 +36,22 @@ class BootReceiver : BroadcastReceiver() {
         val trustedTime = tokenManager.getTrustedTimeMillis()
         val status = DeviceStatus.evaluate(cachedDue, cachedLockedByDealer, trustedTime)
         if (status == DeviceStatus.LOCKED) {
-            SecureLog.w(TAG, "Device should be LOCKED based on cached data, enforcing lock")
+            SecureLog.w(TAG, "Device should be LOCKED based on cached data, enforcing lock + pinning")
             policyController.enforceLock()
+            launchLockTask(context)
         } else {
             SecureLog.i(TAG, "Device status: $status, releasing restrictions")
             policyController.releaseRestrictions()
         }
+    }
+
+    private fun launchLockTask(context: Context) {
+        runCatching {
+            val intent = Intent(context, com.touchbase.user.ui.lock.LockTaskActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            context.startActivity(intent)
+        }.onFailure { SecureLog.e(TAG, "Failed to launch LockTaskActivity", it) }
     }
 
     companion object {

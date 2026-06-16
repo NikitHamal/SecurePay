@@ -1,9 +1,5 @@
 ﻿package com.touchbase.user.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -23,14 +18,14 @@ import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.ui.activation.ActivationScreen
 import com.touchbase.user.ui.activation.ActivationViewModel
 import com.touchbase.user.ui.dashboard.DashboardScreen
-import com.touchbase.user.ui.lock.LockOverlayScreen
 import com.touchbase.user.ui.navigation.Screen
 import com.touchbase.user.ui.payments.PaymentsScreen
 
 @Composable
 fun SecurePayApp(
     repository: DeviceRepository,
-    policyController: DevicePolicyController
+    policyController: DevicePolicyController,
+    onLocked: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isRegistered by repository.isRegistered.collectAsState()
@@ -60,7 +55,12 @@ fun SecurePayApp(
     LaunchedEffect(state.isLocked) {
         val nowLocked = state.isLocked
         if (nowLocked != lastEnforcedLocked) {
-            if (nowLocked) policyController.enforceLock() else policyController.releaseRestrictions()
+            if (nowLocked) {
+                policyController.enforceLock()
+                onLocked()
+            } else {
+                policyController.releaseRestrictions()
+            }
             lastEnforcedLocked = nowLocked
         }
     }
@@ -88,18 +88,6 @@ fun SecurePayApp(
                 onViewPayments = { navController.navigate(Screen.Payments.route) },
                 securityReport = securityReport
             )
-
-            AnimatedVisibility(
-                visible = state.isLocked,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                LockOverlayScreen(
-                    state = state,
-                    onRequestGrace = deviceViewModel::requestGraceWindow
-                )
-            }
         }
 
         composable(Screen.Payments.route) {

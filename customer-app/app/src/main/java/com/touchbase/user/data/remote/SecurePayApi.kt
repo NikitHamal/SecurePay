@@ -1,6 +1,7 @@
 ﻿package com.touchbase.user.data.remote
 
 import com.touchbase.user.data.model.AccountResponse
+import com.touchbase.user.data.model.ActivateResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
 import com.touchbase.user.data.model.PaymentsResponse
 import retrofit2.http.Body
@@ -13,6 +14,9 @@ interface SecurePayApi {
 
     @GET("device/check")
     suspend fun deviceCheck(@Query("imei") imei: String): DeviceCheckResponse
+
+    @POST("device/activate")
+    suspend fun activate(@Body body: Map<String, @JvmSuppressWildcards String>): ActivateResponse
 
     @POST("device/heartbeat")
     suspend fun deviceHeartbeat(@Body body: Map<String, @JvmSuppressWildcards String>): DeviceCheckResponse

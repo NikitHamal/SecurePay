@@ -76,6 +76,21 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at      INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
+CREATE TABLE IF NOT EXISTS provisioning_tokens (
+  id              TEXT PRIMARY KEY,
+  account_id      TEXT NOT NULL REFERENCES accounts(id),
+  device_id       TEXT NOT NULL REFERENCES devices(id),
+  dealer_id       TEXT NOT NULL REFERENCES dealers(id),
+  activation_code TEXT NOT NULL UNIQUE,
+  status          TEXT NOT NULL DEFAULT 'pending',
+  wifi_ssid       TEXT,
+  wifi_password   TEXT,
+  created_at      INTEGER NOT NULL DEFAULT (unixepoch()),
+  expires_at      INTEGER NOT NULL,
+  provisioned_at  INTEGER,
+  activated_at    INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_accounts_dealer ON accounts(dealer_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);
 CREATE INDEX IF NOT EXISTS idx_accounts_phone  ON accounts(phone_number);
@@ -85,6 +100,9 @@ CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
 CREATE INDEX IF NOT EXISTS idx_devices_imei    ON devices(imei);
 CREATE INDEX IF NOT EXISTS idx_devices_dealer  ON devices(dealer_id);
 CREATE INDEX IF NOT EXISTS idx_lock_events_account ON lock_events(account_id);
+CREATE INDEX IF NOT EXISTS idx_prov_code ON provisioning_tokens(activation_code);
+CREATE INDEX IF NOT EXISTS idx_prov_device ON provisioning_tokens(device_id);
+CREATE INDEX IF NOT EXISTS idx_prov_status ON provisioning_tokens(status);
 
 -- Seed plans
 INSERT OR IGNORE INTO plans (id, name, term_days, total_amount, daily_rate, min_down_payment) VALUES

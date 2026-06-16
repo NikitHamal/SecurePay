@@ -54,6 +54,13 @@ class ProvisioningActivity : ComponentActivity() {
         val componentName = ComponentName(this, SecurePayDeviceAdminReceiver::class.java)
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
 
+        val isOwner = runCatching { dpm.isDeviceOwnerApp(packageName) }.getOrDefault(false)
+        if (isOwner) {
+            SecureLog.i(TAG, "Confirmed: app is now Device Owner")
+        } else {
+            SecureLog.w(TAG, "Provisioning completed but app is NOT device owner (admin-only)")
+        }
+
         runCatching {
             dpm.setProfileName(componentName, "SecurePay")
         }.onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
