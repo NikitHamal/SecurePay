@@ -31,15 +31,15 @@ fun QrCode(
             .background(lightColor)
     ) {
         if (matrix == null) return@Canvas
-        val width = matrix.size
-        val cell = size.toPx() / width
-        for (y in 0 until width) {
-            for (x in 0 until width) {
+        val dim = matrix.width
+        val cellSize = size.toPx() / dim.toFloat()
+        for (y in 0 until dim) {
+            for (x in 0 until dim) {
                 if (matrix.get(x, y)) {
                     drawRect(
                         color = darkColor,
-                        topLeft = Offset(x * cell, y * cell),
-                        size = androidx.compose.ui.geometry.Size(cell, cell)
+                        topLeft = Offset(x.toFloat() * cellSize, y.toFloat() * cellSize),
+                        size = androidx.compose.ui.geometry.Size(cellSize, cellSize)
                     )
                 }
             }
