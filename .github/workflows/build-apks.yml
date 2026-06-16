@@ -5,6 +5,17 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_target:
+        description: 'Which apps to build'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - customer-app
+          - agent-app
 
 permissions:
   contents: read
@@ -18,8 +29,8 @@ jobs:
     name: Detect changed apps
     runs-on: ubuntu-latest
     outputs:
-      customer: ${{ steps.filter.outputs.customer }}
-      agent: ${{ steps.filter.outputs.agent }}
+      customer: ${{ steps.merge.outputs.customer }}
+      agent: ${{ steps.merge.outputs.agent }}
       workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - name: Checkout repository
@@ -36,6 +47,28 @@ jobs:
               - 'agent-app/**'
             workflow:
               - '.github/workflows/build-apks.yml'
+
+      - name: Override for manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        id: dispatch
+        run: |
+          TARGET="${{ inputs.build_target }}"
+          case "$TARGET" in
+            both)          echo "customer=true" >> "$GITHUB_OUTPUT"; echo "agent=true" >> "$GITHUB_OUTPUT" ;;
+            customer-app) echo "customer=true" >> "$GITHUB_OUTPUT"; echo "agent=false" >> "$GITHUB_OUTPUT" ;;
+            agent-app)    echo "customer=false" >> "$GITHUB_OUTPUT"; echo "agent=true" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Merge filter + dispatch outputs
+        id: merge
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "customer=${{ steps.dispatch.outputs.customer }}" >> "$GITHUB_OUTPUT"
+            echo "agent=${{ steps.dispatch.outputs.agent }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "customer=${{ steps.filter.outputs.customer }}" >> "$GITHUB_OUTPUT"
+            echo "agent=${{ steps.filter.outputs.agent }}" >> "$GITHUB_OUTPUT"
+          fi
 
   build-customer:
     name: Build customer-app
