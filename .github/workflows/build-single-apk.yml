@@ -172,8 +172,11 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           # Android provisioning checksums use SHA-256 over (a) the APK bytes and
-          # (b) the signing certificate, each standard-base64 encoded WITH padding.
-          # This is what Android's Base64.decode(checksum, Base64.DEFAULT) expects.
+          # (b) the signing certificate, each base64url encoded WITHOUT padding.
+          # Android's device-provisioning parser decodes these with Base64.URL_SAFE
+          # and compares against Base64.encodeToString(..., URL_SAFE | NO_PADDING).
+          # Standard base64 with padding (the "DEFAULT" flag) FAILS provisioning
+          # with "couldn't set up your device". Verified against AOSP ProvisioningParser.
           # See: developer.android.com/work/manage-devices/provision-devices
           #
           # Parse everything in Python so we're immune to label-wording differences
@@ -185,13 +188,13 @@ jobs:
           apk_path = sys.argv[1]
           apksigner = sys.argv[2]
 
-          def b64_std(raw: bytes) -> str:
-              return base64.b64encode(raw).decode()
+          def b64url_nopad(raw: bytes) -> str:
+              return base64.urlsafe_b64encode(raw).decode().rstrip('=')
 
           with open(apk_path, "rb") as f:
               apk_bytes = f.read()
           apk_sha_hex = hashlib.sha256(apk_bytes).hexdigest()
-          apk_sha_b64 = b64_std(bytes.fromhex(apk_sha_hex))
+          apk_sha_b64 = b64url_nopad(bytes.fromhex(apk_sha_hex))
 
           out = subprocess.run(
               [apksigner, "verify", "--print-certs", apk_path],
@@ -215,7 +218,7 @@ jobs:
               sys.stderr.write("Could not extract signing certificate SHA-256 from:\n" + out + "\n")
               sys.exit(1)
 
-          cert_sha_b64 = b64_std(bytes.fromhex(cert_hex))
+          cert_sha_b64 = b64url_nopad(bytes.fromhex(cert_hex))
           # Order MUST match the `read` below.
           print(apk_sha_b64, cert_sha_b64, apk_sha_hex, cert_hex)
           PY
