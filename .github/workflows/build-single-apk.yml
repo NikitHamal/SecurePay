@@ -141,8 +141,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Install AWS CLI (for R2 upload)
+        if: ${{ inputs.module == 'customer-app' }}
+        run: |
+          which aws && exit 0
+          curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+          unzip -q -o /tmp/awscliv2.zip -d /tmp/awscliv2
+          sudo /tmp/awscliv2/aws/install --update
+
       - name: Publish to Cloudflare R2 (customer-app only)
-        if: ${{ inputs.module == 'customer-app' && env.R2_ACCESS_KEY_ID != '' }}
+        if: ${{ inputs.module == 'customer-app' }}
         id: publish
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -164,7 +172,8 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           # Android provisioning checksums use SHA-256 over (a) the APK bytes and
-          # (b) the signing certificate, each base64url-encoded WITHOUT padding.
+          # (b) the signing certificate, each standard-base64 encoded WITH padding.
+          # This is what Android's Base64.decode(checksum, Base64.DEFAULT) expects.
           # See: developer.android.com/work/manage-devices/provision-devices
           #
           # Parse everything in Python so we're immune to label-wording differences
@@ -176,13 +185,13 @@ jobs:
           apk_path = sys.argv[1]
           apksigner = sys.argv[2]
 
-          def b64url_nopad(raw: bytes) -> str:
-              return base64.urlsafe_b64encode(raw).decode().rstrip('=')
+          def b64_std(raw: bytes) -> str:
+              return base64.b64encode(raw).decode()
 
           with open(apk_path, "rb") as f:
               apk_bytes = f.read()
           apk_sha_hex = hashlib.sha256(apk_bytes).hexdigest()
-          apk_sha_b64 = b64url_nopad(bytes.fromhex(apk_sha_hex))
+          apk_sha_b64 = b64_std(bytes.fromhex(apk_sha_hex))
 
           out = subprocess.run(
               [apksigner, "verify", "--print-certs", apk_path],
@@ -206,20 +215,20 @@ jobs:
               sys.stderr.write("Could not extract signing certificate SHA-256 from:\n" + out + "\n")
               sys.exit(1)
 
-          cert_sha_b64 = b64url_nopad(bytes.fromhex(cert_hex))
+          cert_sha_b64 = b64_std(bytes.fromhex(cert_hex))
           # Order MUST match the `read` below.
           print(apk_sha_b64, cert_sha_b64, apk_sha_hex, cert_hex)
           PY
 
-          read -r APK_SHA_B64U CERT_SHA_B64U APK_SHA_HEX CERT_HEX < <(python3 /tmp/cksum.py "$APK" "$APKSIGNER")
+          read -r APK_SHA_B64 CERT_SHA_B64 APK_SHA_HEX CERT_HEX < <(python3 /tmp/cksum.py "$APK" "$APKSIGNER")
 
-          if [ -z "${CERT_SHA_B64U}" ]; then
+          if [ -z "${CERT_SHA_B64}" ]; then
             echo "::error::Could not extract signing certificate SHA-256 from signed APK"
             exit 1
           fi
 
-          echo "APK sha256(hex)=$APK_SHA_HEX  -> checksum=$APK_SHA_B64U"
-          echo "Cert sha256(hex)=$CERT_HEX   -> signature=$CERT_SHA_B64U"
+          echo "APK sha256(hex)=$APK_SHA_HEX  -> checksum=$APK_SHA_B64"
+          echo "Cert sha256(hex)=$CERT_HEX   -> signature=$CERT_SHA_B64"
 
           # Upload APK + manifest to R2 over its S3-compatible API.
           AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
@@ -233,8 +242,8 @@ jobs:
           cat > latest.json <<EOF
           {
             "url": "$PUB_URL",
-            "sha256Base64": "$APK_SHA_B64U",
-            "signatureChecksumBase64": "$CERT_SHA_B64U",
+            "sha256Base64": "$APK_SHA_B64",
+            "signatureChecksumBase64": "$CERT_SHA_B64",
             "versionName": "1.0.0",
             "versionCode": 1,
             "updatedAt": $UPDATED_AT

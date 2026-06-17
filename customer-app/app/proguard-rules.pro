@@ -1,6 +1,6 @@
 # SecurePay Customer app ProGuard rules.
 # Keep the DeviceAdminReceiver referenced from AndroidManifest + device_admin.xml.
--keep class com.securepay.customer.admin.SecurePayDeviceAdminReceiver { *; }
+-keep class com.touchbase.user.admin.SecurePayDeviceAdminReceiver { *; }
 
 # Keep enums used for reactive state mapping.
 -keepclassmembers enum * {
