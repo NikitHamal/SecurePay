@@ -93,7 +93,7 @@ class DevicePolicyController(context: Context) {
 
     fun hideApp(packageName: String) {
         if (!isDeviceOwner) {
-            SecureLog.i(TAG, "hideApp requires device owner â€” skipping")
+            SecureLog.i(TAG, “hideApp requires device owner — skipping”)
             return
         }
         runCatching { dpm.setApplicationHidden(admin, packageName, true) }
@@ -154,7 +154,7 @@ class DevicePolicyController(context: Context) {
 
     fun wipeDevice(reason: String) {
         if (!isDeviceOwner) {
-            SecureLog.w(TAG, "wipeDevice requires device owner â€” skipping")
+            SecureLog.w(TAG, “wipeDevice requires device owner — skipping”)
             return
         }
         runCatching { dpm.wipeData(DevicePolicyManager.WIPE_EXTERNAL_STORAGE) }
@@ -163,7 +163,7 @@ class DevicePolicyController(context: Context) {
 
     private fun disableUsbDebugging() {
         if (!isDeviceOwner) {
-            SecureLog.i(TAG, "Not device owner â€” skipping ADB lockdown (admin-only mode).")
+            SecureLog.i(TAG, “Not device owner — skipping ADB lockdown (admin-only mode).”)
             return
         }
         runCatching {

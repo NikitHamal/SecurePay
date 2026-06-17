@@ -1,6 +1,7 @@
 ﻿package com.touchbase.agent.ui.enrollment
 
 import com.touchbase.agent.data.model.AccountStatus
+import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.model.Plan
 
 enum class EnrollmentStep {
@@ -21,6 +22,13 @@ sealed interface SubmissionState {
     data class Error(val message: String) : SubmissionState
 }
 
+sealed interface DeviceLookupStatus {
+    data object Idle : DeviceLookupStatus
+    data class Found(val model: String) : DeviceLookupStatus
+    data object NotFound : DeviceLookupStatus
+    data object AlreadySold : DeviceLookupStatus
+}
+
 data class EnrollmentDraft(
     val customerName: String = "",
     val nationalId: String = "",
@@ -39,6 +47,8 @@ data class EnrollmentUiState(
     val stepIndex: Int = 0,
     val draft: EnrollmentDraft = EnrollmentDraft(),
     val availablePlans: List<Plan> = emptyList(),
+    val availableDevices: List<Device> = emptyList(),
+    val deviceLookupStatus: DeviceLookupStatus = DeviceLookupStatus.Idle,
     val selectedPlan: Plan? = null,
     val downPaymentInput: String = "",
     val submission: SubmissionState = SubmissionState.Idle
@@ -65,7 +75,10 @@ data class EnrollmentUiState(
         }
 
     val isKycStepValid: Boolean get() = isNameValid && isNationalIdValid && isPhoneValid
-    val isDeviceStepValid: Boolean get() = isImeiValid && isDeviceModelValid
+    val isDeviceStepValid: Boolean
+        get() = isImeiValid &&
+            isDeviceModelValid &&
+            deviceLookupStatus !is DeviceLookupStatus.AlreadySold
     val isPlanStepValid: Boolean get() = isPlanValid && isDownPaymentValid
 
     val isCurrentStepValid: Boolean

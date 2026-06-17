@@ -72,7 +72,7 @@ object SecurityChecker {
             val exitCode = process.waitFor()
             if (exitCode == 0) return true
         } catch (_: Exception) {
-            // su not available â€” good
+            // su not available — good
         }
 
         try {
@@ -151,10 +151,10 @@ object SecurityChecker {
         )
 
         if (installer == null) {
-            // Sideloaded â€” no installer info
+            // Sideloaded — no installer info
             // Allow in debug builds for development, block in release
             if (!checkDebuggable(context)) {
-                SecureLog.w(TAG, "App sideloaded with no installer package â€” possible tampering")
+                SecureLog.w(TAG, “App sideloaded with no installer package — possible tampering”)
                 return true
             }
         } else if (installer !in validInstallers) {
@@ -184,12 +184,12 @@ object SecurityChecker {
             }
 
             if (signersAreValid(signatures)) {
-                // Signature matches expected â€” not tampered
+                // Signature matches expected — not tampered
             } else {
                 if (checkDebuggable(context)) {
-                    SecureLog.w(TAG, "APK signature mismatch â€” allowing in debug build")
+                    SecureLog.w(TAG, “APK signature mismatch — allowing in debug build”)
                 } else {
-                    SecureLog.w(TAG, "APK signature mismatch â€” possible tampering")
+                    SecureLog.w(TAG, “APK signature mismatch — possible tampering”)
                     return true
                 }
             }

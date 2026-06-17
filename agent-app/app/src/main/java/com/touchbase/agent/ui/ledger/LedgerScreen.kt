@@ -268,7 +268,7 @@ private fun LedgerEntryCard(entry: LedgerEntry, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${entry.method.uppercase()} Â· ${entry.reference.ifBlank { "N/A" }}",
+                    text = "${entry.method.uppercase()} · ${entry.reference.ifBlank { "N/A" }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -287,7 +287,7 @@ private fun formatDate(epochMillis: Long): String {
         val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         sdf.format(Date(epochMillis))
     } catch (_: Exception) {
-        "â€”"
+        “—“
     }
 }
 

@@ -239,13 +239,13 @@ private fun SecurityWarningsCard(securityReport: SecurityChecker.SecurityReport)
             )
 
             if (securityReport.isRooted) {
-                SecurityWarningRow("Rooted device detected â€” financing terms may not be enforceable")
+                SecurityWarningRow(“Rooted device detected — financing terms may not be enforceable”)
             }
             if (securityReport.isEmulator) {
                 SecurityWarningRow("Emulator environment detected")
             }
             if (securityReport.isDebuggable) {
-                SecurityWarningRow("Debug build â€” not suitable for production")
+                SecurityWarningRow(“Debug build — not suitable for production”)
             }
             if (securityReport.isTampered) {
                 SecurityWarningRow("App integrity check failed")

@@ -289,8 +289,8 @@ fun CustomerDetailScreen(
 private fun StatusBanner(status: AccountStatus) {
     val (text, color) = when (status) {
         AccountStatus.ACTIVE -> "Active" to emerald
-        AccountStatus.WARNING -> "Warning â€” Payment Due Soon" to Color(0xFFFBBF24)
-        AccountStatus.LOCKED -> "Locked â€” Payment Overdue" to Color(0xFFEF4444)
+        AccountStatus.WARNING -> “Warning — Payment Due Soon” to Color(0xFFFBBF24)
+        AccountStatus.LOCKED -> “Locked — Payment Overdue” to Color(0xFFEF4444)
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),

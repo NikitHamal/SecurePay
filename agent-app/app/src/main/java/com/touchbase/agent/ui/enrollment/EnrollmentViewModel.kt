@@ -3,6 +3,7 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.touchbase.agent.data.model.CreateAccountRequest
+import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.model.Plan
 import com.touchbase.agent.data.remote.SecurePayRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,9 +20,11 @@ class EnrollmentViewModel(
     val uiState: StateFlow<EnrollmentUiState> = _uiState.asStateFlow()
 
     private var plansLoaded = false
+    private var devicesLoaded = false
 
     init {
         loadPlans()
+        loadDevices()
     }
 
     private fun loadPlans() {
@@ -42,6 +45,24 @@ class EnrollmentViewModel(
         }
     }
 
+    private fun loadDevices() {
+        if (devicesLoaded) return
+        if (repository == null) {
+            devicesLoaded = true
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.listDevices()
+            result.fold(
+                onSuccess = { devices ->
+                    _uiState.update { it.copy(availableDevices = devices) }
+                    devicesLoaded = true
+                },
+                onFailure = { devicesLoaded = true }
+            )
+        }
+    }
+
     fun updateKycName(value: String) = _uiState.update {
         it.copy(draft = it.draft.copy(customerName = value))
     }
@@ -56,7 +77,32 @@ class EnrollmentViewModel(
 
     fun updateImei(value: String) = _uiState.update {
         val sanitized = value.filter { ch -> ch.isDigit() }.take(IMEI_LENGTH)
-        it.copy(draft = it.draft.copy(imei = sanitized))
+        val status = if (sanitized.length == IMEI_LENGTH) {
+            lookupDevice(sanitized, it.availableDevices)
+        } else {
+            DeviceLookupStatus.Idle
+        }
+        val newModel = if (status is DeviceLookupStatus.Found) status.model else it.draft.deviceModel
+        it.copy(
+            draft = it.draft.copy(imei = sanitized, deviceModel = newModel),
+            deviceLookupStatus = status
+        )
+    }
+
+    fun selectDevice(device: Device) = _uiState.update {
+        it.copy(
+            draft = it.draft.copy(imei = device.imei, deviceModel = device.model),
+            deviceLookupStatus = lookupDevice(device.imei, it.availableDevices)
+        )
+    }
+
+    private fun lookupDevice(imei: String, devices: List<Device>): DeviceLookupStatus {
+        val device = devices.firstOrNull { it.imei == imei }
+            ?: return DeviceLookupStatus.NotFound
+        return when (device.status) {
+            "sold" -> DeviceLookupStatus.AlreadySold
+            else -> DeviceLookupStatus.Found(device.model)
+        }
     }
 
     fun updateDeviceModel(value: String) = _uiState.update {

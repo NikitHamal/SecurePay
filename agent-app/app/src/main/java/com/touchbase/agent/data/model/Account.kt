@@ -42,7 +42,7 @@ fun Account.displayStatus(): String = when (status) {
 
 fun formatAmount(cents: Int): String {
     val amount = cents / 100.0
-    return "GHâ‚µ ${String.format("%,.0f", amount)}"
+    return "GH₵ ${String.format("%,.0f", amount)}"
 }
 
 fun Account.formatDailyRate(): String = formatAmount(dailyRate)

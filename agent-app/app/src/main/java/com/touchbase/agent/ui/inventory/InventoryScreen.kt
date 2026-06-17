@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -227,7 +225,7 @@ fun InventoryScreen(
     if (showAddDialog) {
         AddDeviceBottomSheet(
             onDismiss = { showAddDialog = false },
-            onAdd = { imei, model, stock ->
+            onAdd = { imei, model ->
                 if (repository != null) {
                     scope.launch {
                         repository.addDevice(imei, model)
@@ -264,11 +262,6 @@ private fun DeviceCard(device: Device, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-                Text(
-                    text = "Stock: ${device.stock}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
             }
             DeviceStatusBadge(status = device.status)
         }
@@ -298,11 +291,10 @@ private fun DeviceStatusBadge(status: String) {
 @Composable
 private fun AddDeviceBottomSheet(
     onDismiss: () -> Unit,
-    onAdd: (String, String, String) -> Unit
+    onAdd: (String, String) -> Unit
 ) {
     var imei by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
-    var stock by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -339,52 +331,25 @@ private fun AddDeviceBottomSheet(
                     shape = RoundedCornerShape(360.dp)
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
-                    Text("Device model", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                    OutlinedTextField(
-                        value = model,
-                        onValueChange = { model = it },
-                        placeholder = { Text("Enter model", color = Color.Gray.copy(alpha = 0.5f)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF212121),
-                            unfocusedContainerColor = Color(0xFF212121),
-                            focusedBorderColor = Color(0xFF10B981),
-                            unfocusedBorderColor = Color.Transparent,
-                            cursorColor = Color(0xFF10B981)
-                        ),
-                        shape = RoundedCornerShape(360.dp)
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
-                    Text("Total Stock", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                    OutlinedTextField(
-                        value = stock,
-                        onValueChange = { stock = it.filter { c -> c.isDigit() } },
-                        placeholder = { Text("Enter stock", color = Color.Gray.copy(alpha = 0.5f)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF212121),
-                            unfocusedContainerColor = Color(0xFF212121),
-                            focusedBorderColor = Color(0xFF10B981),
-                            unfocusedBorderColor = Color.Transparent,
-                            cursorColor = Color(0xFF10B981)
-                        ),
-                        shape = RoundedCornerShape(360.dp)
-                    )
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Device model", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    placeholder = { Text("Enter model", color = Color.Gray.copy(alpha = 0.5f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF212121),
+                        unfocusedContainerColor = Color(0xFF212121),
+                        focusedBorderColor = Color(0xFF10B981),
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = Color(0xFF10B981)
+                    ),
+                    shape = RoundedCornerShape(360.dp)
+                )
             }
             if (errorMessage != null) {
                 Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -393,8 +358,7 @@ private fun AddDeviceBottomSheet(
                 onClick = {
                     if (imei.length != 15) { errorMessage = "IMEI must be 15 digits"; return@Button }
                     if (model.isBlank()) { errorMessage = "Model is required"; return@Button }
-                    if (stock.isBlank() || stock.toIntOrNull() == null || stock.toInt() <= 0) { errorMessage = "Enter valid stock"; return@Button }
-                    onAdd(imei, model, stock)
+                    onAdd(imei, model)
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp)
             ) { Text("Add") }

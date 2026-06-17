@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.enrollment.steps
+package com.touchbase.agent.ui.enrollment.steps
 
 import android.Manifest
 import android.content.Context
@@ -6,28 +6,40 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,10 +58,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.touchbase.agent.R
+import com.touchbase.agent.ui.enrollment.DeviceLookupStatus
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.enrollment.EnrollmentDraft
+import java.util.concurrent.Executors
 
 @Composable
 fun ScannerStep(
@@ -63,11 +77,24 @@ fun ScannerStep(
     var hasCameraPermission by remember {
         mutableStateOf(hasCameraPermission(context))
     }
+    var scanFlash by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
+    }
+
+    val flashColor by animateColorAsState(
+        if (scanFlash) Color(0xFF10B981) else Color.Transparent,
+        label = "scanFlash"
+    )
+
+    LaunchedEffect(scanFlash) {
+        if (scanFlash) {
+            kotlinx.coroutines.delay(400)
+            scanFlash = false
+        }
     }
 
     Column(
@@ -84,11 +111,25 @@ fun ScannerStep(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(12.dp))
+                    .then(
+                        if (scanFlash) Modifier.border(3.dp, flashColor, RoundedCornerShape(12.dp))
+                        else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (hasCameraPermission) {
-                    CameraPreview(modifier = Modifier.fillMaxWidth())
+                    CameraPreview(
+                        onBarcodeDetected = { value ->
+                            val digits = value.filter { it.isDigit() }
+                            if (digits.length == 15 && digits.all { it.isDigit() }) {
+                                if (digits != state.draft.imei) {
+                                    onImeiChange(digits)
+                                    scanFlash = true
+                                }
+                            }
+                        }
+                    )
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -113,7 +154,7 @@ fun ScannerStep(
             OutlinedTextField(
                 value = state.draft.imei,
                 onValueChange = onImeiChange,
-                placeholder = { Text("Enter IMEI", color = Color.Gray.copy(alpha = 0.5f)) },
+                placeholder = { Text("Scan or enter IMEI", color = Color.Gray.copy(alpha = 0.5f)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 isError = state.draft.imei.isNotEmpty() && !state.isImeiValid,
@@ -135,6 +176,9 @@ fun ScannerStep(
             )
         }
 
+        DeviceLookupChip(lookupStatus = state.deviceLookupStatus)
+
+        val isModelFromInventory = state.deviceLookupStatus is DeviceLookupStatus.Found
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.label_device_model), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
             OutlinedTextField(
@@ -142,6 +186,7 @@ fun ScannerStep(
                 onValueChange = onDeviceModelChange,
                 placeholder = { Text("Enter device model", color = Color.Gray.copy(alpha = 0.5f), fontSize = 15.sp) },
                 singleLine = true,
+                enabled = !isModelFromInventory,
                 isError = state.draft.deviceModel.isNotEmpty() && !state.isDeviceModelValid,
                 textStyle = TextStyle(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -152,16 +197,110 @@ fun ScannerStep(
                     unfocusedContainerColor = Color(0xFF2A2A2A),
                     focusedBorderColor = Color(0xFF10B981),
                     unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Color(0xFF10B981)
+                    cursorColor = Color(0xFF10B981),
+                    disabledTextColor = Color.White,
+                    disabledContainerColor = Color(0xFF2A2A2A),
+                    disabledBorderColor = Color(0xFF10B981).copy(alpha = 0.5f)
                 ),
                 shape = RoundedCornerShape(360.dp)
             )
+            if (isModelFromInventory) {
+                Text("Auto-filled from inventory", style = MaterialTheme.typography.bodySmall, color = Color(0xFF10B981))
+            }
         }
     }
 }
 
 @Composable
-private fun CameraPreview(modifier: Modifier = Modifier) {
+private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
+    when (lookupStatus) {
+        is DeviceLookupStatus.Found -> {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF10B981).copy(alpha = 0.15f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${lookupStatus.model} (in stock)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF10B981),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                }
+            }
+        }
+        is DeviceLookupStatus.AlreadySold -> {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.15f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Device already enrolled",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFEF4444),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                }
+            }
+        }
+        is DeviceLookupStatus.NotFound -> {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF59E0B).copy(alpha = 0.15f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Not in inventory \u2014 enter model manually",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFF59E0B),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                }
+            }
+        }
+        DeviceLookupStatus.Idle -> {}
+    }
+}
+
+@Composable
+private fun CameraPreview(
+    onBarcodeDetected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -173,20 +312,29 @@ private fun CameraPreview(modifier: Modifier = Modifier) {
     }
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val analyzer = remember { BarcodeAnalyzer(onBarcodeDetected) }
+    val executor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(lifecycleOwner) {
         val provider = cameraProviderFuture.get()
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .also {
+                it.setAnalyzer(executor, analyzer)
+            }
         val selector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {
             provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, selector, preview)
+            provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
         } catch (_: Exception) { }
 
         onDispose {
+            analyzer.stop()
             provider.unbindAll()
         }
     }

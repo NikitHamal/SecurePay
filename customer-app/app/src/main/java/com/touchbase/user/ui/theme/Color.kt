@@ -2,7 +2,7 @@
 
 import androidx.compose.ui.graphics.Color
 
-// SecurePay shared palette â€” identical tokens across customer, agent and dealer apps.
+// SecurePay shared palette — identical tokens across customer, agent and dealer apps.
 val Charcoal = Color(0xFF121212)
 val CharcoalElevated = Color(0xFF1E1E1E)
 val CharcoalSurfaceVariant = Color(0xFF2A2A2A)
