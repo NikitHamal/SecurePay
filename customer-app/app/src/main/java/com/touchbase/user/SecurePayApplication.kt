@@ -1,28 +1,74 @@
-﻿package com.touchbase.user
+package com.touchbase.user
 
 import android.app.Application
+import android.util.Log
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.SecurePayApi
 import com.touchbase.user.data.repository.DeviceRepository
+import com.touchbase.user.util.SecureLog
 import com.touchbase.user.worker.HeartbeatWorker
 
 class SecurePayApplication : Application() {
-    val tokenManager: DeviceTokenManager by lazy { DeviceTokenManager(this) }
 
-    val api: SecurePayApi by lazy {
-        val secret = tokenManager.imei ?: "unregistered-device"
-        ApiModule.provideApi(secret)
-    }
+    @Volatile private var tokenManagerCache: DeviceTokenManager? = null
+    @Volatile private var apiCache: SecurePayApi? = null
+    @Volatile private var repositoryCache: DeviceRepository? = null
 
-    val deviceRepository: DeviceRepository by lazy {
-        DeviceRepository(api, tokenManager)
-    }
+    val tokenManager: DeviceTokenManager
+        get() = tokenManagerCache ?: synchronized(this) {
+            tokenManagerCache ?: run {
+                val tm = runCatching { DeviceTokenManager(this) }.getOrElse {
+                    Log.e(TAG, "DeviceTokenManager init failed", it)
+                    DeviceTokenManager.fallback(this)
+                }
+                tokenManagerCache = tm
+                tm
+            }
+        }
+
+    val api: SecurePayApi
+        get() = apiCache ?: synchronized(this) {
+            apiCache ?: run {
+                val secret = runCatching { tokenManager.imei }.getOrNull() ?: "unregistered-device"
+                val a = runCatching { ApiModule.provideApi(secret) }.getOrElse {
+                    Log.e(TAG, "ApiModule.provideApi failed", it)
+                    ApiModule.provideApiSafe(secret)
+                }
+                apiCache = a
+                a
+            }
+        }
+
+    val deviceRepository: DeviceRepository
+        get() = repositoryCache ?: synchronized(this) {
+            repositoryCache ?: run {
+                val r = DeviceRepository(api, tokenManager)
+                repositoryCache = r
+                r
+            }
+        }
 
     override fun onCreate() {
         super.onCreate()
-        if (tokenManager.isRegistered) {
-            HeartbeatWorker.schedule(this)
+
+        // Global safety net: if ANYTHING throws during DPC launch, log it instead of
+        // crashing — Android's provisioning rolls back ("something went wrong") if the
+        // DPC process dies within the first few seconds after being set as device owner.
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            SecureLog.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
+            previous?.uncaughtException(thread, throwable)
         }
+
+        runCatching {
+            if (tokenManager.isRegistered) {
+                HeartbeatWorker.schedule(this)
+            }
+        }.onFailure { SecureLog.e(TAG, "HeartbeatWorker.schedule failed", it) }
+    }
+
+    companion object {
+        private const val TAG = "SecurePayApp"
     }
 }

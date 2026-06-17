@@ -1,12 +1,12 @@
-﻿package com.touchbase.user
+package com.touchbase.user
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import com.touchbase.user.util.SecureLog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import com.touchbase.user.admin.DevicePolicyController
 import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.admin.ProvisioningManager
@@ -22,37 +22,44 @@ import com.touchbase.user.worker.NetworkMonitor
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var policyController: DevicePolicyController
-    private lateinit var provisioningManager: ProvisioningManager
-    private lateinit var networkMonitor: NetworkMonitor
+    private var policyController: DevicePolicyController? = null
+    private var provisioningManager: ProvisioningManager? = null
+    private var networkMonitor: NetworkMonitor? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
-        policyController = DevicePolicyController(this)
-        provisioningManager = ProvisioningManager(this)
-        networkMonitor = NetworkMonitor(this)
+        // Everything here is wrapped so the DPC process can NEVER crash during or
+        // right after the provisioning handoff (which would roll back to
+        // "something went wrong"). Construct each helper defensively.
+        runCatching { enableEdgeToEdge() }
+        policyController = runCatching { DevicePolicyController(this) }.getOrNull()
+        provisioningManager = runCatching { ProvisioningManager(this) }.getOrNull()
+        networkMonitor = runCatching { NetworkMonitor(this) }.getOrNull()
 
-        runSecurityChecks()
-        if (enforceCachedLockState()) return
-        checkAndContinue()
+        runCatching { runSecurityChecks() }
+        if (runCatching { enforceCachedLockState() }.getOrDefault(false)) return
+        runCatching { checkAndContinue() }
     }
 
     override fun onResume() {
         super.onResume()
-        enforceCachedLockState()
+        runCatching { enforceCachedLockState() }
     }
 
     private fun runSecurityChecks() {
-        val report = SecurityChecker.runAllChecks(this)
+        val pc = policyController ?: return
+        val report = runCatching { SecurityChecker.runAllChecks(this) }.getOrElse {
+            SecureLog.e(TAG, "SecurityChecker threw", it)
+            return
+        }
         if (report.isRooted) {
             SecureLog.w(TAG, "SECURITY: Rooted device detected — enforcing lock")
-            policyController.enforceLock()
+            runCatching { pc.enforceLock() }
         }
         if (report.isTampered) {
             SecureLog.w(TAG, "SECURITY: Tampered app detected — enforcing lock")
-            policyController.enforceLock()
+            runCatching { pc.enforceLock() }
         }
         if (report.isEmulator) {
             SecureLog.w(TAG, "SECURITY: Emulator environment detected")
@@ -66,17 +73,24 @@ class MainActivity : ComponentActivity() {
      * @return true if a lock task activity was launched (caller should stop further setup).
      */
     private fun enforceCachedLockState(): Boolean {
-        val tokenManager = DeviceTokenManager(this)
+        val pc = policyController ?: return false
+        val tokenManager = runCatching { DeviceTokenManager(this) }.getOrElse {
+            SecureLog.e(TAG, "DeviceTokenManager init failed in enforceCachedLockState", it)
+            return false
+        }
         if (!tokenManager.isRegistered) return false
 
         val cachedDue = tokenManager.cachedNextPaymentDue
         if (cachedDue <= 0L) return false
 
-        val trustedTime = tokenManager.getTrustedTimeMillis()
-        val status = DeviceStatus.evaluate(cachedDue, tokenManager.cachedLockedByDealer, trustedTime)
+        val trustedTime = runCatching { tokenManager.getTrustedTimeMillis() }.getOrDefault(System.currentTimeMillis())
+        val status = runCatching {
+            DeviceStatus.evaluate(cachedDue, tokenManager.cachedLockedByDealer, trustedTime)
+        }.getOrNull() ?: return false
+
         return if (status == DeviceStatus.LOCKED) {
             SecureLog.w(TAG, "Cached state indicates LOCKED — enforcing lock + pinning on startup")
-            policyController.enforceLock()
+            runCatching { pc.enforceLock() }
             launchLockTask()
             true
         } else {
@@ -94,38 +108,62 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAndContinue() {
-        val isProvisioned = policyController.isAdminActive || provisioningManager.isDeviceOwner
+        val pc = policyController
+        val pm = provisioningManager
+        val isAdminActive = pc?.let { runCatching { it.isAdminActive }.getOrDefault(false) } ?: false
+        val isDeviceOwner = pm?.let { runCatching { it.isDeviceOwner }.getOrDefault(false) } ?: false
+        val isProvisioned = isAdminActive || isDeviceOwner
 
         if (!isProvisioned) {
             SecureLog.i(TAG, "Device not provisioned (no admin/owner) — showing not-provisioned UI")
-            setContent {
-                SecurePayTheme {
-                    NotProvisionedScreen()
+            runCatching {
+                setContent {
+                    SecurePayTheme {
+                        NotProvisionedScreen()
+                    }
                 }
             }
             return
         }
 
-        HeartbeatWorker.schedule(this)
-        networkMonitor.startMonitoring()
-        BatteryOptimizationHelper.requestIfRegistered(this)
+        runCatching { HeartbeatWorker.schedule(this) }
+        networkMonitor?.let { runCatching { it.startMonitoring() } }
+        runCatching { BatteryOptimizationHelper.requestIfRegistered(this) }
 
-        val repository = (application as SecurePayApplication).deviceRepository
+        val repository = runCatching {
+            (application as SecurePayApplication).deviceRepository
+        }.getOrNull()
 
-        setContent {
-            SecurePayTheme {
-                SecurePayApp(
-                    repository = repository,
-                    policyController = policyController,
-                    onLocked = { launchLockTask() }
-                )
+        if (pc == null || repository == null) {
+            Log.e(TAG, "Cannot render dashboard: policyController or repository unavailable")
+            runCatching {
+                setContent {
+                    SecurePayTheme {
+                        NotProvisionedScreen()
+                    }
+                }
             }
+            return
+        }
+
+        runCatching {
+            setContent {
+                SecurePayTheme {
+                    SecurePayApp(
+                        repository = repository,
+                        policyController = pc,
+                        onLocked = { launchLockTask() }
+                    )
+                }
+            }
+        }.onFailure {
+            Log.e(TAG, "Failed to render SecurePayApp", it)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        networkMonitor.stopMonitoring()
+        networkMonitor?.let { runCatching { it.stopMonitoring() } }
     }
 
     companion object {
