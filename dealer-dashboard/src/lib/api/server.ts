@@ -88,6 +88,11 @@ export interface QrPayloadInput {
 }
 
 export function buildQrPayload({ apk, wifiSsid, wifiPassword }: QrPayloadInput): string {
+  // The entire payload is serialized to a single JSON string at the end, so the
+  // SSID/password values must be the RAW strings — NOT pre-quoted. Double-quoting
+  // (e.g. JSON.stringify(wifiSsid)) bakes literal quote chars into the value, and
+  // Android then looks for an SSID called `"MyShop"` and never connects.
+  // JSON.stringify on the whole object already escapes any special characters.
   const payload: Record<string, string> = {
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME': DEVICE_ADMIN_COMPONENT,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME': DEVICE_ADMIN_PACKAGE,
@@ -100,10 +105,10 @@ export function buildQrPayload({ apk, wifiSsid, wifiPassword }: QrPayloadInput):
     payload['android.app.extra.PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE'] = String(apk.versionCode);
   }
   if (wifiSsid) {
-    payload['android.app.extra.PROVISIONING_WIFI_SSID'] = JSON.stringify(wifiSsid);
+    payload['android.app.extra.PROVISIONING_WIFI_SSID'] = wifiSsid;
   }
   if (wifiPassword) {
-    payload['android.app.extra.PROVISIONING_WIFI_PASSWORD'] = JSON.stringify(wifiPassword);
+    payload['android.app.extra.PROVISIONING_WIFI_PASSWORD'] = wifiPassword;
   }
   return JSON.stringify(payload);
 }
