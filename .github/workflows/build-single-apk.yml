@@ -161,28 +161,62 @@ jobs:
           fi
 
           APK="staged/${{ inputs.artifact }}-${{ steps.meta.outputs.sha }}.apk"
+          APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
 
           # Android provisioning checksums use SHA-256 over (a) the APK bytes and
           # (b) the signing certificate, each base64url-encoded WITHOUT padding.
           # See: developer.android.com/work/manage-devices/provision-devices
-          sha256_hex() { sha256sum "$1" | cut -d' ' -f1; }
-          hex_to_b64url_nopad() {
-            python3 -c "import sys,base64; print(base64.urlsafe_b64encode(bytes.fromhex(sys.stdin.read().strip())).decode().rstrip('='))"
-          }
+          #
+          # Parse everything in Python so we're immune to label-wording differences
+          # across apksigner versions ("SHA-256" vs "SHA-256 digest"). Prints four
+          # space-separated tokens, read into the shell variables below.
+          cat > /tmp/cksum.py <<'PY'
+          import sys, base64, hashlib, subprocess, re
 
-          APK_SHA_HEX=$(sha256_hex "$APK")
-          APK_SHA_B64U=$(printf '%s' "$APK_SHA_HEX" | hex_to_b64url_nopad)
+          apk_path = sys.argv[1]
+          apksigner = sys.argv[2]
 
-          # Derive the signing-cert SHA-256 (base64url, no pad) from the signed APK.
-          APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
-          CERT_HEX=$("$APKSIGNER" verify --print-certs "$APK" \
-            | grep -iE 'Signer #1 certificate SHA-256' | head -1 \
-            | sed -E 's/.*SHA-256[: ]+([0-9a-fA-F:]+).*/\1/' | tr -d ': ')
-          if [ -z "${CERT_HEX}" ]; then
+          def b64url_nopad(raw: bytes) -> str:
+              return base64.urlsafe_b64encode(raw).decode().rstrip('=')
+
+          with open(apk_path, "rb") as f:
+              apk_bytes = f.read()
+          apk_sha_hex = hashlib.sha256(apk_bytes).hexdigest()
+          apk_sha_b64 = b64url_nopad(bytes.fromhex(apk_sha_hex))
+
+          out = subprocess.run(
+              [apksigner, "verify", "--print-certs", apk_path],
+              capture_output=True, text=True, check=True
+          ).stdout
+
+          # First line that mentions the certificate SHA-256; pull the first run of
+          # >=32 hex chars. Tolerates "SHA-256", "SHA-256 digest", colons, whitespace.
+          cert_hex = None
+          for line in out.splitlines():
+              low = line.lower()
+              if "sha-256" in low and "cert" in low:
+                  m = re.search(r'\b([0-9a-fA-F]{32,})\b', line)
+                  if m:
+                      h = m.group(1).replace(":", "").lower()
+                      if len(h) % 2 == 0:
+                          cert_hex = h
+                          break
+
+          if not cert_hex:
+              sys.stderr.write("Could not extract signing certificate SHA-256 from:\n" + out + "\n")
+              sys.exit(1)
+
+          cert_sha_b64 = b64url_nopad(bytes.fromhex(cert_hex))
+          # Order MUST match the `read` below.
+          print(apk_sha_b64, cert_sha_b64, apk_sha_hex, cert_hex)
+          PY
+
+          read -r APK_SHA_B64U CERT_SHA_B64U APK_SHA_HEX CERT_HEX < <(python3 /tmp/cksum.py "$APK" "$APKSIGNER")
+
+          if [ -z "${CERT_SHA_B64U}" ]; then
             echo "::error::Could not extract signing certificate SHA-256 from signed APK"
             exit 1
           fi
-          CERT_SHA_B64U=$(printf '%s' "$CERT_HEX" | hex_to_b64url_nopad)
 
           echo "APK sha256(hex)=$APK_SHA_HEX  -> checksum=$APK_SHA_B64U"
           echo "Cert sha256(hex)=$CERT_HEX   -> signature=$CERT_SHA_B64U"
