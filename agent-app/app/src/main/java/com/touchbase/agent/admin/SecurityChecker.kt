@@ -146,7 +146,7 @@ object SecurityChecker {
 
         if (installer == null) {
             if (!checkDebuggable(context)) {
-                SecureLog.w(TAG, "App sideloaded with no installer package â€” possible tampering")
+                SecureLog.w(TAG, “App sideloaded with no installer package — possible tampering”)
                 return true
             }
         } else if (installer !in validInstallers) {
@@ -176,9 +176,9 @@ object SecurityChecker {
             if (signersAreValid(signatures)) {
             } else {
                 if (checkDebuggable(context)) {
-                    SecureLog.w(TAG, "APK signature mismatch â€” allowing in debug build")
+                    SecureLog.w(TAG, “APK signature mismatch — allowing in debug build”)
                 } else {
-                    SecureLog.w(TAG, "APK signature mismatch â€” possible tampering")
+                    SecureLog.w(TAG, “APK signature mismatch — possible tampering”)
                     return true
                 }
             }

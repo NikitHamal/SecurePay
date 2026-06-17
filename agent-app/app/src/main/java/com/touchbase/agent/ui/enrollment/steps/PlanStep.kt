@@ -94,7 +94,7 @@ fun PlanStep(
                                 Column {
                                     Text(plan.name, fontWeight = FontWeight.SemiBold)
                                     Text(
-                                        "${formatAmount(plan.totalAmount)} Â· ${plan.termDays} days",
+                                        "${formatAmount(plan.totalAmount)} · ${plan.termDays} days",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

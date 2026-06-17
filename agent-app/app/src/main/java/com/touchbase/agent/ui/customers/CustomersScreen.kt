@@ -308,7 +308,7 @@ private fun CustomerRow(
                     color = Color.White
                 )
                 Text(
-                    text = "${account.id} Â· ${account.deviceModel}",
+                    text = "${account.id} · ${account.deviceModel}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

@@ -76,7 +76,7 @@ fun KycStep(
                 isError = state.draft.nationalId.isNotEmpty() && !state.isNationalIdValid,
                 supportingText = {
                     if (state.draft.nationalId.isNotEmpty() && !state.isNationalIdValid) {
-                        Text("Enter 6â€“20 characters", color = MaterialTheme.colorScheme.error)
+                        Text(“Enter 6–20 characters”, color = MaterialTheme.colorScheme.error)
                     }
                 },
                 textStyle = TextStyle(fontSize = 15.sp),

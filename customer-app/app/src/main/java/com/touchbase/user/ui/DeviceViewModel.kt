@@ -115,7 +115,7 @@ class DeviceViewModel(
         viewModelScope.launch {
             requestingGrace.value = true
             runCatching { repository.heartbeat() }
-                .onSuccess { transientMessage.value = "Syncing with serverâ€¦" }
+                .onSuccess { transientMessage.value = "Syncing with server…" }
                 .onFailure { transientMessage.value = "Request failed. Please retry." }
             requestingGrace.value = false
         }
