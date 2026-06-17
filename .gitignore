@@ -1,3 +1,4 @@
 *.jks
+*.apk
 .wrangler/
 dist/
