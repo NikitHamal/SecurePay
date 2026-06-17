@@ -1,15 +1,43 @@
 # SecurePay Customer app ProGuard rules.
-# Keep the DeviceAdminReceiver referenced from AndroidManifest + device_admin.xml.
--keep class com.touchbase.user.admin.SecurePayDeviceAdminReceiver { *; }
+#
+# CRITICAL: Android's device-provisioning system instantiates several classes
+# by reflection (launched from the manifest / by component name). If R8 renames
+# or strips them, provisioning fails with "something went wrong" — only in
+# RELEASE builds (debug never minifies). These keep rules are mandatory.
 
-# Keep enums used for reactive state mapping.
+# --- Manifest-referenced classes instantiated by the Android framework ---
+-keep class com.touchbase.user.SecurePayApplication { *; }
+-keep class com.touchbase.user.MainActivity { *; }
+-keep class com.touchbase.user.admin.ProvisioningActivity { *; }
+-keep class com.touchbase.user.admin.SecurePayDeviceAdminReceiver { *; }
+-keep class com.touchbase.user.worker.BootReceiver { *; }
+-keep class com.touchbase.user.ui.lock.LockTaskActivity { *; }
+
+# Keep ALL Activities, Receivers, Services, Application classes referenced in
+# the manifest — R8 can't always prove they're reachable from code.
+-keep public class * extends androidx.activity.ComponentActivity
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Application
+-keep public class * extends android.app.admin.DeviceAdminReceiver
+-keep public class * extends android.content.BroadcastReceiver
+
+# --- Enums used in reactive state mapping ---
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
-# kotlinx-serialization
+# --- kotlinx-serialization ---
+# Keep the @Serializable classes themselves (R8 can otherwise rename the
+# class so the generated Serializer can't find it on decode).
 -keepattributes *Annotation*, InnerClasses
+-keep,includedescriptorclasses class com.touchbase.user.data.model.** { *; }
+-keepclassmembers class com.touchbase.user.data.model.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.touchbase.user.data.model.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
 -dontnote kotlinx.serialization.AnnotationsKt
 -keepclassmembers class kotlinx.serialization.json.Json {
     kotlinx.serialization.json.JsonConfiguration getConfiguration();
@@ -24,7 +52,7 @@
 -keepclassmembers class **$Serializer { *; }
 -keep,class * implements kotlinx.serialization.KSerializer
 
-# Retrofit
+# --- Retrofit ---
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
 -keep,allowobfuscation interface retrofit2.Call
@@ -37,11 +65,17 @@
     @retrofit2.http.* <methods>;
 }
 
-# OkHttp
+# --- OkHttp ---
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn org.conscrypt.**
 
-# Google Error Prone (Tink dependency via security-crypto)
+# --- Jetpack Security (EncryptedSharedPreferences / Tink) ---
 -dontwarn com.google.errorprone.annotations.**
 -keep class com.google.errorprone.annotations.** { *; }
+-keep class com.google.crypto.tink.** { *; }
+-keepclassmembers class com.google.crypto.tink.** { *; }
+
+# --- Jetpack Compose runtime (defensive: lambda/class merging can break it) ---
+-dontwarn androidx.compose.**
+-keep class androidx.compose.runtime.** { *; }
