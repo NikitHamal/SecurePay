@@ -71,7 +71,16 @@
 -dontwarn org.conscrypt.**
 
 # --- Jetpack Security (EncryptedSharedPreferences / Tink) ---
+# Tink has optional code paths for REMOTE key fetching (via Google HTTP + Joda)
+# that reference classes not present in this app's dependency tree. We only use
+# Tink for LOCAL key storage, so these references are never exercised. Without
+# -dontwarn, R8 fails the release build with "Missing class" errors.
 -dontwarn com.google.errorprone.annotations.**
+-dontwarn com.google.api.client.http.**
+-dontwarn com.google.api.client.json.**
+-dontwarn com.google.api.client.googleapis.**
+-dontwarn com.google.api.client.util.**
+-dontwarn org.joda.time.**
 -keep class com.google.errorprone.annotations.** { *; }
 -keep class com.google.crypto.tink.** { *; }
 -keepclassmembers class com.google.crypto.tink.** { *; }
