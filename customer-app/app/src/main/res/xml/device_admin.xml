@@ -2,13 +2,11 @@
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
         <force-lock />
-        <wipe-data />
         <disable-keyguard-features />
         <watch-login />
         <reset-password />
         <limit-password />
         <expire-password />
         <set-screen-capture-disabled />
-        <set-permanent-password />
     </uses-policies>
 </device-admin>
