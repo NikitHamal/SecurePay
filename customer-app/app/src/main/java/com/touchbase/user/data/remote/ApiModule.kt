@@ -65,4 +65,31 @@ object ApiModule {
         cachedDeviceSecret = deviceSecret
         return cachedApi!!
     }
+
+    /**
+     * Non-throwing variant: skips cert pinning entirely. Used only as a last-resort
+     * fallback if [provideApi] throws during DPC first launch, so the app never dies
+     * before provisioning can complete.
+     */
+    @Synchronized
+    fun provideApiSafe(deviceSecret: String = ""): SecurePayApi {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .apply {
+                if (deviceSecret.isNotEmpty()) {
+                    addInterceptor(HmacInterceptor(deviceSecret))
+                }
+            }
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.API_BASE_URL)
+            .client(client)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(SecurePayApi::class.java)
+    }
 }
