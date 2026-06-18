@@ -138,9 +138,17 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
 
           BADGING="$($AAPT dump badging "$APK" | head -n 1)"
-          PACKAGE_NAME="$(printf '%s' "$BADGING" | sed -n "s/.*name='\([^']*\)'.*/\1/p")"
-          VERSION_CODE="$(printf '%s' "$BADGING" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")"
-          VERSION_NAME="$(printf '%s' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")"
+          # aapt's first line looks like:
+          #   package: name='com.touchbase.user' versionCode='1' versionName='1.0.0' platformBuildVersionName='14' ...
+          # Anchor each capture to the leading "package:" field and use [^']* so the
+          # regex can't run past the closing quote. A greedy .*name=' would otherwise
+          # latch onto platformBuildVersionName='14' and capture "14".
+          PACKAGE_NAME="$(printf '%s' "$BADGING" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+          VERSION_CODE="$(printf '%s' "$BADGING" | sed -n "s/^package: .*versionCode='\([^']*\)'.*/\1/p")"
+          VERSION_NAME="$(printf '%s' "$BADGING" | sed -n "s/^package: .*versionName='\([^']*\)'.*/\1/p")"
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "::error::Could not parse package name from aapt badging: $BADGING"; exit 1;
+          fi
 
           CERT_HEX="$($APKSIGNER verify --print-certs "$APK" \
             | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
