@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.data.model
+package com.touchbase.user.data.model
 
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration

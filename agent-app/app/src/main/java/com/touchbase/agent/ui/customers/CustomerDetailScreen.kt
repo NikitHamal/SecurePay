@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.customers
+package com.touchbase.agent.ui.customers
 
 import android.app.Activity
 import androidx.compose.foundation.background
@@ -289,8 +289,8 @@ fun CustomerDetailScreen(
 private fun StatusBanner(status: AccountStatus) {
     val (text, color) = when (status) {
         AccountStatus.ACTIVE -> "Active" to emerald
-        AccountStatus.WARNING -> “Warning — Payment Due Soon” to Color(0xFFFBBF24)
-        AccountStatus.LOCKED -> “Locked — Payment Overdue” to Color(0xFFEF4444)
+        AccountStatus.WARNING -> "Warning — Payment Due Soon" to Color(0xFFFBBF24)
+        AccountStatus.LOCKED -> "Locked — Payment Overdue" to Color(0xFFEF4444)
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
@@ -369,7 +369,7 @@ private fun PaymentBottomSheet(
     onSuccess: () -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
-    var method by remember { mutableStateOf("M-PESA") }
+    var method by remember { mutableStateOf("MOBILE_MONEY") }
     var reference by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -401,10 +401,13 @@ private fun PaymentBottomSheet(
             Text("Record Payment", style = MaterialTheme.typography.titleLarge, color = Color.White)
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Amount (KES)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("Amount (GHS)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it.filter { c -> c.isDigit() } },
+                    onValueChange = { input ->
+                        val filtered = input.filter { c -> c.isDigit() || c == '.' }
+                        if (filtered.count { it == '.' } <= 1 && filtered.substringAfter('.', "").length <= 2) amount = filtered
+                    },
                     placeholder = { Text("Enter amount", color = Color.Gray.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -416,7 +419,7 @@ private fun PaymentBottomSheet(
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Payment Method", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("M-PESA", "CASH", "BANK").forEach { m ->
+                    listOf("MOBILE_MONEY", "CASH", "BANK").forEach { m ->
                         val isSelected = method == m
                         Button(
                             onClick = { method = m },
@@ -427,7 +430,7 @@ private fun PaymentBottomSheet(
                             shape = RoundedCornerShape(360.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text(m, style = MaterialTheme.typography.labelMedium)
+                            Text(if (m == "MOBILE_MONEY") "MOBILE MONEY" else m, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -452,7 +455,7 @@ private fun PaymentBottomSheet(
 
             Button(
                 onClick = {
-                    val amountCents = amount.toIntOrNull()
+                    val amountCents = amount.toBigDecimalOrNull()?.movePointRight(2)?.toInt()
                     if (amountCents == null || amountCents <= 0) {
                         errorMessage = "Enter a valid amount"
                         return@Button

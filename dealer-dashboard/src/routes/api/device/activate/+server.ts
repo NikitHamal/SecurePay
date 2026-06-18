@@ -8,20 +8,25 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   }
 
   const body = await request.json();
-  const { activationCode } = body;
+  const { activationCode, provisioningToken } = body;
 
   if (!activationCode || !/^\d{6}$/.test(String(activationCode))) {
     return errorResponse('A valid 6-digit activation code is required', 400);
+  }
+  if (!provisioningToken || !/^[0-9a-f]{64}$/i.test(String(provisioningToken))) {
+    return errorResponse('A valid provisioning token is required', 400);
   }
 
   const db = getDb({ platform });
 
   const token = await db.prepare(
-    `SELECT id, account_id, device_id, status, expires_at FROM provisioning_tokens WHERE activation_code = ?`
-  ).bind(String(activationCode)).first();
+    `SELECT id, account_id, device_id, status, expires_at
+       FROM provisioning_tokens
+      WHERE activation_code = ? AND id = ?`
+  ).bind(String(activationCode), String(provisioningToken)).first();
 
   if (!token) {
-    return errorResponse('Invalid activation code', 404);
+    return errorResponse('Invalid activation credentials', 404);
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -75,6 +80,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
       dailyRate: Number(account.daily_rate)
-    }
+    },
+    serverTime: Date.now()
   });
 };

@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui
+package com.touchbase.user.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.touchbase.user.admin.DevicePolicyController
+import com.touchbase.user.admin.ProvisioningExtrasStore
 import com.touchbase.user.admin.SecurityChecker
 import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.ui.activation.ActivationScreen
@@ -35,9 +36,30 @@ fun SecurePayApp(
     val deviceViewModel: DeviceViewModel = viewModel(
         factory = DeviceViewModel.Factory(repository)
     )
+    val provisioningToken = remember(context) {
+        ProvisioningExtrasStore.provisioningToken(context)
+    }
     val activationViewModel: ActivationViewModel = viewModel(
-        factory = ActivationViewModel.Factory(repository)
+        factory = ActivationViewModel.Factory(repository, provisioningToken)
     )
+    val activationState by activationViewModel.uiState.collectAsState()
+    val pendingActivationCode = remember(context) {
+        ProvisioningExtrasStore.activationCode(context).orEmpty()
+    }
+
+    LaunchedEffect(pendingActivationCode, isRegistered) {
+        if (!isRegistered && pendingActivationCode.length == 6) {
+            activationViewModel.updateCode(pendingActivationCode)
+            activationViewModel.checkAndActivate()
+        }
+    }
+
+    LaunchedEffect(activationState.isActivated) {
+        if (activationState.isActivated) {
+            ProvisioningExtrasStore.clearActivationCode(context)
+            ProvisioningExtrasStore.clearOneTimeToken(context)
+        }
+    }
 
     val state by deviceViewModel.uiState.collectAsState()
     var lastEnforcedLocked by remember { mutableStateOf(false) }

@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.data.repository
+package com.touchbase.user.data.repository
 
 import com.touchbase.user.util.SecureLog
 import com.touchbase.user.data.model.AccountResponse
@@ -44,7 +44,7 @@ class DeviceRepository(
         try {
             val requestTime = System.currentTimeMillis()
             val response = api.deviceCheck(imei)
-            updateServerTimeOffset(requestTime)
+            updateServerTimeOffset(requestTime, response.serverTime)
             if (response.enrolled && response.account != null) {
                 tokenManager.saveDevice(response.account.id, imei)
                 _isRegistered.value = true
@@ -57,11 +57,19 @@ class DeviceRepository(
         }
     }
 
-    suspend fun activate(activationCode: String): Result<ActivateResponse> = withContext(Dispatchers.IO) {
+    suspend fun activate(
+        activationCode: String,
+        provisioningToken: String
+    ): Result<ActivateResponse> = withContext(Dispatchers.IO) {
         try {
             val requestTime = System.currentTimeMillis()
-            val response = api.activate(mapOf("activationCode" to activationCode))
-            updateServerTimeOffset(requestTime)
+            val response = api.activate(
+                mapOf(
+                    "activationCode" to activationCode,
+                    "provisioningToken" to provisioningToken
+                )
+            )
+            updateServerTimeOffset(requestTime, response.serverTime)
             if (response.activated && response.account != null) {
                 val imei = response.imei.ifBlank { response.device?.imei.orEmpty() }
                 tokenManager.saveDevice(response.account.id, imei)
@@ -75,13 +83,30 @@ class DeviceRepository(
         }
     }
 
+
+    suspend fun reportProvisioned(token: String, imei: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val body = linkedMapOf("token" to token)
+            if (!imei.isNullOrBlank()) body["imei"] = imei
+            val response = api.reportProvisioned(body)
+            if (!response.isSuccessful) {
+                throw IllegalStateException("Provisioning report failed with HTTP ${response.code()}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "reportProvisioned failed", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val accountId = tokenManager.accountId ?: return@withContext
+        val imei = tokenManager.imei ?: return@withContext
         _isLoading.value = true
         try {
             val requestTime = System.currentTimeMillis()
-            val response = api.getAccount(accountId)
-            updateServerTimeOffset(requestTime)
+            val response = api.getAccount(accountId, imei)
+            updateServerTimeOffset(requestTime, response.serverTime)
             val account = response.toLoanAccount()
             _account.value = account
             tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer)
@@ -96,9 +121,12 @@ class DeviceRepository(
 
     suspend fun refreshPayments() = withContext(Dispatchers.IO) {
         val accountId = tokenManager.accountId ?: return@withContext
+        val imei = tokenManager.imei ?: return@withContext
         try {
-            val response = api.getPayments(accountId)
+            val requestTime = System.currentTimeMillis()
+            val response = api.getPayments(accountId, imei)
             _payments.value = response.payments
+            updateServerTimeOffset(requestTime, response.serverTime)
         } catch (e: Exception) {
             SecureLog.e(TAG, "refreshPayments failed", e)
         }
@@ -110,7 +138,7 @@ class DeviceRepository(
         try {
             val requestTime = System.currentTimeMillis()
             val response = api.deviceHeartbeat(mapOf("imei" to imei, "accountId" to accountId))
-            updateServerTimeOffset(requestTime)
+            updateServerTimeOffset(requestTime, response.serverTime)
             if (response.enrolled && response.account != null) {
                 refresh()
             }
@@ -121,11 +149,12 @@ class DeviceRepository(
         }
     }
 
-    private fun updateServerTimeOffset(requestSentAt: Long) {
-        val localNow = System.currentTimeMillis()
-        val estimatedOneWayLatency = (localNow - requestSentAt) / 2
-        val offset = -estimatedOneWayLatency
-        tokenManager.saveServerTimeOffset(offset)
+    private fun updateServerTimeOffset(requestSentAt: Long, serverTime: Long) {
+        if (serverTime <= 0L) return
+        val receivedAt = System.currentTimeMillis()
+        val halfRoundTrip = ((receivedAt - requestSentAt).coerceAtLeast(0L)) / 2L
+        val estimatedServerAtReceipt = serverTime + halfRoundTrip
+        tokenManager.saveServerTimeOffset(estimatedServerAtReceipt - receivedAt)
     }
 
     fun clearRegistration() {
@@ -152,5 +181,5 @@ fun AccountResponse.toLoanAccount(): LoanAccount = LoanAccount(
     termDays = termDays,
     nextPaymentDueEpochMillis = nextPaymentDueEpochMillis,
     lockedByDealer = lockedByDealer == 1,
-    currencyCode = currencyCode.ifEmpty { "KES" }
+    currencyCode = currencyCode.ifEmpty { "GHS" }
 )

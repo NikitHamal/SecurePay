@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.components
+package com.touchbase.user.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

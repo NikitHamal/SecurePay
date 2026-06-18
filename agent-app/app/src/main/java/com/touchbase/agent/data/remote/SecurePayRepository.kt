@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.data.remote
+package com.touchbase.agent.data.remote
 
 import com.touchbase.agent.data.model.*
 import kotlinx.coroutines.Dispatchers

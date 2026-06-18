@@ -8,15 +8,15 @@
   import type { LedgerEntry, PaymentMethod } from '$lib/types';
   import { formatCurrency, formatDateTime, formatRelative } from '$lib/utils/format';
 
-  export let data: unknown = undefined;
-
   let entries: LedgerEntry[] = [];
   let loading = true;
   let loadError: string | null = null;
   let methodFilter: PaymentMethod | 'ALL' = 'ALL';
 
+  const paymentMethods: PaymentMethod[] = ['MOBILE_MONEY', 'CARD', 'BANK', 'CASH'];
+
   const methodStyles: Record<PaymentMethod, { chip: string; color: string; label: string }> = {
-    'M-PESA': { chip: 'chip-emerald', color: '#10B981', label: 'M-Pesa' },
+    MOBILE_MONEY: { chip: 'chip-emerald', color: '#10B981', label: 'Mobile Money' },
     CARD:     { chip: 'chip-amber',   color: '#F59E0B', label: 'Card' },
     BANK:     { chip: 'chip-sky',     color: '#38BDF8', label: 'Bank' },
     CASH:     { chip: 'chip-violet',  color: '#A78BFA', label: 'Cash' }
@@ -24,7 +24,7 @@
 
   $: total = entries.reduce((sum, entry) => sum + entry.amount, 0);
   $: filtered = methodFilter === 'ALL' ? entries : entries.filter((e) => e.method === methodFilter);
-  $: methodBreakdown = (['M-PESA', 'CARD', 'BANK', 'CASH'] as PaymentMethod[]).map((m) => ({
+  $: methodBreakdown = paymentMethods.map((m) => ({
     label: methodStyles[m].label,
     value: entries.filter((e) => e.method === m).reduce((s, e) => s + e.amount, 0),
     color: methodStyles[m].color
@@ -36,7 +36,7 @@
     const map = new Map<string, number>();
     for (const e of entries) {
       const d = new Date(e.dateEpochMillis);
-      const key = d.toLocaleDateString('en-KE', { day: '2-digit', month: 'short' });
+      const key = d.toLocaleDateString('en-GH', { day: '2-digit', month: 'short' });
       map.set(key, (map.get(key) ?? 0) + e.amount);
     }
     return [...map.entries()].map(([label, value]) => ({ label, value }));
@@ -164,7 +164,7 @@
         All methods
         <span class="ml-1.5 rounded-md bg-surface-100 px-1.5 py-0.5 text-2xs text-ink-muted tabular-nums">{entries.length}</span>
       </button>
-      {#each ['M-PESA', 'CARD', 'BANK', 'CASH'] as m (m)}
+      {#each paymentMethods as m (m)}
         {@const count = entries.filter((e) => e.method === m).length}
         <button
           type="button"

@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.enrollment
+package com.touchbase.agent.ui.enrollment
 
 import com.touchbase.agent.data.model.AccountStatus
 import com.touchbase.agent.data.model.Device

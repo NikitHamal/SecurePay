@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.auth
+package com.touchbase.agent.ui.auth
 
 import android.app.Activity
 import androidx.compose.foundation.background

@@ -61,7 +61,7 @@
           <input
             type="search"
             class="input w-72 pl-9 pr-12"
-            {searchPlaceholder}
+            placeholder={searchPlaceholder}
           />
           <kbd class="pointer-events-none absolute right-2.5 hidden h-5 select-none items-center rounded border border-edge bg-surface-100 px-1.5 font-mono text-2xs text-ink-muted md:flex">
             ⌘ K

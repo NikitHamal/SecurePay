@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.admin
+package com.touchbase.agent.admin
 
 import android.content.Context
 import com.touchbase.agent.BuildConfig
@@ -123,80 +123,65 @@ object SecurityChecker {
         } catch (_: Exception) {
             null
         }
-
-        val validInstallers = setOf(
-            "com.android.vending",
-            "com.google.android.feedback",
-            "com.touchbase.agent",
-            "com.android.packageinstaller",
-            "com.google.android.packageinstaller",
-            "com.samsung.android.packageinstaller",
-            "com.miui.packageinstaller",
-            "com.xiaomi.packageinstaller",
-            "com.oppo.packageinstaller",
-            "com.coloros.packageinstaller",
-            "com.huawei.appmarket",
-            "com.hihuawei.packageinstaller",
-            "com.vivo.packageinstaller",
-            "com.oneplus.packageinstaller",
-            "com.realme.packageinstaller",
-            "com.asus.packageinstaller",
-            "com.lge.packageinstaller"
-        )
-
         if (installer == null) {
-            if (!checkDebuggable(context)) {
-                SecureLog.w(TAG, “App sideloaded with no installer package — possible tampering”)
-                return true
-            }
-        } else if (installer !in validInstallers) {
-            if (!checkDebuggable(context)) {
-                SecureLog.w(TAG, "App installed from untrusted source: $installer")
-                return true
-            }
-            SecureLog.w(TAG, "App installed from untrusted source (debug): $installer")
+            SecureLog.w(TAG, "Agent app has no installer package; verifying its signing certificate")
         }
 
-        try {
+        val expectedHashes = EXPECTED_SIGNING_HASHES
+        if (expectedHashes.isEmpty()) {
+            SecureLog.e(TAG, "SIGNING_CERT_HASH is not configured; signature allowlist check skipped")
+            return false
+        }
+
+        return try {
             val pm = context.packageManager
             val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                pm.getPackageInfo(
+                    context.packageName,
+                    android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                )
             } else {
                 @Suppress("DEPRECATION")
                 pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
             }
 
             val signatures = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                packageInfo.signingInfo?.apkContentsSigners
+                val signingInfo = packageInfo.signingInfo
+                if (signingInfo?.hasMultipleSigners() == true) {
+                    signingInfo.apkContentsSigners
+                } else {
+                    signingInfo?.signingCertificateHistory
+                }
             } else {
                 @Suppress("DEPRECATION")
                 packageInfo.signatures
             }
 
-            if (signersAreValid(signatures)) {
+            if (signersAreValid(signatures, expectedHashes)) {
+                false
+            } else if (checkDebuggable(context)) {
+                SecureLog.w(TAG, "APK signature mismatch — allowing in debug build")
+                false
             } else {
-                if (checkDebuggable(context)) {
-                    SecureLog.w(TAG, “APK signature mismatch — allowing in debug build”)
-                } else {
-                    SecureLog.w(TAG, “APK signature mismatch — possible tampering”)
-                    return true
-                }
+                SecureLog.w(TAG, "APK signature mismatch — possible tampering")
+                true
             }
         } catch (e: Exception) {
             SecureLog.e(TAG, "Signature verification failed", e)
-            if (!checkDebuggable(context)) return true
+            !checkDebuggable(context)
         }
-
-        return false
     }
 
-    private fun signersAreValid(signatures: Array<android.content.pm.Signature>?): Boolean {
-        if (signatures == null || signatures.isEmpty()) return false
+    private fun signersAreValid(
+        signatures: Array<android.content.pm.Signature>?,
+        expectedHashes: Set<String>
+    ): Boolean {
+        if (signatures.isNullOrEmpty()) return false
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         for (sig in signatures) {
             val hash = digest.digest(sig.toByteArray())
             val hex = hash.joinToString("") { "%02x".format(it) }
-            if (hex in EXPECTED_SIGNING_HASHES) return true
+            if (hex in expectedHashes) return true
         }
         return false
     }
@@ -213,6 +198,9 @@ object SecurityChecker {
     private val EXPECTED_SIGNING_HASHES: Set<String>
         get() {
             val hash = BuildConfig.SIGNING_CERT_HASH
+                .replace(":", "")
+                .trim()
+                .lowercase()
             return if (hash.isNotBlank()) setOf(hash) else emptySet()
         }
 }

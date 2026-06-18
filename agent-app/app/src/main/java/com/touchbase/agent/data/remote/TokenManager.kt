@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.data.remote
+package com.touchbase.agent.data.remote
 
 import android.content.Context
 import android.content.SharedPreferences

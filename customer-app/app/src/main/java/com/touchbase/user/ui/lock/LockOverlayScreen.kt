@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.lock
+package com.touchbase.user.ui.lock
 
 import android.content.Intent
 import android.net.Uri

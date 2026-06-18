@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.dashboard
+package com.touchbase.agent.ui.dashboard
 
 import android.app.Activity
 import androidx.compose.animation.core.Animatable

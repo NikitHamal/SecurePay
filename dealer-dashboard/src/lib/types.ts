@@ -53,4 +53,4 @@ export interface LedgerEntry {
   reference: string;
 }
 
-export type PaymentMethod = 'M-PESA' | 'CARD' | 'BANK' | 'CASH';
+export type PaymentMethod = 'MOBILE_MONEY' | 'CARD' | 'BANK' | 'CASH';

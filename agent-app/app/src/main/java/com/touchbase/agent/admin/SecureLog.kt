@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.admin
+package com.touchbase.agent.admin
 
 import android.util.Log
 import com.touchbase.agent.BuildConfig

@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.admin
+package com.touchbase.user.admin
 
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context
@@ -8,6 +8,8 @@ import com.touchbase.user.util.SecureLog
 class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
+        ProvisioningExtrasStore.recordStage(context, "DEVICE_ADMIN_ENABLED")
+        ProvisioningExtrasStore.persistFromIntent(context, intent)
         SecureLog.i(TAG, "SecurePay device administration enabled.")
     }
 
@@ -29,6 +31,8 @@ class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
     }
 
     override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
+        ProvisioningExtrasStore.recordStage(context, "PROFILE_PROVISIONING_COMPLETE")
+        ProvisioningExtrasStore.persistFromIntent(context, intent)
         SecureLog.i(TAG, "Profile provisioning complete")
     }
 

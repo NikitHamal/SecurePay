@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.inventory
+package com.touchbase.agent.ui.inventory
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

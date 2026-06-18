@@ -9,8 +9,6 @@
   import { formatCurrency } from '$lib/utils/format';
   import type { Status } from '$lib/types';
 
-  export let data: unknown = undefined;
-
   let statusFilter: Status | 'ALL' = 'ALL';
   let search = '';
   let selectedId: string | null = null;

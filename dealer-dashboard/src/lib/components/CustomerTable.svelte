@@ -126,12 +126,12 @@
               </span>
             </td>
             <td class="px-4 py-3.5">
-              <div class="flex justify-end gap-2 opacity-70 transition-opacity group-hover:opacity-100" on:click|stopPropagation>
+              <div class="flex justify-end gap-2 opacity-70 transition-opacity group-hover:opacity-100">
                 <button
                   type="button"
                   class="btn-emerald"
                   disabled={isPending($pending, customer.id)}
-                  on:click={() => onExtend(customer.id)}
+                  on:click|stopPropagation={() => onExtend(customer.id)}
                 >
                   +{extendHours}h
                 </button>
@@ -139,7 +139,7 @@
                   type="button"
                   class="btn-crimson"
                   disabled={customer.status === 'LOCKED' || isPending($pending, customer.id)}
-                  on:click={() => onLock(customer.id)}
+                  on:click|stopPropagation={() => onLock(customer.id)}
                 >
                   Lock
                 </button>

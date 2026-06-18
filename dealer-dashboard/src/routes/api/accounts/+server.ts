@@ -100,7 +100,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   ).bind(
     accountId, customerName, nationalId, phoneNumber, device.id as string,
     locals.dealer.id, planId, totalLoanAmount, dp, dailyRate, nextPaymentDue,
-    'ACTIVE', 0, dp, termDays, 'KES', Math.floor(now / 1000), Math.floor(now / 1000)
+    'ACTIVE', 0, dp, termDays, 'GHS', Math.floor(now / 1000), Math.floor(now / 1000)
   ).run();
 
   await db.prepare("UPDATE devices SET status = 'sold' WHERE id = ?").bind(device.id as string).run();

@@ -38,7 +38,12 @@ export async function verifyHmacSignature(params: {
 	const stringToSign = `${method.toUpperCase()}\n${path}\n${timestamp}\n${nonce}\n${bodyHash}`;
 	const expected = await hmacSha256(secret, stringToSign);
 
-	return signature === expected;
+	if (signature.length !== expected.length) return false;
+	let difference = 0;
+	for (let i = 0; i < signature.length; i++) {
+		difference |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
+	}
+	return difference === 0;
 }
 
 export function getHmacSecret(event: { platform?: App.Platform | null }): string {

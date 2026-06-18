@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
+import { parsePaymentMethod } from '$lib/payment-method';
 import type { LedgerEntry, PaymentMethod } from '$lib/types';
 
 export const GET: RequestHandler = async ({ locals, url, platform }) => {
@@ -8,7 +9,11 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
     return errorResponse('Unauthorized', 401);
   }
 
-  const methodFilter = url.searchParams.get('method') as PaymentMethod | null;
+  const requestedMethod = url.searchParams.get('method');
+  const methodFilter = requestedMethod ? parsePaymentMethod(requestedMethod) : null;
+  if (requestedMethod && !methodFilter) {
+    return errorResponse('Unsupported payment method', 400);
+  }
   const accountIdFilter = url.searchParams.get('accountId');
 
   const db = getDb({ platform });
@@ -22,10 +27,6 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
   `;
   const args: (string | number)[] = [locals.dealer.id];
 
-  if (methodFilter) {
-    sql += ' AND p.method = ?';
-    args.push(methodFilter);
-  }
   if (accountIdFilter) {
     sql += ' AND p.account_id = ?';
     args.push(accountIdFilter);
@@ -35,16 +36,23 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 
   const result = await db.prepare(sql).bind(...args).all();
 
-  const entries: LedgerEntry[] = result.results.map((row) => ({
-    id: row.id as string,
-    customerId: row.account_id as string,
-    customerName: row.customer_name as string,
-    imei: row.imei as string,
-    amount: Number(row.amount),
-    dateEpochMillis: Number(row.created_at) * 1000,
-    method: row.method as PaymentMethod,
-    reference: (row.reference as string) || ''
-  }));
+  const entries: LedgerEntry[] = result.results
+    .map((row) => {
+      const method = parsePaymentMethod(row.method);
+      if (!method) return null;
+      return {
+        id: row.id as string,
+        customerId: row.account_id as string,
+        customerName: row.customer_name as string,
+        imei: row.imei as string,
+        amount: Number(row.amount),
+        dateEpochMillis: Number(row.created_at) * 1000,
+        method,
+        reference: (row.reference as string) || ''
+      } satisfies LedgerEntry;
+    })
+    .filter((entry): entry is LedgerEntry => entry !== null)
+    .filter((entry) => !methodFilter || entry.method === (methodFilter as PaymentMethod));
 
   return json(entries);
 };

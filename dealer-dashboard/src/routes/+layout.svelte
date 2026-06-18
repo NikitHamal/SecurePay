@@ -8,8 +8,6 @@
   import { loadPayments } from '$lib/stores/payments';
   import { dealer, isAuthenticated, initAuth } from '$lib/stores/auth';
 
-  export let data: unknown = undefined;
-
   let ready = false;
   let loaded = false;
 

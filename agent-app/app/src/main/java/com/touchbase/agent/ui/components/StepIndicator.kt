@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.components
+package com.touchbase.agent.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background

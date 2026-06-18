@@ -8,8 +8,6 @@
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
 
-  export let data: unknown = undefined;
-
   let view: 'cards' | 'table' = 'cards';
 
   $: m = $portfolioMetrics;

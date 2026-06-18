@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.worker
+package com.touchbase.user.worker
 
 import android.content.BroadcastReceiver
 import android.content.Context

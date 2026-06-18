@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.provisioning
+package com.touchbase.user.ui.provisioning
 
 import android.content.Context
 import androidx.lifecycle.ViewModel

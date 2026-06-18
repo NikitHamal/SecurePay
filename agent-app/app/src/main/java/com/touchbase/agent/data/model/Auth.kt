@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.data.model
+package com.touchbase.agent.data.model
 
 import kotlinx.serialization.Serializable
 

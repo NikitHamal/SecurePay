@@ -13,8 +13,6 @@
   import { formatCurrency, formatRelative } from '$lib/utils/format';
   import { derived } from 'svelte/store';
 
-  export let data: unknown = undefined;
-
   const deltas = {
     active: { delta: '+2 this week', trend: 'up' as const },
     warning: { delta: '3 approaching due', trend: 'flat' as const },
@@ -40,7 +38,7 @@
       }));
   });
 
-  const today = new Date().toLocaleDateString('en-KE', {
+  const today = new Date().toLocaleDateString('en-GH', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -176,7 +174,7 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="section-title">Daily collections</p>
-            <p class="mt-1 text-sm text-ink-secondary">Last 14 days · KES</p>
+            <p class="mt-1 text-sm text-ink-secondary">Last 14 days · GHS</p>
           </div>
           <span class="chip-emerald tabular-nums">
             <span class="h-1.5 w-1.5 rounded-full bg-emerald"></span>

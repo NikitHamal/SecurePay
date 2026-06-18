@@ -1,75 +1,90 @@
-# SecurePay
+# TB Loan Apps — production-fixed source
 
-A three-part smartphone-financing ecosystem (pay-as-you-go device management, M-KOPA style). A device is sold on credit and remains fully usable while payments are current; if the balance goes overdue the device enters a restricted **LOCKED** state until payment resumes.
+This workspace contains the Android apps for the Ghana phone-financing project:
 
-## Workspace layout
+- `customer-app/` — Device Policy Controller (DPC) installed during Android Setup Wizard.
+- `agent-app/` — dealer/field-agent enrollment and QR workflow.
+- `.github/workflows/` — stable-key release build, APK verification, immutable R2 publishing.
+- `scripts/verify-provisioning-source.py` — source-level provisioning contract check.
+- `scripts/verify-provisioning-apk.sh` — signed-APK manifest/package/signature check.
 
-| Path | Stack | Role |
-| --- | --- | --- |
-| `customer-app/` | Kotlin · Jetpack Compose · M3 | Native Android client / Device Policy Controller (DPC) carried by the end customer |
-| `agent-app/` | Kotlin · Jetpack Compose · M3 | Native field-sales enrollment utility for onboarding new customers |
-| `dealer-dashboard/` | SvelteKit · TypeScript · TailwindCSS | Admin web console for the dealer/operator |
-| `.github/workflows/` | GitHub Actions | CI/CD: build + sign both APKs |
+## The Samsung Setup Wizard failure fixed here
 
-## Shared design system
+The previously published customer APK did not expose the two Android 12+ DPC activities required by Setup Wizard:
 
-Dark, charcoal-based Material 3 palette used identically across all three apps:
+- `android.app.action.GET_PROVISIONING_MODE`
+- `android.app.action.ADMIN_POLICY_COMPLIANCE`
 
-| Token | Hex | Usage |
-| --- | --- | --- |
-| Charcoal | `#121212` | App background |
-| Surface | `#1E1E1E` | Cards / elevated surfaces |
-| Emerald | `#10B981` | `ACTIVE` status accent |
-| Amber | `#F59E0B` | `WARNING` (payment due soon) |
-| Crimson | `#DC2626` | `LOCKED` / overdue restrictions |
+The fixed customer app adds minimal, synchronous handlers for both actions and stores the QR-delivered one-time activation data in device-protected storage. Customer version is now `1.0.1` (`versionCode 2`).
 
-## Shared domain model
+## Release invariants
 
-A financed account is field-identical across the Kotlin and TypeScript codebases: `id, customerName, nationalId, phoneNumber, imei, deviceModel, planName, totalLoanAmount, amountPaid, remainingBalance, dailyRate, nextPaymentDueEpochMillis, status`. Status is derived purely from the deadline:
+1. The package must remain `com.touchbase.user`.
+2. The device-admin component must remain:
+   `com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver`.
+3. Every production update must use the same release keystore. Losing or changing that key breaks managed-device upgrades.
+4. Never place an old APK in the dashboard or generate QR payloads from a mutable `latest.apk` URL.
+5. The customer APK must be published first; the dashboard reads R2 `latest.json` and pins each QR to the exact immutable APK SHA-256.
+6. Never commit `.env`, `.jks`, APKs, signing passwords, JWT secrets, HMAC secrets, or R2 credentials.
 
-- `LOCKED`  — `now >= nextPaymentDueEpochMillis`
-- `WARNING` — due within 24h
-- `ACTIVE`  — otherwise
+## GitHub release secrets
 
-## customer-app
+Configure these repository secrets before running **Build & Sign SecurePay APKs**:
 
-MVVM with Coroutines + `StateFlow`. A 1-second ticker re-derives the countdown, status and repayment progress on every emission (`DeviceViewModel`). The **Active Dashboard** shows the live countdown card, progress indicator, remaining balance and a *Simulate Payment Integration* trigger. Crossing into `LOCKED` instantly renders a full-screen, non-dismissible **Lock Overlay** that consumes the Back gesture, exposes only *Emergency Calls* and a *5-Minute Grace Window Request*, and — via `DevicePolicyController` — drops to the secure lock screen and disables USB debugging where the app is provisioned as device owner.
+- `SIGNING_KEY` — base64 of the permanent release JKS.
+- `KEY_STORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD` — optional when the same as store password.
+- `SIGNING_CERT_HASH` — SHA-256 certificate digest, hexadecimal; colons are accepted.
+- `HMAC_SECRET` — must exactly match the dashboard worker secret.
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_ENDPOINT`
+- `R2_BUCKET`
+- `R2_PUBLIC_URL` — HTTPS public base URL for the bucket/custom domain.
 
-```bash
-cd customer-app && ./gradlew :app:assembleRelease
-```
-
-## agent-app
-
-Three-step enrollment wizard with immutable draft state (`CustomerEnrollment`) compiled in `EnrollmentViewModel`:
-
-1. **KYC** — customer data entry with field validation
-2. **Scanner** — CameraX preview placeholder + manual IMEI fallback
-3. **Plan** — M3 dropdown plan selection + down-payment + summary
+Example commands for the release-key owner:
 
 ```bash
-cd agent-app && ./gradlew :app:assembleRelease
+base64 -w0 release.jks > release.jks.base64
+keytool -list -v -keystore release.jks -alias YOUR_ALIAS
 ```
 
-## dealer-dashboard
+Keep the JKS and recovery copy offline. Do not create a new key for each build.
+
+## Validation
+
+Source contract:
 
 ```bash
-cd dealer-dashboard && npm install && npm run dev
+python3 scripts/verify-provisioning-source.py
 ```
 
-Sidebar console (Overview, Inventory / IMEI Matrix, Customers, Payment Ledger) with a KPI summary row and an interactive live table whose `[Extend Timer]` and `[Force Remote Lock]` actions call the mock API and mutate the store reactively.
+After CI produces the signed customer APK and Android build-tools are installed:
 
-## CI/CD — `.github/workflows/build-apks.yml`
+```bash
+scripts/verify-provisioning-apk.sh path/to/customer-release.apk \
+  com.touchbase.user \
+  com.touchbase.user.admin.SecurePayDeviceAdminReceiver \
+  EXPECTED_CERT_SHA256_HEX
+```
 
-On push / PR to `main`: sets up JDK 17 + Android SDK, builds `customer-app` and `agent-app` **in parallel** (matrix) via the Gradle wrapper, signs each release APK, renames them to `SecurePay-CustomerApp-<short-sha>.apk` / `SecurePay-AgentApp-<short-sha>.apk`, then bundles both into a single downloadable artifact.
+The CI workflow also refuses to publish when the package, signing certificate, mandatory manifest actions, or public APK checksum do not match.
 
-Required repository secrets:
+## Samsung A07 clean retest
 
-| Secret | Purpose |
-| --- | --- |
-| `SIGNING_KEY` | Base64-encoded release keystore (`.jks`) |
-| `KEY_STORE_PASSWORD` | Keystore password |
-| `KEY_ALIAS` | Key alias |
-| `KEY_PASSWORD` | Key password (set equal to the keystore password if not distinct) |
+1. Deploy the fixed dashboard and apply its migration.
+2. Build/sign/publish the fixed customer APK through CI.
+3. Confirm R2 contains the immutable APK plus `latest.json`.
+4. Create a fresh inventory/account entry and generate a **new** QR in the agent app.
+5. Factory-reset the Samsung. A previously failed Device Owner transaction must not be reused.
+6. On the first Welcome screen, tap six times, scan the new QR, and keep the phone powered and online.
+7. Agent status should move from `pending` to `provisioned`, then `activated`.
 
-> The Gradle wrapper JAR is binary and intentionally not committed; CI regenerates it with `gradle wrapper` before building. Run the same command locally once if `./gradlew` reports a missing wrapper JAR.
+Do not test with an old QR: it contains an old one-time token and an APK checksum tied to the old binary.
+
+## Important security boundary
+
+Android Device Owner is the supported way to prevent ordinary uninstall, settings removal, safe-mode removal, and casual factory reset from within Android. It is not a promise against bootloader exploits, signed-firmware/service-center reflashing, hardware attacks, or future OEM vulnerabilities. Do not implement hidden persistence, exploit-based survival, or unauthorized surveillance.
+
+The current code still contains a shared HMAC secret in both Android clients. It is materially improved by nonce replay protection and one-time provisioning credentials, but a later production-hardening phase should replace the shared APK secret with per-device server-issued credentials backed by hardware keystore/attestation.

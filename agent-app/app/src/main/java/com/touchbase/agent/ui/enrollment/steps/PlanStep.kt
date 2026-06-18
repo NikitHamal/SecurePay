@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.enrollment.steps
+package com.touchbase.agent.ui.enrollment.steps
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

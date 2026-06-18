@@ -22,14 +22,14 @@ export interface PortfolioMetrics {
 const FALLBACK_PALETTE = ['#10B981', '#38BDF8', '#A78BFA', '#F59E0B', '#F472B6', '#34D399', '#FBBF24', '#60A5FA'];
 
 const METHOD_COLORS: Record<string, string> = {
-  'M-PESA': '#10B981',
+  'MOBILE_MONEY': '#10B981',
   'CARD': '#F59E0B',
   'BANK': '#38BDF8',
   'CASH': '#A78BFA'
 };
 
 const METHOD_LABELS: Record<string, string> = {
-  'M-PESA': 'M-Pesa',
+  'MOBILE_MONEY': 'Mobile Money',
   'CARD': 'Card',
   'BANK': 'Bank',
   'CASH': 'Cash'
@@ -90,7 +90,7 @@ function collectionSeriesFromPayments(entries: LedgerEntry[]): PortfolioMetrics[
   const map = new Map<string, number>();
   for (const e of sorted) {
     const d = new Date(e.dateEpochMillis);
-    const key = d.toLocaleDateString('en-KE', { day: '2-digit', month: 'short' });
+    const key = d.toLocaleDateString('en-GH', { day: '2-digit', month: 'short' });
     map.set(key, (map.get(key) ?? 0) + e.amount);
   }
   return [...map.entries()].map(([label, value]) => ({ label, value }));
@@ -99,10 +99,10 @@ function collectionSeriesFromPayments(entries: LedgerEntry[]): PortfolioMetrics[
 function methodSeriesFromPayments(entries: LedgerEntry[]): PortfolioMetrics['methodSeries'] {
   const map = new Map<string, number>();
   for (const e of entries) {
-    const method = e.method.toUpperCase();
+    const method = e.method;
     map.set(method, (map.get(method) ?? 0) + e.amount);
   }
-  const methods = ['M-PESA', 'CARD', 'BANK', 'CASH'];
+  const methods = ['MOBILE_MONEY', 'CARD', 'BANK', 'CASH'];
   return methods
     .filter((m) => map.has(m))
     .map((m) => ({

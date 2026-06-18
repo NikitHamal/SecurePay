@@ -1,8 +1,7 @@
-﻿package com.touchbase.agent.data.remote
+package com.touchbase.agent.data.remote
 
 import com.touchbase.agent.BuildConfig
 import kotlinx.serialization.json.Json
-import okhttp3.CertificatePinner
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -18,14 +17,6 @@ object ApiModule {
         coerceInputValues = true
     }
 
-    private const val PRODUCTION_HOST = "securepay-dashboard.pages.dev"
-
-    private val certificatePinner = CertificatePinner.Builder()
-        .add(PRODUCTION_HOST, "sha256/DjLQVN7foWzyfDfw8rzJplr0P6Qt3ZARrePtjWGnmBo=") // leaf: CN=securepay-dashboard.pages.dev
-        .add(PRODUCTION_HOST, "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=") // intermediate: CN=WE1, Google Trust Services
-        .add(PRODUCTION_HOST, "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=") // root: CN=GTS Root R4
-        .build()
-
     fun provideApi(tokenManager: TokenManager): SecurePayApi {
         val client = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -39,9 +30,8 @@ object ApiModule {
                         level = HttpLoggingInterceptor.Level.BODY
                     })
                 }
-                if (!BuildConfig.DEBUG) {
-                    certificatePinner(certificatePinner)
-                }
+                // Use the Android platform trust store. Cloudflare Pages can rotate
+                // its serving certificate/key, so hard-coded pins are not reliable here.
             }
             .build()
 

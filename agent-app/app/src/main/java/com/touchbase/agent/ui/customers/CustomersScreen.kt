@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.customers
+package com.touchbase.agent.ui.customers
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
