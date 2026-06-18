@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.theme
+package com.touchbase.user.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

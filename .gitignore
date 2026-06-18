@@ -2,3 +2,9 @@
 *.apk
 .wrangler/
 dist/
+*.zip
+tb-user-latest.apk
+latest.json
+nul
+.env
+.env.local

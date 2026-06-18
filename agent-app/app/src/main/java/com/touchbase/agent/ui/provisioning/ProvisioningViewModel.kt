@@ -102,6 +102,11 @@ class ProvisioningViewModel(
                                 statusText = "Device activated successfully"
                             )
                             return@launch
+                        } else if (status.status == "provisioned") {
+                            _uiState.value = _uiState.value.copy(
+                                stage = ProvisioningStage.POLLING,
+                                statusText = "Management installed; finishing activation"
+                            )
                         } else if (status.status == "expired" || status.status == "revoked") {
                             _uiState.value = _uiState.value.copy(
                                 statusText = "This code has ${status.status}. Generate a new QR."

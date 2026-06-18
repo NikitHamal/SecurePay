@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.admin
+package com.touchbase.user.admin
 
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -42,15 +42,18 @@ class ProvisioningManager(context: Context) {
             return null
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            SecureLog.w(TAG, "Device owner provisioning requires API 21+")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            SecureLog.w(
+                TAG,
+                "Android 12+ must be provisioned from Setup Wizard using the dealer QR code"
+            )
             return null
         }
 
         return try {
+            @Suppress("DEPRECATION")
             Intent(DevicePolicyManager.ACTION_PROVISION_MANAGED_DEVICE).apply {
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, admin)
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME, appContext.packageName)
                 putExtra("android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL", "SecurePay")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
@@ -71,7 +74,10 @@ class ProvisioningManager(context: Context) {
     }
 
     fun createNfcProvisioningPayload(): NdefMessage? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            SecureLog.w(TAG, "NFC provisioning is disabled on Android 12+; use the dealer QR flow")
+            return null
+        }
 
         return try {
             val records = listOf(
@@ -91,8 +97,6 @@ class ProvisioningManager(context: Context) {
         return buildString {
             append("{")
             append("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME\":\"${admin.flattenToString()}\"")
-            append(",")
-            append("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME\":\"${appContext.packageName}\"")
             append(",")
             append("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL\":\"SecurePay\"")
             append("}")

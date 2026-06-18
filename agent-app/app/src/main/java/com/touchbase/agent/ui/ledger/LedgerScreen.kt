@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.ledger
+package com.touchbase.agent.ui.ledger
 
 import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
@@ -82,7 +82,7 @@ fun LedgerScreen(
     fun load() {
         if (isPreview) {
             entries = listOf(
-                LedgerEntry(id = "1", customerName = "John Doe", amount = 1500, method = "mpesa", reference = "TRX123", dateEpochMillis = System.currentTimeMillis()),
+                LedgerEntry(id = "1", customerName = "John Doe", amount = 1500, method = "mobile_money", reference = "TRX123", dateEpochMillis = System.currentTimeMillis()),
                 LedgerEntry(id = "2", customerName = "Jane Smith", amount = 500, method = "cash", dateEpochMillis = System.currentTimeMillis() - 86400000)
             )
             return
@@ -179,7 +179,7 @@ fun LedgerScreen(
             ) {
                 val filters = listOf(
                     null to "All",
-                    "mpesa" to "M-Pesa",
+                    "mobile_money" to "Mobile Money",
                     "cash" to "Cash",
                     "bank_transfer" to "Bank"
                 )
@@ -287,7 +287,7 @@ private fun formatDate(epochMillis: Long): String {
         val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         sdf.format(Date(epochMillis))
     } catch (_: Exception) {
-        “—“
+        "—"
     }
 }
 

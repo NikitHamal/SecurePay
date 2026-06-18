@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.admin
+package com.touchbase.user.admin
 
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -93,7 +93,7 @@ class DevicePolicyController(context: Context) {
 
     fun hideApp(packageName: String) {
         if (!isDeviceOwner) {
-            SecureLog.i(TAG, “hideApp requires device owner — skipping”)
+            SecureLog.i(TAG, "hideApp requires device owner — skipping")
             return
         }
         runCatching { dpm.setApplicationHidden(admin, packageName, true) }
@@ -152,18 +152,9 @@ class DevicePolicyController(context: Context) {
         }.onFailure { SecureLog.w(TAG, "setPasswordQuality denied: ${it.message}") }
     }
 
-    fun wipeDevice(reason: String) {
-        if (!isDeviceOwner) {
-            SecureLog.w(TAG, “wipeDevice requires device owner — skipping”)
-            return
-        }
-        runCatching { dpm.wipeData(DevicePolicyManager.WIPE_EXTERNAL_STORAGE) }
-            .onFailure { SecureLog.w(TAG, "wipeDevice denied: ${it.message}") }
-    }
-
     private fun disableUsbDebugging() {
         if (!isDeviceOwner) {
-            SecureLog.i(TAG, “Not device owner — skipping ADB lockdown (admin-only mode).”)
+            SecureLog.i(TAG, "Not device owner — skipping ADB lockdown (admin-only mode).")
             return
         }
         runCatching {

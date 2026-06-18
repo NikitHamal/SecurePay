@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.data.model
+package com.touchbase.user.data.model
 
 import kotlinx.serialization.Serializable
 
@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 data class DeviceCheckResponse(
     val enrolled: Boolean = false,
     val device: DeviceInfo? = null,
-    val account: AccountBrief? = null
+    val account: AccountBrief? = null,
+    val serverTime: Long = 0L
 )
 
 @Serializable
@@ -15,7 +16,8 @@ data class ActivateResponse(
     val activated: Boolean = false,
     val imei: String = "",
     val device: DeviceInfo? = null,
-    val account: AccountBrief? = null
+    val account: AccountBrief? = null,
+    val serverTime: Long = 0L
 )
 
 @Serializable
@@ -55,9 +57,10 @@ data class AccountResponse(
     val lockedByDealer: Int = 0,
     val downPayment: Int = 0,
     val termDays: Int = 0,
-    val currencyCode: String = "KES",
+    val currencyCode: String = "GHS",
     val createdAt: Long = 0L,
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val serverTime: Long = 0L
 )
 
 data class LoanAccount(
@@ -72,7 +75,7 @@ data class LoanAccount(
     val termDays: Int,
     val nextPaymentDueEpochMillis: Long,
     val lockedByDealer: Boolean,
-    val currencyCode: String = "KES"
+    val currencyCode: String = "GHS"
 ) {
     val remainingBalanceCents: Int
         get() = (totalLoanAmountCents - amountPaidCents).coerceAtLeast(0)
@@ -94,13 +97,14 @@ data class PaymentEntry(
 
 @Serializable
 data class PaymentsResponse(
-    val payments: List<PaymentEntry> = emptyList()
+    val payments: List<PaymentEntry> = emptyList(),
+    val serverTime: Long = 0L
 )
 
-fun formatCentsAsCurrency(cents: Int, currencyCode: String = "KES"): String {
+fun formatCentsAsCurrency(cents: Int, currencyCode: String = "GHS"): String {
     val whole = cents / 100.0
-    return if (currencyCode == "KES") {
-        "KES ${String.format("%,.0f", whole)}"
+    return if (currencyCode == "GHS") {
+        "GH₵ ${String.format("%,.2f", whole)}"
     } else {
         val symbol = when (currencyCode) {
             "USD" -> "$"

@@ -47,6 +47,7 @@ jobs:
               - 'agent-app/**'
             workflow:
               - '.github/workflows/build-apks.yml'
+              - '.github/workflows/build-single-apk.yml'
 
       - name: Override for manual dispatch
         if: github.event_name == 'workflow_dispatch'

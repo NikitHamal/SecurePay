@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.data.remote
+package com.touchbase.user.data.remote
 
 import com.touchbase.user.BuildConfig
 import kotlinx.serialization.json.Json
@@ -7,7 +7,6 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.CertificatePinner
 import java.util.concurrent.TimeUnit
 
 object ApiModule {
@@ -17,14 +16,6 @@ object ApiModule {
         isLenient = true
         coerceInputValues = true
     }
-
-    private const val PRODUCTION_HOST = "securepay-dashboard.pages.dev"
-
-    private val certificatePinner = CertificatePinner.Builder()
-        .add(PRODUCTION_HOST, "sha256/DjLQVN7foWzyfDfw8rzJplr0P6Qt3ZARrePtjWGnmBo=") // leaf: CN=securepay-dashboard.pages.dev
-        .add(PRODUCTION_HOST, "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=") // intermediate: CN=WE1, Google Trust Services
-        .add(PRODUCTION_HOST, "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=") // root: CN=GTS Root R4
-        .build()
 
     private var cachedApi: SecurePayApi? = null
     private var cachedDeviceSecret: String? = null
@@ -49,9 +40,9 @@ object ApiModule {
                         level = HttpLoggingInterceptor.Level.BODY
                     })
                 }
-                if (!BuildConfig.DEBUG) {
-                    certificatePinner(certificatePinner)
-                }
+                // Use the platform trust store. The app is hosted on Cloudflare Pages,
+                // whose serving certificate/key can rotate outside our control; hard-coded
+                // leaf/intermediate pins can strand every managed device after rotation.
             }
             .build()
 

@@ -1,23 +1,24 @@
 /** Formatting helpers shared by the dashboard views. */
 
-const KES = new Intl.NumberFormat('en-KE', {
+const GHS = new Intl.NumberFormat('en-GH', {
   style: 'currency',
-  currency: 'KES',
-  maximumFractionDigits: 0
+  currency: 'GHS',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
 });
 
-const DATE_TIME = new Intl.DateTimeFormat('en-KE', {
+const DATE_TIME = new Intl.DateTimeFormat('en-GH', {
   dateStyle: 'medium',
   timeStyle: 'short'
 });
 
-const DATE = new Intl.DateTimeFormat('en-KE', {
+const DATE = new Intl.DateTimeFormat('en-GH', {
   dateStyle: 'medium'
 });
 
-/** Format a numeric amount as Kenyan shillings. */
-export function formatCurrency(amount: number): string {
-  return KES.format(amount);
+/** Format an integer amount stored in pesewas as Ghana cedis. */
+export function formatCurrency(amountMinor: number): string {
+  return GHS.format(amountMinor / 100);
 }
 
 /** Format an epoch-millis timestamp as a readable date + time. */
@@ -49,12 +50,15 @@ export function formatCountdown(remainingMs: number): string {
   return `${days}d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/** Format a phone number in `+254 7XX XXX XXX` style for readability. */
+/** Format a Ghana phone number in `+233 XX XXX XXXX` style. */
 export function formatPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
   if (digits.length < 7) return phone;
-  if (digits.startsWith('254') && digits.length === 12) {
-    return `+254 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
+  if (digits.startsWith('233') && digits.length === 12) {
+    return `+233 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  }
+  if (digits.startsWith('0') && digits.length === 10) {
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   }
   return phone;
 }

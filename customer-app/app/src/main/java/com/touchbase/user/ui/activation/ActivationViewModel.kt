@@ -21,7 +21,8 @@ data class ActivationUiState(
 )
 
 class ActivationViewModel(
-    private val repository: DeviceRepository
+    private val repository: DeviceRepository,
+    private val provisioningToken: String?
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ActivationUiState())
@@ -33,14 +34,22 @@ class ActivationViewModel(
     }
 
     fun checkAndActivate() {
+        if (_uiState.value.isChecking || _uiState.value.isActivated) return
         val code = _uiState.value.activationCode
         if (code.length != 6) {
             _uiState.value = _uiState.value.copy(error = "Please enter your 6-digit activation code")
             return
         }
+        val token = provisioningToken
+        if (token.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(
+                error = "Provisioning token missing. Reset the phone and scan a newly generated dealer QR code."
+            )
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isChecking = true, error = null)
-            val result = repository.activate(code)
+            val result = repository.activate(code, token)
             _uiState.value = _uiState.value.copy(isChecking = false)
             result
                 .onSuccess { response -> handleActivateResponse(response) }
@@ -68,14 +77,15 @@ class ActivationViewModel(
     }
 
     class Factory(
-        private val repository: DeviceRepository
+        private val repository: DeviceRepository,
+        private val provisioningToken: String?
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(ActivationViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return ActivationViewModel(repository) as T
+            return ActivationViewModel(repository, provisioningToken) as T
         }
     }
 }

@@ -23,10 +23,6 @@
     if (customer) await forceRemoteLock(customer.id);
   }
 
-  function backdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
-  }
-
   function handleKey(e: KeyboardEvent) {
     if (e.key === 'Escape') onClose();
   }
@@ -37,14 +33,19 @@
 {#if customer}
   <div
     class="fixed inset-0 z-40 flex justify-end"
-    style="background: var(--overlay-bg); backdrop-filter: blur(4px);"
-    on:click={backdropClick}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="drawer-title"
     transition:fade={{ duration: 180 }}
   >
-    <aside
+    <button
+      type="button"
+      class="absolute inset-0 h-full w-full cursor-default border-0 p-0"
+      style="background: var(--overlay-bg); backdrop-filter: blur(4px);"
+      aria-label="Close customer details"
+      on:click={onClose}
+    ></button>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
       class="relative flex h-full w-full max-w-md flex-col border-l border-edge bg-surface-200 shadow-card-hover"
       style="transform: translateX(0); transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);"
     >
@@ -165,6 +166,6 @@
           Force remote lock
         </button>
       </footer>
-    </aside>
+    </div>
   </div>
 {/if}

@@ -6,13 +6,12 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 const DEVICE_ADMIN_COMPONENT = 'com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
-const DEVICE_ADMIN_PACKAGE = 'com.touchbase.user';
 const DEVICE_ADMIN_LABEL = 'TB User';
 
 export interface ApkMeta {
   url: string;
   sha256Base64: string;
-  signatureChecksumBase64: string;
+  signatureChecksumBase64?: string;
   versionName: string;
   versionCode: number;
   updatedAt: number;
@@ -77,38 +76,96 @@ export async function readApkMeta(event: { platform?: App.Platform | null }): Pr
   if (!obj) {
     throw new Error('APK manifest not published yet — run CI to publish the TB User APK to R2');
   }
-  const text = await obj.text();
-  return JSON.parse(text) as ApkMeta;
+
+  const parsed = JSON.parse(await obj.text()) as Partial<ApkMeta>;
+  const url = String(parsed.url ?? '');
+  const sha256Base64 = String(parsed.sha256Base64 ?? '');
+  const versionName = String(parsed.versionName ?? '');
+  const versionCode = Number(parsed.versionCode ?? 0);
+  const updatedAt = Number(parsed.updatedAt ?? 0);
+
+  let apkUrl: URL;
+  try {
+    apkUrl = new URL(url);
+  } catch {
+    throw new Error('Published APK manifest contains an invalid URL');
+  }
+  if (apkUrl.protocol !== 'https:') {
+    throw new Error('Provisioning APK URL must use HTTPS');
+  }
+  if (!/^[A-Za-z0-9_-]{43}$/.test(sha256Base64)) {
+    throw new Error('Published APK manifest contains an invalid base64url SHA-256 checksum');
+  }
+  if (!Number.isSafeInteger(versionCode) || versionCode <= 0 || !versionName || updatedAt <= 0) {
+    throw new Error('Published APK manifest is incomplete');
+  }
+
+  return {
+    url,
+    sha256Base64,
+    signatureChecksumBase64: parsed.signatureChecksumBase64
+      ? String(parsed.signatureChecksumBase64)
+      : undefined,
+    versionName,
+    versionCode,
+    updatedAt
+  };
 }
+
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 export interface QrPayloadInput {
   apk: ApkMeta;
   wifiSsid?: string | null;
   wifiPassword?: string | null;
+  provisioningToken: string;
+  activationCode: string;
+  expectedImei: string;
+  accountId: string;
+  deviceId: string;
+  dealerId: string;
 }
 
-export function buildQrPayload({ apk, wifiSsid, wifiPassword }: QrPayloadInput): string {
-  // The entire payload is serialized to a single JSON string at the end, so the
-  // SSID/password values must be the RAW strings — NOT pre-quoted. Double-quoting
-  // (e.g. JSON.stringify(wifiSsid)) bakes literal quote chars into the value, and
-  // Android then looks for an SSID called `"MyShop"` and never connects.
-  // JSON.stringify on the whole object already escapes any special characters.
-  const payload: Record<string, string> = {
+export function buildQrPayload({
+  apk,
+  wifiSsid,
+  wifiPassword,
+  provisioningToken,
+  activationCode,
+  expectedImei,
+  accountId,
+  deviceId,
+  dealerId
+}: QrPayloadInput): string {
+  // Pin provisioning to the exact, versioned APK bytes. Do not also send the
+  // deprecated package-name extra or a second signature checksum: one exact APK
+  // checksum is deterministic and avoids conflicting validation paths.
+  const payload: Record<string, JsonValue> = {
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME': DEVICE_ADMIN_COMPONENT,
-    'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME': DEVICE_ADMIN_PACKAGE,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION': apk.url,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM': apk.sha256Base64,
-    'android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM': apk.signatureChecksumBase64,
-    'android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL': DEVICE_ADMIN_LABEL
+    'android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL': DEVICE_ADMIN_LABEL,
+    'android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED': true,
+    'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
+      schemaVersion: 1,
+      provisioningToken,
+      activationCode,
+      expectedImei,
+      accountId,
+      deviceId,
+      dealerId
+    }
   };
-  if (apk.versionCode > 0) {
-    payload['android.app.extra.PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE'] = String(apk.versionCode);
+
+  const ssid = wifiSsid?.trim();
+  if (ssid) {
+    payload['android.app.extra.PROVISIONING_WIFI_SSID'] = ssid;
+    payload['android.app.extra.PROVISIONING_WIFI_SECURITY_TYPE'] = wifiPassword ? 'WPA' : 'NONE';
+    if (wifiPassword) {
+      payload['android.app.extra.PROVISIONING_WIFI_PASSWORD'] = wifiPassword;
+    }
   }
-  if (wifiSsid) {
-    payload['android.app.extra.PROVISIONING_WIFI_SSID'] = wifiSsid;
-  }
-  if (wifiPassword) {
-    payload['android.app.extra.PROVISIONING_WIFI_PASSWORD'] = wifiPassword;
-  }
+
   return JSON.stringify(payload);
 }

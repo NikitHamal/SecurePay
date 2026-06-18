@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.activation
+package com.touchbase.user.ui.activation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

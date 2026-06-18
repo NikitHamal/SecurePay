@@ -25,6 +25,7 @@ android {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.66:5173/api/\"")
             buildConfigField("String", "HMAC_SECRET", "\"dev-hmac-secret-change-in-release\"")
+            buildConfigField("String", "SIGNING_CERT_HASH", "\"\"")
         }
         release {
             isMinifyEnabled = true

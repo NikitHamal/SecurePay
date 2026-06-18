@@ -2,7 +2,7 @@ import type { Handle } from '@sveltejs/kit';
 import { verifyToken } from '$lib/auth';
 import { verifyHmacSignature, getHmacSecret } from '$lib/hmac';
 
-const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/activate'];
+const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate'];
 
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.hmacVerified = false;
@@ -44,6 +44,29 @@ export const handle: Handle = async ({ event, resolve }) => {
     if (!valid) {
       return new Response(JSON.stringify({ error: 'Invalid HMAC signature' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = event.platform?.env?.DB;
+    if (!db) {
+      return new Response(JSON.stringify({ error: 'Database unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    // Keep only a short replay window and atomically reject a reused nonce.
+    await db.prepare('DELETE FROM hmac_nonces WHERE created_at < ?')
+      .bind(nowSec - 10 * 60)
+      .run();
+    const nonceResult = await db.prepare(
+      'INSERT OR IGNORE INTO hmac_nonces (nonce, created_at) VALUES (?, ?)'
+    ).bind(nonce, nowSec).run();
+    if (!nonceResult.success || Number(nonceResult.meta.changes ?? 0) !== 1) {
+      return new Response(JSON.stringify({ error: 'Replayed HMAC request' }), {
+        status: 409,
         headers: { 'Content-Type': 'application/json' }
       });
     }

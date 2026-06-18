@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.util
+package com.touchbase.user.util
 
 import android.content.Context
 import android.content.Intent

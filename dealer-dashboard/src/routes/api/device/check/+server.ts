@@ -13,6 +13,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     return errorResponse('IMEI parameter is required', 400);
   }
 
+  if (!/^\d{15}$/.test(imei)) {
+    return errorResponse('IMEI must be exactly 15 digits', 400);
+  }
+
   const db = getDb({ platform });
 
   const device = await db.prepare('SELECT id, imei, model, status FROM devices WHERE imei = ?').bind(imei).first();
@@ -31,7 +35,8 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
         imei: device.imei,
         model: device.model,
         status: device.status
-      }
+      },
+      serverTime: Date.now()
     });
   }
 
@@ -55,6 +60,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
       dailyRate: Number(account.daily_rate)
-    }
+    },
+    serverTime: Date.now()
   });
 };

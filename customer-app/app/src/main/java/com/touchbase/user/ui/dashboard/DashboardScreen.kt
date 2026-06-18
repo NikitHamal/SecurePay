@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.dashboard
+package com.touchbase.user.ui.dashboard
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState

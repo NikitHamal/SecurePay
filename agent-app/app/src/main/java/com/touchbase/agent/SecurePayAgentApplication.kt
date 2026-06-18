@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent
+package com.touchbase.agent
 
 import android.app.Application
 import com.touchbase.agent.admin.SecurityChecker

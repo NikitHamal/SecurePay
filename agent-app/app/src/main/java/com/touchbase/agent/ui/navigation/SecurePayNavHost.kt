@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.navigation
+package com.touchbase.agent.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition

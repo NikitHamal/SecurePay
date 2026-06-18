@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.util
+package com.touchbase.user.util
 
 import android.util.Log
 import com.touchbase.user.BuildConfig

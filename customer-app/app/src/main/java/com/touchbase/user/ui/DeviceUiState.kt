@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui
+package com.touchbase.user.ui
 
 import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.data.model.LoanAccount

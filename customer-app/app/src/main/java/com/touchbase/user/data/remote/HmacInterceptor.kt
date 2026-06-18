@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.data.remote
+package com.touchbase.user.data.remote
 
 import com.touchbase.user.BuildConfig
 import com.touchbase.user.admin.SecurityChecker

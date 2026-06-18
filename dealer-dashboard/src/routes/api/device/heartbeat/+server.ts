@@ -8,10 +8,11 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   }
 
   const body = await request.json();
-  const { imei } = body;
+  const imei = String(body.imei ?? '').trim();
+  const accountId = String(body.accountId ?? '').trim();
 
-  if (!imei) {
-    return errorResponse('IMEI is required', 400);
+  if (!/^\d{15}$/.test(imei) || !accountId) {
+    return errorResponse('A valid IMEI and accountId are required', 400);
   }
 
   const db = getDb({ platform });
@@ -22,7 +23,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     return errorResponse('Device not found', 404);
   }
 
-  const account = await db.prepare('SELECT * FROM accounts WHERE device_id = ?').bind(device.id as string).first();
+  const account = await db.prepare('SELECT * FROM accounts WHERE device_id = ? AND id = ?').bind(device.id as string, accountId).first();
 
   if (!account) {
     return json({
@@ -31,7 +32,8 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         id: device.id,
         imei: device.imei,
         model: device.model
-      }
+      },
+      serverTime: Date.now()
     });
   }
 
@@ -57,6 +59,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
       dailyRate: Number(account.daily_rate)
-    }
+    },
+    serverTime: Date.now()
   });
 };

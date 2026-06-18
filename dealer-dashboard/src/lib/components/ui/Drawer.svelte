@@ -1,16 +1,11 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
-  import { fly } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
 
   export let open = false;
   export let onClose: () => void = () => {};
   export let title: string = '';
   export let width: string = 'max-w-md';
-
-  function backdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
-  }
 
   function handleKey(e: KeyboardEvent) {
     if (e.key === 'Escape') onClose();
@@ -22,14 +17,19 @@
 {#if open}
   <div
     class="fixed inset-0 z-40 flex justify-end"
-    style="background: var(--overlay-bg); backdrop-filter: blur(4px);"
-    on:click={backdropClick}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="drawer-title"
     transition:fade={{ duration: 180 }}
   >
-    <aside
+    <button
+      type="button"
+      class="absolute inset-0 h-full w-full cursor-default border-0 p-0"
+      style="background: var(--overlay-bg); backdrop-filter: blur(4px);"
+      aria-label="Close {title}"
+      on:click={onClose}
+    ></button>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
       class="relative flex h-full w-full {width} flex-col border-l border-edge bg-surface-200 shadow-card-hover"
       transition:fly={{ x: 360, duration: 280, easing: quintOut }}
     >
@@ -54,6 +54,6 @@
           <slot name="footer" />
         </footer>
       {/if}
-    </aside>
+    </div>
   </div>
 {/if}

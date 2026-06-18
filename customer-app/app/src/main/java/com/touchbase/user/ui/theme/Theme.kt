@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.theme
+package com.touchbase.user.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme

@@ -1,4 +1,4 @@
-﻿package com.touchbase.agent.ui.navigation
+package com.touchbase.agent.ui.navigation
 
 sealed class Screen(val route: String) {
     data object Login : Screen("login")

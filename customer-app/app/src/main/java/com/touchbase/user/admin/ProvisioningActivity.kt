@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.admin
+package com.touchbase.user.admin
 
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -46,6 +46,8 @@ class ProvisioningActivity : ComponentActivity() {
 
         val action = runCatching { intent?.action }.getOrNull()
         if (action == DevicePolicyManager.ACTION_PROVISIONING_SUCCESSFUL) {
+            ProvisioningExtrasStore.recordStage(this, "PROVISIONING_SUCCESSFUL")
+            ProvisioningExtrasStore.persistFromIntent(this, intent)
             onProvisioningComplete()
             return
         }

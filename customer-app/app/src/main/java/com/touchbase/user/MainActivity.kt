@@ -7,9 +7,11 @@ import com.touchbase.user.util.SecureLog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
 import com.touchbase.user.admin.DevicePolicyController
 import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.admin.ProvisioningManager
+import com.touchbase.user.admin.ProvisioningExtrasStore
 import com.touchbase.user.admin.SecurityChecker
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.ui.SecurePayApp
@@ -19,6 +21,7 @@ import com.touchbase.user.ui.theme.SecurePayTheme
 import com.touchbase.user.util.BatteryOptimizationHelper
 import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.NetworkMonitor
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -32,6 +35,7 @@ class MainActivity : ComponentActivity() {
         // Everything here is wrapped so the DPC process can NEVER crash during or
         // right after the provisioning handoff (which would roll back to
         // "something went wrong"). Construct each helper defensively.
+        ProvisioningExtrasStore.recordStage(this, "MAIN_ACTIVITY_CREATED")
         runCatching { enableEdgeToEdge() }
         policyController = runCatching { DevicePolicyController(this) }.getOrNull()
         provisioningManager = runCatching { ProvisioningManager(this) }.getOrNull()
@@ -146,6 +150,8 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        reportProvisioningMilestone(repository)
+
         runCatching {
             setContent {
                 SecurePayTheme {
@@ -158,6 +164,24 @@ class MainActivity : ComponentActivity() {
             }
         }.onFailure {
             Log.e(TAG, "Failed to render SecurePayApp", it)
+        }
+    }
+
+
+    private fun reportProvisioningMilestone(repository: com.touchbase.user.data.repository.DeviceRepository) {
+        val token = ProvisioningExtrasStore.provisioningToken(this) ?: return
+        if (ProvisioningExtrasStore.isProvisioningReported(this)) return
+        val expectedImei = ProvisioningExtrasStore.expectedImei(this)
+
+        lifecycleScope.launch {
+            repository.reportProvisioned(token, expectedImei)
+                .onSuccess {
+                    ProvisioningExtrasStore.markProvisioningReported(this@MainActivity)
+                    ProvisioningExtrasStore.recordStage(this@MainActivity, "PROVISIONING_REPORTED")
+                }
+                .onFailure {
+                    SecureLog.w(TAG, "Provisioning milestone report will be retried: ${it.message}")
+                }
         }
     }
 

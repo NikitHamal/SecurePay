@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.domain
+package com.touchbase.user.domain
 
 import java.util.Locale
 import kotlin.math.max

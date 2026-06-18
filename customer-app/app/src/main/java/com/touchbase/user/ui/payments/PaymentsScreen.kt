@@ -1,4 +1,4 @@
-﻿package com.touchbase.user.ui.payments
+package com.touchbase.user.ui.payments
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -122,7 +122,7 @@ fun PaymentsScreen(
 
 @Composable
 private fun PaymentCard(payment: PaymentEntry, account: LoanAccount?) {
-    val currencyCode = account?.currencyCode ?: "KES"
+    val currencyCode = account?.currencyCode ?: "GHS"
     val date = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
         .format(java.util.Date(payment.createdAt))
 
@@ -140,7 +140,7 @@ private fun PaymentCard(payment: PaymentEntry, account: LoanAccount?) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = payment.method.replaceFirstChar { it.uppercase() },
+                    text = payment.method.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface

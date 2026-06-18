@@ -10,6 +10,7 @@ declare global {
         R2: R2Bucket;
         JWT_SECRET: string;
         HMAC_SECRET: string;
+        ALLOW_DEMO_SEED?: string;
       };
     }
   }
