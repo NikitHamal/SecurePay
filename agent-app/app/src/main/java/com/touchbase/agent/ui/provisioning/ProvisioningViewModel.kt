@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.touchbase.agent.data.remote.SecurePayRepository
+import com.touchbase.agent.data.local.WifiSettingsStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,10 +32,19 @@ data class ProvisioningUiState(
 
 class ProvisioningViewModel(
     private val repository: SecurePayRepository,
-    initialImei: String = ""
+    initialImei: String = "",
+    private val wifiSettingsStore: WifiSettingsStore? = null
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ProvisioningUiState(imei = initialImei))
+    private val savedWifi = wifiSettingsStore?.load()
+    private val _uiState = MutableStateFlow(
+        ProvisioningUiState(
+            imei = initialImei,
+            wifiSsid = savedWifi?.ssid.orEmpty(),
+            wifiPassword = savedWifi?.password.orEmpty(),
+            rememberWifi = true
+        )
+    )
     val uiState: StateFlow<ProvisioningUiState> = _uiState.asStateFlow()
 
     fun updateImei(value: String) {
@@ -50,6 +60,9 @@ class ProvisioningViewModel(
     }
 
     fun updateRememberWifi(value: Boolean) {
+        if (!value) {
+            wifiSettingsStore?.clear()
+        }
         _uiState.value = _uiState.value.copy(rememberWifi = value)
     }
 
@@ -59,14 +72,27 @@ class ProvisioningViewModel(
             _uiState.value = state.copy(error = "Enter a valid 15-digit IMEI")
             return
         }
+        val ssid = state.wifiSsid.trim().ifBlank { null }
+        val pass = state.wifiPassword.ifBlank { null }
+        if (pass != null && ssid == null) {
+            _uiState.value = state.copy(error = "Enter the Wi-Fi name or clear the password")
+            return
+        }
+        if (pass != null && pass.length !in 8..63 && !pass.matches(Regex("^[0-9A-Fa-f]{64}$"))) {
+            _uiState.value = state.copy(error = "WPA/WPA2 password must be 8–63 characters or 64 hex characters")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isGenerating = true, stage = ProvisioningStage.GENERATING, error = null
             )
-            val ssid = state.wifiSsid.ifBlank { null }
-            val pass = state.wifiPassword.ifBlank { null }
             repository.generateProvisioningQr(state.imei, ssid, pass)
                 .onSuccess { response ->
+                    if (state.rememberWifi && ssid != null) {
+                        wifiSettingsStore?.save(ssid, pass.orEmpty())
+                    } else if (!state.rememberWifi) {
+                        wifiSettingsStore?.clear()
+                    }
                     _uiState.value = _uiState.value.copy(
                         isGenerating = false,
                         stage = ProvisioningStage.READY,
@@ -126,14 +152,15 @@ class ProvisioningViewModel(
 
     class Factory(
         private val repository: SecurePayRepository,
-        private val initialImei: String = ""
+        private val initialImei: String = "",
+        private val wifiSettingsStore: WifiSettingsStore? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(ProvisioningViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return ProvisioningViewModel(repository, initialImei) as T
+            return ProvisioningViewModel(repository, initialImei, wifiSettingsStore) as T
         }
     }
 }

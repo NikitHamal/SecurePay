@@ -191,9 +191,9 @@
 
   <div class="card mt-4 overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+      <table class="data-table min-w-[760px]">
         <thead>
-          <tr class="border-b border-edge text-2xs uppercase tracking-[0.12em] text-ink-muted">
+          <tr>
             <th class="px-4 py-3 font-semibold">Date</th>
             <th class="px-4 py-3 font-semibold">Customer</th>
             <th class="px-4 py-3 font-semibold">Reference</th>

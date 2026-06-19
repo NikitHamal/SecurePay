@@ -114,3 +114,29 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
 
   return json(customer);
 };
+export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
+  if (!locals.dealer) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const db = getDb({ platform });
+  const row = await db.prepare(`
+    SELECT id, device_id
+    FROM accounts
+    WHERE id = ? AND dealer_id = ?
+  `).bind(params.id, locals.dealer.id).first<{ id: string; device_id: string }>();
+
+  if (!row) {
+    return errorResponse('Account not found', 404);
+  }
+
+  await db.batch([
+    db.prepare('DELETE FROM provisioning_tokens WHERE account_id = ?').bind(params.id),
+    db.prepare('DELETE FROM payments WHERE account_id = ?').bind(params.id),
+    db.prepare('DELETE FROM lock_events WHERE account_id = ?').bind(params.id),
+    db.prepare('DELETE FROM accounts WHERE id = ? AND dealer_id = ?').bind(params.id, locals.dealer.id),
+    db.prepare('UPDATE devices SET status = ? WHERE id = ? AND dealer_id = ?').bind('in_stock', row.device_id, locals.dealer.id)
+  ]);
+
+  return json({ success: true, id: params.id, deviceId: row.device_id });
+};

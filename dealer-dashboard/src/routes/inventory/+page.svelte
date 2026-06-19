@@ -7,18 +7,40 @@
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
-  import { getSecurityPolicy, updateSecurityPolicy } from '$lib/api/client';
+  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy } from '$lib/api/client';
   import { onMount } from 'svelte';
 
+  interface DeviceRow {
+    id: string;
+    imei: string;
+    model: string;
+    status: string;
+    createdAt: number;
+  }
+
   let view: 'cards' | 'table' = 'cards';
+  let devices: DeviceRow[] = [];
+  let devicesLoading = false;
+  let inventoryError: string | null = null;
   let frpAccountIdsText = '';
   let securityStatus = 'Loading EFRP policy...';
   let securityError: string | null = null;
   let isSavingSecurity = false;
 
   $: m = $portfolioMetrics;
+  $: inStockCount = devices.filter((device) => device.status === 'in_stock').length;
+
+  function avatarHue(id: string): number {
+    const digits = id.replace(/\D/g, '');
+    const seed = Number.parseInt(digits || '19', 10);
+    return (seed * 37) % 360;
+  }
 
   onMount(async () => {
+    await Promise.all([loadSecurityPolicy(), loadDevices()]);
+  });
+
+  async function loadSecurityPolicy() {
     try {
       const policy = await getSecurityPolicy();
       frpAccountIdsText = policy.frpAccountIds.join(String.fromCharCode(10));
@@ -28,7 +50,38 @@
     } catch (error) {
       securityError = error instanceof Error ? error.message : 'Failed to load security policy';
     }
-  });
+  }
+
+  async function loadDevices() {
+    devicesLoading = true;
+    inventoryError = null;
+    try {
+      devices = await listDevices();
+    } catch (error) {
+      inventoryError = error instanceof Error ? error.message : 'Failed to load inventory';
+    } finally {
+      devicesLoading = false;
+    }
+  }
+
+  async function removeDevice(device: DeviceRow) {
+    if (device.status !== 'in_stock') {
+      inventoryError = 'Delete the linked customer account first. Sold devices are protected from direct inventory deletion.';
+      return;
+    }
+    const ok = window.confirm(`Delete inventory device ${device.imei}? This cannot be undone.`);
+    if (!ok) return;
+    devicesLoading = true;
+    inventoryError = null;
+    try {
+      await deleteDevice(device.id);
+      devices = devices.filter((row) => row.id !== device.id);
+    } catch (error) {
+      inventoryError = error instanceof Error ? error.message : 'Failed to delete device';
+    } finally {
+      devicesLoading = false;
+    }
+  }
 
   async function saveSecurityPolicy() {
     isSavingSecurity = true;
@@ -144,6 +197,63 @@
     </div>
   </div>
 
+  <div class="card mt-6 overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-edge px-5 py-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="section-title">Inventory records</p>
+        <p class="mt-1 text-sm text-ink-secondary">{devices.length} total · {inStockCount} in stock. Delete sold devices by deleting their customer account first.</p>
+      </div>
+      <button type="button" class="btn-outline" on:click={loadDevices} disabled={devicesLoading}>
+        {devicesLoading ? 'Refreshing…' : 'Refresh'}
+      </button>
+    </div>
+    {#if inventoryError}
+      <div class="mx-5 mt-4 rounded-lg border border-crimson-200/30 bg-crimson-200/10 px-3 py-2 text-sm text-crimson">
+        {inventoryError}
+      </div>
+    {/if}
+    <div class="overflow-x-auto">
+      <table class="data-table min-w-[760px]">
+        <thead>
+          <tr>
+            <th>IMEI</th>
+            <th>Model</th>
+            <th>Status</th>
+            <th>Added</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#if devicesLoading && devices.length === 0}
+            <tr><td colspan="5" class="py-10 text-center text-ink-muted">Loading inventory…</td></tr>
+          {:else if devices.length === 0}
+            <tr><td colspan="5" class="py-10 text-center text-ink-muted">No inventory devices yet.</td></tr>
+          {:else}
+            {#each devices as device (device.id)}
+              <tr class="transition-colors hover:bg-hover">
+                <td class="font-mono text-2xs text-ink-secondary">{device.imei}</td>
+                <td class="text-ink-primary">{device.model}</td>
+                <td><span class={device.status === 'in_stock' ? 'chip-emerald' : 'chip-amber'}>{device.status.replace('_', ' ')}</span></td>
+                <td class="text-2xs text-ink-muted">{new Date(device.createdAt).toLocaleDateString()}</td>
+                <td class="text-right">
+                  <button
+                    type="button"
+                    class="btn-outline text-crimson hover:bg-crimson/10"
+                    disabled={devicesLoading || device.status !== 'in_stock'}
+                    title={device.status === 'in_stock' ? 'Delete inventory device' : 'Delete the linked customer account first'}
+                    on:click={() => removeDevice(device)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            {/each}
+          {/if}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   {#if view === 'cards'}
     <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {#each $customers as customer (customer.id)}
@@ -153,7 +263,7 @@
             <div class="flex items-center gap-3 min-w-0">
               <span
                 class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-semibold text-white"
-                style="background: linear-gradient(135deg, hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37) % 360}, 70%, 60%), hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37 + 40) % 360}, 70%, 50%));"
+                style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
               >
                 {customer.deviceModel.split(' ').map((p) => p[0]).join('').slice(0, 2)}
               </span>
@@ -202,9 +312,9 @@
   {:else}
     <div class="card mt-6 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] border-collapse text-left text-sm">
+        <table class="data-table min-w-[760px]">
           <thead>
-            <tr class="border-b border-edge text-2xs uppercase tracking-[0.12em] text-ink-muted">
+            <tr>
               <th class="px-4 py-3 font-semibold">IMEI</th>
               <th class="px-4 py-3 font-semibold">Device Model</th>
               <th class="px-4 py-3 font-semibold">Assigned Customer</th>

@@ -1,10 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import type { Customer, Status } from '$lib/types';
-  import { customers, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
+  import { customers, deleteCustomer, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
   import { formatCountdown, formatCurrency, formatPhone } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
-  import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
 
   export let extendHours = 24;
   export let statusFilter: Status | 'ALL' = 'ALL';
@@ -47,6 +46,20 @@
     await forceRemoteLock(id);
   }
 
+  async function onDelete(customer: Customer): Promise<void> {
+    const ok = window.confirm(
+      `Delete ${customer.customerName}? This removes the account, payments, lock events, provisioning tokens, and returns the device to in-stock.`
+    );
+    if (!ok) return;
+    await deleteCustomer(customer.id);
+  }
+
+  function avatarHue(id: string): number {
+    const digits = id.replace(/\D/g, '');
+    const seed = Number.parseInt(digits || '17', 10);
+    return (seed * 37) % 360;
+  }
+
   $: visible = $customers.filter((c) => {
     const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
     const q = search.trim().toLowerCase();
@@ -58,9 +71,9 @@
 
 <div class="card overflow-hidden">
   <div class="overflow-x-auto">
-    <table class="w-full min-w-[920px] border-collapse text-left text-sm">
+    <table class="data-table min-w-[980px]">
       <thead>
-        <tr class="border-b border-edge text-2xs uppercase tracking-[0.12em] text-ink-muted">
+        <tr>
           <th class="px-4 py-3 font-semibold">Customer</th>
           <th class="px-4 py-3 font-semibold">Device · Plan</th>
           <th class="px-4 py-3 font-semibold">Loan progress</th>
@@ -81,7 +94,7 @@
               <div class="flex items-center gap-3">
                 <span
                   class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                  style="background: linear-gradient(135deg, hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37) % 360}, 70%, 60%), hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37 + 40) % 360}, 70%, 50%));"
+                  style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
                   aria-hidden="true"
                 >
                   {customer.customerName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
@@ -126,7 +139,7 @@
               </span>
             </td>
             <td class="px-4 py-3.5">
-              <div class="flex justify-end gap-2 opacity-70 transition-opacity group-hover:opacity-100">
+              <div class="flex flex-wrap justify-end gap-2 opacity-80 transition-opacity group-hover:opacity-100">
                 <button
                   type="button"
                   class="btn-emerald"
@@ -142,6 +155,14 @@
                   on:click|stopPropagation={() => onLock(customer.id)}
                 >
                   Lock
+                </button>
+                <button
+                  type="button"
+                  class="btn-outline text-crimson hover:bg-crimson/10"
+                  disabled={isPending($pending, customer.id)}
+                  on:click|stopPropagation={() => onDelete(customer)}
+                >
+                  Delete
                 </button>
               </div>
             </td>

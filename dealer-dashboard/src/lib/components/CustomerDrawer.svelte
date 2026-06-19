@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Customer } from '$lib/types';
-  import { customers, extendTimer, forceRemoteLock, approveRelease, pending } from '$lib/stores/customers';
+  import { approveRelease, customers, deleteCustomer, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
   import { formatCountdown, formatCurrency, formatDate, formatPhone, formatRelative } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
@@ -24,6 +24,19 @@
   }
   async function releaseAccount(): Promise<void> {
     if (customer) await approveRelease(customer.id, customer.remainingBalance > 0);
+  }
+  async function removeCustomer(): Promise<void> {
+    if (!customer) return;
+    const ok = window.confirm(`Delete ${customer.customerName}? This removes the account, payments, lock events, provisioning tokens, and returns the device to in-stock.`);
+    if (!ok) return;
+    await deleteCustomer(customer.id);
+    onClose();
+  }
+
+  function avatarHue(id: string): number {
+    const digits = id.replace(/\D/g, '');
+    const seed = Number.parseInt(digits || '23', 10);
+    return (seed * 37) % 360;
   }
 
   function handleKey(e: KeyboardEvent) {
@@ -56,7 +69,7 @@
         <div class="flex items-center gap-3 min-w-0">
           <span
             class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
-            style="background: linear-gradient(135deg, hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37) % 360}, 70%, 60%), hsl({(parseInt(customer.id.replace(/\D/g,'')) * 37 + 40) % 360}, 70%, 50%));"
+            style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
           >
             {customer.customerName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
           </span>
@@ -150,7 +163,7 @@
         </div>
       </div>
 
-      <footer class="flex items-center gap-2 border-t border-edge bg-surface-200/80 px-6 py-4 backdrop-blur">
+      <footer class="flex flex-wrap items-center gap-2 border-t border-edge bg-surface-200/80 px-6 py-4 backdrop-blur">
         <button
           type="button"
           class="btn-emerald flex-1"
@@ -185,6 +198,14 @@
             <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           Release customer app
+        </button>
+        <button
+          type="button"
+          class="btn-outline flex-1 text-crimson hover:bg-crimson/10"
+          disabled={isPending}
+          on:click={removeCustomer}
+        >
+          Delete
         </button>
       </footer>
     </div>

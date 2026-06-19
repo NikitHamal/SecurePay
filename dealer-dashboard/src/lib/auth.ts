@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const SESSION_DURATION_HOURS = 24;
+const SESSION_DURATION_HOURS = 24 * 30;
 
 export function hashPassword(password: string): string {
   return bcrypt.hashSync(password, 10);

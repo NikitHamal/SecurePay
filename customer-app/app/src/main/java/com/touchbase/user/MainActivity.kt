@@ -120,10 +120,17 @@ class MainActivity : ComponentActivity() {
         val pm = provisioningManager
         val isAdminActive = pc?.let { runCatching { it.isAdminActive }.getOrDefault(false) } ?: false
         val isDeviceOwner = pm?.let { runCatching { it.isDeviceOwner }.getOrDefault(false) } ?: false
-        val isProvisioned = isAdminActive || isDeviceOwner
+        val tokenManager = runCatching { DeviceTokenManager(this) }.getOrNull()
+        val allowPostRelease = tokenManager?.cachedReleaseApproved == true
 
-        if (!isProvisioned) {
-            SecureLog.i(TAG, "Device not provisioned (no admin/owner) — showing not-provisioned UI")
+        // Production financing must run as Device Owner. Android's plain Device
+        // Admin role cannot enforce DISALLOW_FACTORY_RESET, FRP, uninstall/app
+        // restrictions, lock-task allowlists, or base loan security. Blocking here
+        // prevents a manually-enabled admin app from activating a loan and giving
+        // testers a false "provisioned" result.
+        if (!isDeviceOwner && !allowPostRelease) {
+            val state = if (isAdminActive) "admin-only" else "no-admin"
+            SecureLog.w(TAG, "Blocking SecurePay app startup: not Device Owner (state=$state)")
             runCatching {
                 setContent {
                     SecurePayTheme {

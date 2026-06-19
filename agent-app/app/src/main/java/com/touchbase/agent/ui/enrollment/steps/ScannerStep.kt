@@ -336,6 +336,7 @@ private fun CameraPreview(
         onDispose {
             analyzer.stop()
             provider.unbindAll()
+            executor.shutdown()
         }
     }
 
