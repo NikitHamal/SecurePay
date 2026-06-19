@@ -1,6 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
+import {
+  getDb,
+  computeStatus,
+  errorResponse,
+  releaseFields,
+  releaseApproved,
+  getDealerSecurityPolicy,
+  generateDeviceApiSecret
+} from '$lib/api/server';
 
 export const POST: RequestHandler = async ({ request, platform, locals }) => {
   if (!locals.hmacVerified) {
@@ -20,7 +28,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   const db = getDb({ platform });
 
   const token = await db.prepare(
-    `SELECT id, account_id, device_id, status, expires_at
+    `SELECT id, account_id, device_id, dealer_id, status, expires_at
        FROM provisioning_tokens
       WHERE activation_code = ? AND id = ?`
   ).bind(String(activationCode), String(provisioningToken)).first();
@@ -48,6 +56,15 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     return errorResponse('This activation code cannot be used', 409);
   }
 
+  const deviceApiSecret = generateDeviceApiSecret();
+  await db.prepare(
+    `UPDATE accounts
+        SET device_hmac_secret = ?,
+            device_hmac_secret_created_at = COALESCE(device_hmac_secret_created_at, ?),
+            updated_at = ?
+      WHERE id = ?`
+  ).bind(deviceApiSecret, nowSec, nowSec, token.account_id as string).run();
+
   await db.prepare(
     "UPDATE provisioning_tokens SET status = 'activated', activated_at = ? WHERE id = ?"
   ).bind(nowSec, token.id as string).run();
@@ -59,6 +76,8 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     return errorResponse('Activation succeeded but the linked account is missing', 500);
   }
 
+  const release = releaseFields(account as Record<string, unknown>);
+  const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const status = releaseApproved(account as Record<string, unknown>)
     ? 'ACTIVE'
     : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due)));
@@ -67,6 +86,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     enrolled: true,
     activated: true,
     imei: device.imei,
+    apiSecret: deviceApiSecret,
     device: {
       id: device.id,
       imei: device.imei,
@@ -80,10 +100,11 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
       dailyRate: Number(account.daily_rate),
-      releaseApproved: releaseFields(account as Record<string, unknown>).releaseApproved,
-      releaseApprovedAt: releaseFields(account as Record<string, unknown>).releaseApprovedAt,
-      releasedAt: releaseFields(account as Record<string, unknown>).releasedAt
+      releaseApproved: release.releaseApproved,
+      releaseApprovedAt: release.releaseApprovedAt,
+      releasedAt: release.releasedAt
     },
+    securityPolicy,
     serverTime: Date.now()
   });
 };

@@ -242,6 +242,11 @@ private fun QrDisplaySection(
             StepRow("2", "On the welcome screen, tap 6 times.")
             StepRow("3", "Scan this QR when the scanner opens.")
             StepRow("4", "When TB User opens, enter the code above.")
+            Text(
+                state.securityText,
+                color = if (state.securityText.startsWith("EFRP enabled")) EmeraldGreen else Amber,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 

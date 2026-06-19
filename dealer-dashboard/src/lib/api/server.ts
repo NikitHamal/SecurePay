@@ -11,6 +11,63 @@ export function releaseHorizon(now = Date.now()): number {
   return now + RELEASE_HORIZON_MS;
 }
 
+export interface DeviceSecurityPolicyPayload {
+  version: number;
+  frpEnabled: boolean;
+  frpAccountIds: string[];
+  blockFactoryReset: boolean;
+  blockSafeBoot: boolean;
+  blockDeveloperOptions: boolean;
+  blockUnknownSources: boolean;
+  blockAccountModification: boolean;
+}
+
+export function parseFrpAccountIds(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map((value) => String(value).trim())
+      .filter((value) => /^[0-9]{6,32}$/.test(value))
+      .filter((value, index, values) => values.indexOf(value) === index);
+  }
+  const text = String(raw ?? '').trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (Array.isArray(parsed)) return parseFrpAccountIds(parsed);
+  } catch {
+    // Accept comma/newline separated IDs as a convenient ops format.
+  }
+  return text.split(/[\s,]+/)
+    .map((value) => value.trim())
+    .filter((value) => /^[0-9]{6,32}$/.test(value))
+    .filter((value, index, values) => values.indexOf(value) === index);
+}
+
+export async function getDealerSecurityPolicy(event: { platform?: App.Platform | null }, dealerId: string): Promise<DeviceSecurityPolicyPayload> {
+  const db = getDb(event);
+  const row = await db.prepare('SELECT frp_account_ids, security_policy_updated_at FROM dealers WHERE id = ?')
+    .bind(dealerId)
+    .first<{ frp_account_ids?: string | null; security_policy_updated_at?: number | null }>();
+  const fromDb = parseFrpAccountIds(row?.frp_account_ids);
+  const fromEnv = parseFrpAccountIds(event.platform?.env?.FRP_ACCOUNT_IDS ?? '');
+  const frpAccountIds = fromDb.length > 0 ? fromDb : fromEnv;
+  const version = Number(row?.security_policy_updated_at ?? 0) * 1000 || Date.now();
+  return {
+    version,
+    frpEnabled: frpAccountIds.length > 0,
+    frpAccountIds,
+    blockFactoryReset: true,
+    blockSafeBoot: true,
+    blockDeveloperOptions: true,
+    blockUnknownSources: true,
+    blockAccountModification: true
+  };
+}
+
+export function generateDeviceApiSecret(): string {
+  return generateToken(32);
+}
+
+
 export function releaseApproved(row: Record<string, unknown>): boolean {
   return Number(row.release_approved ?? 0) === 1 || Number(row.amount_paid ?? 0) >= Number(row.total_loan_amount ?? 1);
 }
@@ -149,6 +206,7 @@ export interface QrPayloadInput {
   accountId: string;
   deviceId: string;
   dealerId: string;
+  securityPolicy?: DeviceSecurityPolicyPayload;
 }
 
 export function buildQrPayload({
@@ -160,7 +218,8 @@ export function buildQrPayload({
   expectedImei,
   accountId,
   deviceId,
-  dealerId
+  dealerId,
+  securityPolicy
 }: QrPayloadInput): string {
   // Pin provisioning to the exact, versioned APK bytes. Do not also send the
   // deprecated package-name extra or a second signature checksum: one exact APK
@@ -178,7 +237,9 @@ export function buildQrPayload({
       expectedImei,
       accountId,
       deviceId,
-      dealerId
+      dealerId,
+      frpAccountIdsCsv: securityPolicy?.frpAccountIds?.join(',') ?? '',
+      securityPolicyVersion: securityPolicy?.version ?? 0
     }
   };
 

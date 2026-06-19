@@ -26,6 +26,10 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
 
+        if (!tokenManager.cachedReleaseApproved) {
+            policyController.applyBaseLoanSecurity(tokenManager.cachedFrpAccountIds)
+        }
+
         if (tokenManager.cachedReleaseApproved) {
             SecureLog.i(TAG, "Release approved, skipping lock enforcement")
             policyController.releaseManagementForPaidLoan()
@@ -44,7 +48,7 @@ class BootReceiver : BroadcastReceiver() {
         val status = DeviceStatus.evaluate(cachedDue, cachedLockedByDealer, trustedTime)
         if (status == DeviceStatus.LOCKED) {
             SecureLog.w(TAG, "Device should be LOCKED based on cached data, enforcing lock + pinning")
-            policyController.enforceLock()
+            policyController.enforceLock(tokenManager.cachedFrpAccountIds)
             launchLockTask(context)
         } else {
             SecureLog.i(TAG, "Device status: $status, releasing restrictions")

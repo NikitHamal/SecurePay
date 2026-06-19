@@ -4,7 +4,7 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
 	return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function hmacSha256(key: string, data: string): Promise<string> {
+export async function hmacSha256(key: string, data: string): Promise<string> {
 	const encoder = new TextEncoder();
 	const cryptoKey = await crypto.subtle.importKey(
 		'raw',
@@ -15,6 +15,12 @@ async function hmacSha256(key: string, data: string): Promise<string> {
 	);
 	const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(data));
 	return arrayBufferToHex(signature);
+}
+
+export function randomHex(byteLength = 32): string {
+	const bytes = new Uint8Array(byteLength);
+	crypto.getRandomValues(bytes);
+	return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 export async function verifyHmacSignature(params: {

@@ -21,6 +21,8 @@ object ProvisioningExtrasStore {
     const val EXTRA_ACCOUNT_ID = "accountId"
     const val EXTRA_DEVICE_ID = "deviceId"
     const val EXTRA_DEALER_ID = "dealerId"
+    const val EXTRA_FRP_ACCOUNT_IDS_CSV = "frpAccountIdsCsv"
+    const val EXTRA_SECURITY_POLICY_VERSION = "securityPolicyVersion"
 
     private const val PREFS_NAME = "tb_provisioning_state"
     private const val KEY_LAST_STAGE = "lastStage"
@@ -66,6 +68,17 @@ object ProvisioningExtrasStore {
     fun expectedImei(context: Context): String? =
         prefs(context).getString(EXTRA_EXPECTED_IMEI, null)
             ?.takeIf { it.matches(Regex("\\d{15}")) }
+
+    fun frpAccountIds(context: Context): List<String> =
+        prefs(context).getString(EXTRA_FRP_ACCOUNT_IDS_CSV, null)
+            ?.split(',')
+            ?.map { it.trim() }
+            ?.filter { it.matches(Regex("^[0-9]{6,32}$")) }
+            ?.distinct()
+            .orEmpty()
+
+    fun securityPolicyVersion(context: Context): Long =
+        prefs(context).getLong(EXTRA_SECURITY_POLICY_VERSION, 0L)
 
     fun isProvisioningReported(context: Context): Boolean =
         prefs(context).getBoolean(KEY_REPORTED, false)

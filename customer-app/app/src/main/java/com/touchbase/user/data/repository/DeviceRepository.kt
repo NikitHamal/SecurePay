@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
 class DeviceRepository(
-    private val api: SecurePayApi,
+    private var api: SecurePayApi,
     private val tokenManager: DeviceTokenManager
 ) {
 
@@ -47,7 +47,8 @@ class DeviceRepository(
             val requestTime = System.currentTimeMillis()
             val response = api.deviceCheck(imei)
             updateServerTimeOffset(requestTime, response.serverTime)
-            if (response.enrolled && response.account != null) {
+            tokenManager.saveSecurityPolicy(response.securityPolicy)
+            if (response.enrolled && response.account != null && tokenManager.apiSecret != null) {
                 tokenManager.saveDevice(response.account.id, imei)
                 _isRegistered.value = true
                 refresh()
@@ -74,7 +75,11 @@ class DeviceRepository(
             updateServerTimeOffset(requestTime, response.serverTime)
             if (response.activated && response.account != null) {
                 val imei = response.imei.ifBlank { response.device?.imei.orEmpty() }
-                tokenManager.saveDevice(response.account.id, imei)
+                tokenManager.saveDevice(response.account.id, imei, response.apiSecret.ifBlank { null })
+                tokenManager.saveSecurityPolicy(response.securityPolicy)
+                if (response.apiSecret.isNotBlank()) {
+                    api = com.touchbase.user.data.remote.ApiModule.provideApi(response.apiSecret, response.account.id)
+                }
                 _isRegistered.value = true
                 refresh()
             }
@@ -111,6 +116,7 @@ class DeviceRepository(
             updateServerTimeOffset(requestTime, response.serverTime)
             val account = response.toLoanAccount()
             _account.value = account
+            tokenManager.saveSecurityPolicy(response.securityPolicy)
             tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer, account.releaseApproved)
             _error.value = null
         } catch (e: Exception) {
@@ -141,6 +147,7 @@ class DeviceRepository(
             val requestTime = System.currentTimeMillis()
             val response = api.deviceHeartbeat(mapOf("imei" to imei, "accountId" to accountId))
             updateServerTimeOffset(requestTime, response.serverTime)
+            tokenManager.saveSecurityPolicy(response.securityPolicy)
             if (response.enrolled && response.account != null) {
                 refresh()
             }
@@ -169,7 +176,11 @@ class DeviceRepository(
     suspend fun checkForAppUpdate(): Result<com.touchbase.user.data.model.AppUpdateResponse> = withContext(Dispatchers.IO) {
         try {
             val requestTime = System.currentTimeMillis()
-            val response = api.appUpdate(BuildConfig.VERSION_CODE)
+            val response = api.appUpdate(
+                BuildConfig.VERSION_CODE,
+                tokenManager.accountId.orEmpty(),
+                tokenManager.imei.orEmpty()
+            )
             updateServerTimeOffset(requestTime, response.serverTime)
             Result.success(response)
         } catch (e: Exception) {
@@ -213,5 +224,6 @@ fun AccountResponse.toLoanAccount(): LoanAccount = LoanAccount(
     currencyCode = currencyCode.ifEmpty { "GHS" },
     releaseApproved = releaseApproved,
     releaseApprovedAt = releaseApprovedAt,
-    releasedAt = releasedAt
+    releasedAt = releasedAt,
+    securityPolicy = securityPolicy
 )

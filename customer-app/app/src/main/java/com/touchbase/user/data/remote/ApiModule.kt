@@ -18,11 +18,15 @@ object ApiModule {
     }
 
     private var cachedApi: SecurePayApi? = null
-    private var cachedDeviceSecret: String? = null
+    private var cachedHmacSecret: String? = null
+    private var cachedDeviceId: String? = null
 
     @Synchronized
-    fun provideApi(deviceSecret: String = ""): SecurePayApi {
-        if (cachedApi != null && cachedDeviceSecret == deviceSecret) {
+    fun provideApi(
+        hmacSecret: String = BuildConfig.HMAC_SECRET,
+        deviceId: String = ""
+    ): SecurePayApi {
+        if (cachedApi != null && cachedHmacSecret == hmacSecret && cachedDeviceId == deviceId) {
             return cachedApi!!
         }
 
@@ -32,8 +36,9 @@ object ApiModule {
             .writeTimeout(15, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .apply {
-                if (deviceSecret.isNotEmpty()) {
-                    addInterceptor(HmacInterceptor(deviceSecret))
+                val signingSecret = hmacSecret.ifBlank { BuildConfig.HMAC_SECRET }
+                if (signingSecret.isNotEmpty()) {
+                    addInterceptor(HmacInterceptor(signingSecret, deviceId))
                 }
                 if (BuildConfig.DEBUG) {
                     addInterceptor(HttpLoggingInterceptor().apply {
@@ -53,25 +58,30 @@ object ApiModule {
             .build()
             .create(SecurePayApi::class.java)
 
-        cachedDeviceSecret = deviceSecret
+        cachedHmacSecret = hmacSecret
+        cachedDeviceId = deviceId
         return cachedApi!!
     }
 
     /**
-     * Non-throwing variant: skips cert pinning entirely. Used only as a last-resort
-     * fallback if [provideApi] throws during DPC first launch, so the app never dies
-     * before provisioning can complete.
+     * Non-throwing variant. Used only as a last-resort fallback if [provideApi]
+     * throws during DPC first launch, so the app never dies before provisioning
+     * can complete.
      */
     @Synchronized
-    fun provideApiSafe(deviceSecret: String = ""): SecurePayApi {
+    fun provideApiSafe(
+        hmacSecret: String = BuildConfig.HMAC_SECRET,
+        deviceId: String = ""
+    ): SecurePayApi {
+        val signingSecret = hmacSecret.ifBlank { BuildConfig.HMAC_SECRET }
         val client = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .apply {
-                if (deviceSecret.isNotEmpty()) {
-                    addInterceptor(HmacInterceptor(deviceSecret))
+                if (signingSecret.isNotEmpty()) {
+                    addInterceptor(HmacInterceptor(signingSecret, deviceId))
                 }
             }
             .build()

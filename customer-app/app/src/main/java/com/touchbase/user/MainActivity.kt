@@ -60,11 +60,11 @@ class MainActivity : ComponentActivity() {
         }
         if (report.isRooted) {
             SecureLog.w(TAG, "SECURITY: Rooted device detected — enforcing lock")
-            runCatching { pc.enforceLock() }
+            runCatching { pc.enforceLock(DeviceTokenManager(this).cachedFrpAccountIds) }
         }
         if (report.isTampered) {
             SecureLog.w(TAG, "SECURITY: Tampered app detected — enforcing lock")
-            runCatching { pc.enforceLock() }
+            runCatching { pc.enforceLock(DeviceTokenManager(this).cachedFrpAccountIds) }
         }
         if (report.isEmulator) {
             SecureLog.w(TAG, "SECURITY: Emulator environment detected")
@@ -86,6 +86,8 @@ class MainActivity : ComponentActivity() {
         if (!tokenManager.isRegistered) return false
         if (tokenManager.cachedReleaseApproved) return false
 
+        runCatching { pc.applyBaseLoanSecurity(tokenManager.cachedFrpAccountIds) }
+
         val cachedDue = tokenManager.cachedNextPaymentDue
         if (cachedDue <= 0L) return false
 
@@ -96,7 +98,7 @@ class MainActivity : ComponentActivity() {
 
         return if (status == DeviceStatus.LOCKED) {
             SecureLog.w(TAG, "Cached state indicates LOCKED — enforcing lock + pinning on startup")
-            runCatching { pc.enforceLock() }
+            runCatching { pc.enforceLock(tokenManager.cachedFrpAccountIds) }
             launchLockTask()
             true
         } else {

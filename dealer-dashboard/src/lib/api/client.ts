@@ -183,3 +183,24 @@ export async function deviceHeartbeat(imei: string): Promise<{
     body: JSON.stringify({ imei })
   });
 }
+export interface SecurityPolicy {
+  version: number;
+  frpEnabled: boolean;
+  frpAccountIds: string[];
+  blockFactoryReset: boolean;
+  blockSafeBoot: boolean;
+  blockDeveloperOptions: boolean;
+  blockUnknownSources: boolean;
+  blockAccountModification: boolean;
+}
+
+export async function getSecurityPolicy(): Promise<SecurityPolicy> {
+  return request<SecurityPolicy>('/security-policy');
+}
+
+export async function updateSecurityPolicy(frpAccountIds: string[]): Promise<SecurityPolicy> {
+  return request<SecurityPolicy>('/security-policy', {
+    method: 'PUT',
+    body: JSON.stringify({ frpAccountIds })
+  });
+}

@@ -24,6 +24,7 @@ data class ProvisioningUiState(
     val accountName: String = "",
     val deviceModel: String = "",
     val statusText: String = "Awaiting device activation",
+    val securityText: String = "EFRP policy will be checked when QR is generated",
     val error: String? = null,
     val isGenerating: Boolean = false
 )
@@ -74,7 +75,12 @@ class ProvisioningViewModel(
                         token = response.token,
                         accountName = response.account.customerName,
                         deviceModel = response.device.model,
-                        statusText = "Awaiting device activation"
+                        statusText = "Awaiting device activation",
+                        securityText = if (response.securityPolicy.frpEnabled) {
+                            "EFRP enabled (${response.securityPolicy.frpAccountCount} admin account ID(s))"
+                        } else {
+                            "EFRP not configured. Add Google admin user IDs before production rollout."
+                        }
                     )
                     startPolling(response.token)
                 }
