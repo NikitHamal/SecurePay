@@ -40,6 +40,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      clearToken();
+    }
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body.error || `Request failed: ${res.status}`);
   }
@@ -105,6 +108,10 @@ export async function forceRemoteLock(id: string): Promise<Customer> {
   return request<Customer>(`/accounts/${id}/force-lock`, { method: 'POST' });
 }
 
+export async function deleteAccount(id: string): Promise<{ success: boolean; id: string; deviceId?: string }> {
+  return request<{ success: boolean; id: string; deviceId?: string }>(`/accounts/${id}`, { method: 'DELETE' });
+}
+
 export async function forceRemoteUnlock(id: string): Promise<Customer> {
   return request<Customer>(`/accounts/${id}/force-unlock`, { method: 'POST' });
 }
@@ -149,6 +156,11 @@ export async function addDevice(imei: string, model: string): Promise<{ id: stri
     method: 'POST',
     body: JSON.stringify({ imei, model })
   });
+}
+
+export async function deleteDevice(id: string, force = false): Promise<{ success: boolean; id: string }> {
+  const qs = force ? '?force=true' : '';
+  return request<{ success: boolean; id: string }>(`/devices/${id}${qs}`, { method: 'DELETE' });
 }
 
 export async function listPlans(): Promise<{ id: string; name: string; termDays: number; totalAmount: number; dailyRate: number; minDownPayment: number }[]> {

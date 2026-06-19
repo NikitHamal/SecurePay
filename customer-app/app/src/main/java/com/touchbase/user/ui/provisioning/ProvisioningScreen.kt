@@ -64,12 +64,8 @@ fun ProvisioningScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.provisioningState) {
-        if (state.provisioningState == ProvisioningState.DEVICE_OWNER ||
-            state.provisioningState == ProvisioningState.ADMIN_ACTIVE
-        ) {
-            if (!state.securityReport.hasWarnings) {
-                onProvisioningComplete()
-            }
+        if (state.provisioningState == ProvisioningState.DEVICE_OWNER && !state.securityReport.hasWarnings) {
+            onProvisioningComplete()
         }
     }
 
@@ -120,7 +116,7 @@ fun ProvisioningScreen(
             )
 
             Text(
-                text = "Your device needs to be configured as a managed device to enforce financing terms. This ensures the device stays secure during your payment plan.",
+                text = "This phone must be provisioned as Device Owner from the Android welcome screen. Device Admin mode is blocked because it cannot stop factory reset, uninstall controls, or full loan security policies.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
@@ -136,16 +132,12 @@ fun ProvisioningScreen(
 
             ProvisioningActions(
                 state = state,
-                onEnableAdmin = {
-                    onLaunchEnableAdmin(viewModel.getEnableAdminIntent())
-                },
                 onRequestDeviceOwner = {
                     val intent = viewModel.getDeviceOwnerIntent()
                     if (intent != null) {
                         onLaunchProvisioning(intent)
                     }
                 },
-                onSkip = onProvisioningComplete,
                 onRunSecurityCheck = { viewModel.runSecurityCheck() }
             )
 
@@ -161,7 +153,7 @@ private fun ProvisioningStatusCard(state: ProvisioningUiState) {
             Icons.Filled.CheckCircle, Emerald, "Device Owner (Full Control)"
         )
         ProvisioningState.ADMIN_ACTIVE -> Triple(
-            Icons.Filled.AdminPanelSettings, Emerald, "Device Admin (Standard)"
+            Icons.Filled.Warning, Crimson, "Device Admin only — re-provision required"
         )
         ProvisioningState.PROVISIONING_IN_PROGRESS -> Triple(
             Icons.Filled.AdminPanelSettings, Amber, "Provisioning in Progress..."
@@ -201,9 +193,16 @@ private fun ProvisioningStatusCard(state: ProvisioningUiState) {
             )
             if (state.provisioningState == ProvisioningState.ADMIN_ACTIVE) {
                 Text(
-                    text = "Device Admin mode provides lock/unlock control. For full protection (USB debugging block, app hiding, screen capture block), Device Owner is recommended.",
+                    text = "Manual Device Admin is not production safe. Factory reset and uninstall controls are only enforceable after true Device Owner QR provisioning.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+            }
+            if (state.provisioningState == ProvisioningState.NOT_PROVISIONED) {
+                Text(
+                    text = "Factory reset the phone, stay on the welcome screen, tap 6 times, then scan the dealer QR.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }
         }
@@ -266,9 +265,7 @@ private fun SecurityWarningRow(text: String) {
 @Composable
 private fun ProvisioningActions(
     state: ProvisioningUiState,
-    onEnableAdmin: () -> Unit,
     onRequestDeviceOwner: () -> Unit,
-    onSkip: () -> Unit,
     onRunSecurityCheck: () -> Unit
 ) {
     Column(
@@ -276,22 +273,6 @@ private fun ProvisioningActions(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (state.provisioningState == ProvisioningState.NOT_PROVISIONED) {
-            Button(
-                onClick = onEnableAdmin,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Emerald,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(Icons.Filled.AdminPanelSettings, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Enable Device Admin", fontWeight = FontWeight.SemiBold)
-            }
-
             OutlinedButton(
                 onClick = onRequestDeviceOwner,
                 modifier = Modifier
@@ -301,22 +282,25 @@ private fun ProvisioningActions(
             ) {
                 Icon(Icons.Filled.Security, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Request Device Owner", fontWeight = FontWeight.SemiBold)
+                Text("Open legacy Device Owner setup", fontWeight = FontWeight.SemiBold)
             }
+            Text(
+                text = "On Android 12+ this button is intentionally unavailable. Use the dealer QR from Setup Wizard instead.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         if (state.provisioningState == ProvisioningState.ADMIN_ACTIVE) {
-            OutlinedButton(
-                onClick = onRequestDeviceOwner,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Filled.Security, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Upgrade to Device Owner", fontWeight = FontWeight.SemiBold)
-            }
+            Text(
+                text = "This phone is only Device Admin. Do not activate a loan on it. Factory reset and scan a fresh SecurePay QR to become Device Owner.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Crimson,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         Button(
@@ -339,16 +323,6 @@ private fun ProvisioningActions(
             } else {
                 Text("Run Security Check", fontWeight = FontWeight.Medium)
             }
-        }
-
-        OutlinedButton(
-            onClick = onSkip,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Continue with Current Setup", fontWeight = FontWeight.Medium)
         }
     }
 }

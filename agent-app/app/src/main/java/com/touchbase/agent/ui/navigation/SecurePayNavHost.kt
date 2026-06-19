@@ -10,12 +10,15 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.touchbase.agent.data.remote.SecurePayRepository
+import com.touchbase.agent.data.local.WifiSettingsStore
 import com.touchbase.agent.data.remote.TokenManager
 import com.touchbase.agent.ui.auth.LoginScreen
 import com.touchbase.agent.ui.dashboard.DashboardScreen
@@ -35,6 +38,8 @@ fun SecurePayNavHost(
     tokenManager: TokenManager
 ) {
     val isLoggedIn by tokenManager.token.collectAsState()
+    val appContext = LocalContext.current.applicationContext
+    val wifiSettingsStore = remember(appContext) { WifiSettingsStore(appContext) }
 
     val startDestination = if (isLoggedIn != null) Screen.Dashboard.route else Screen.Login.route
 
@@ -129,7 +134,7 @@ fun SecurePayNavHost(
         ) { backStackEntry ->
             val imei = backStackEntry.arguments?.getString("imei").orEmpty()
             val viewModel: ProvisioningViewModel = viewModel(
-                factory = ProvisioningViewModel.Factory(repository, imei)
+                factory = ProvisioningViewModel.Factory(repository, imei, wifiSettingsStore)
             )
             ProvisioningScreen(
                 viewModel = viewModel,

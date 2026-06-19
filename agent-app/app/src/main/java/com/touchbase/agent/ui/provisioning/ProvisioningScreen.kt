@@ -122,7 +122,7 @@ private fun QrFormSection(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                "This installs TB User on the customer's phone as a Device Owner and binds it to their account.",
+                "This installs TB User on the customer's phone as a Device Owner and binds it to their account. Saved Wi-Fi is stored encrypted on this agent device only.",
                 color = OnDarkSecondary,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -207,7 +207,7 @@ private fun QrDisplaySection(
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            QrCode(content = state.qrPayload, size = 260.dp)
+            QrCode(content = state.qrPayload, size = 300.dp)
             Spacer(Modifier.height(20.dp))
             Text(
                 "Activation Code",

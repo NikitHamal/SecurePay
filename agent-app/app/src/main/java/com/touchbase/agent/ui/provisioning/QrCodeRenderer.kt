@@ -18,7 +18,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 @Composable
 fun QrCode(
     content: String,
-    size: Dp = 280.dp,
+    size: Dp = 300.dp,
     darkColor: Color = Color(0xFF121212),
     lightColor: Color = Color.White,
     modifier: Modifier = Modifier
@@ -51,7 +51,7 @@ private fun encodeQr(content: String): com.google.zxing.common.BitMatrix? {
     return runCatching {
         val hints = mapOf(
             EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
-            EncodeHintType.MARGIN to 1,
+            EncodeHintType.MARGIN to 4,
             EncodeHintType.CHARACTER_SET to "UTF-8"
         )
         QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 512, 512, hints)

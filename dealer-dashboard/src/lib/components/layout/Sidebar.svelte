@@ -42,7 +42,7 @@
 </script>
 
 <aside
-  class="relative flex h-screen w-full shrink-0 flex-col border-r border-edge bg-surface-300 md:w-64"
+  class="relative flex w-full shrink-0 flex-col border-r border-edge bg-surface-300 md:sticky md:top-0 md:h-screen md:w-64"
   aria-label="Primary"
 >
   <div class="flex items-center gap-3 px-5 pt-5 pb-3">

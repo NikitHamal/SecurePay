@@ -61,7 +61,7 @@ fun NotProvisionedScreen() {
 
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "This phone is not activated for SecurePay financing",
+                text = "This phone is not Device Owner yet",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -79,14 +79,14 @@ fun NotProvisionedScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "To use this device, it must be provisioned by your dealer.",
+                        text = "SecurePay can only enforce factory-reset, uninstall, FRP, and lock policies after true Device Owner QR provisioning.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Please contact the dealer who sold you this phone. They will activate it for you.",
+                        text = "Factory reset the phone, stay on the Android welcome screen, tap 6 times, scan the latest dealer QR, then confirm Device Owner before activation.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
                         textAlign = TextAlign.Center

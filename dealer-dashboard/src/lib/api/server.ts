@@ -86,6 +86,7 @@ export function releaseFields(row: Record<string, unknown>): {
   };
 }
 
+const DEVICE_ADMIN_PACKAGE = 'com.touchbase.user';
 const DEVICE_ADMIN_COMPONENT = 'com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
 const DEVICE_ADMIN_LABEL = 'TB User';
 
@@ -221,15 +222,19 @@ export function buildQrPayload({
   dealerId,
   securityPolicy
 }: QrPayloadInput): string {
-  // Pin provisioning to the exact, versioned APK bytes. Do not also send the
-  // deprecated package-name extra or a second signature checksum: one exact APK
-  // checksum is deterministic and avoids conflicting validation paths.
+  // Pin provisioning to the exact, versioned APK bytes and include both the
+  // component and package metadata. Some OEM setup wizards are stricter about
+  // component matching; keeping the package name aligned with the component
+  // avoids admin-only fallbacks while the APK checksum still pins the bytes.
   const payload: Record<string, JsonValue> = {
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME': DEVICE_ADMIN_COMPONENT,
+    'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME': DEVICE_ADMIN_PACKAGE,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION': apk.url,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM': apk.sha256Base64,
+    'android.app.extra.PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE': apk.versionCode,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL': DEVICE_ADMIN_LABEL,
     'android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED': true,
+    'android.app.extra.PROVISIONING_SKIP_EDUCATION_SCREENS': true,
     'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
       schemaVersion: 1,
       provisioningToken,
@@ -247,6 +252,7 @@ export function buildQrPayload({
   if (ssid) {
     payload['android.app.extra.PROVISIONING_WIFI_SSID'] = ssid;
     payload['android.app.extra.PROVISIONING_WIFI_SECURITY_TYPE'] = wifiPassword ? 'WPA' : 'NONE';
+    payload['android.app.extra.PROVISIONING_WIFI_HIDDEN'] = false;
     if (wifiPassword) {
       payload['android.app.extra.PROVISIONING_WIFI_PASSWORD'] = wifiPassword;
     }
