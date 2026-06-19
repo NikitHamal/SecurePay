@@ -73,19 +73,20 @@ class HeartbeatWorker(
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<HeartbeatWorker>(
-                4, TimeUnit.HOURS,
-                30, TimeUnit.MINUTES
+                15, TimeUnit.MINUTES,
+                5, TimeUnit.MINUTES
             )
                 .setConstraints(
                     androidx.work.Constraints.Builder()
                         .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
                         .build()
                 )
+                .setExpedited(false)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
         }
