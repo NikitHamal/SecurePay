@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
 
 export const POST: RequestHandler = async ({ request, platform, locals }) => {
   if (!locals.hmacVerified) {
@@ -40,9 +40,9 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   const now = Date.now();
   await db.prepare('UPDATE accounts SET updated_at = ? WHERE id = ?').bind(Math.floor(now / 1000), account.id as string).run();
 
-  const status = account.locked_by_dealer === 1
-    ? 'LOCKED'
-    : computeStatus(Number(account.next_payment_due));
+  const status = releaseApproved(account as Record<string, unknown>)
+    ? 'ACTIVE'
+    : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due)));
 
   return json({
     enrolled: true,
@@ -58,7 +58,10 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       nextPaymentDue: Number(account.next_payment_due),
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
-      dailyRate: Number(account.daily_rate)
+      dailyRate: Number(account.daily_rate),
+      releaseApproved: releaseFields(account as Record<string, unknown>).releaseApproved,
+      releaseApprovedAt: releaseFields(account as Record<string, unknown>).releaseApprovedAt,
+      releasedAt: releaseFields(account as Record<string, unknown>).releasedAt
     },
     serverTime: Date.now()
   });

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
@@ -166,7 +167,7 @@ fun CustomerDetailScreen(
         ) {
             Spacer(modifier = Modifier.height(0.dp))
 
-            StatusBanner(status = acc.status)
+            StatusBanner(status = acc.status, releaseApproved = acc.releaseApproved)
 
             InfoCard(title = "Customer Information") {
                 InfoRow(icon = Icons.Filled.Person, label = "Name", value = acc.customerName)
@@ -268,6 +269,26 @@ fun CustomerDetailScreen(
                 Text("Re-provision / Generate QR")
             }
 
+
+            OutlinedButton(
+                onClick = {
+                    actionInProgress = true
+                    scope.launch {
+                        repository?.approveRelease(acc.id, acc.remainingBalance > 0)
+                        actionInProgress = false
+                        loadAccount()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                enabled = !actionInProgress && !acc.releaseApproved,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = emerald),
+                shape = RoundedCornerShape(360.dp)
+            ) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (acc.remainingBalance > 0) "Release app (test/settlement)" else "Approve app removal")
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -286,8 +307,10 @@ fun CustomerDetailScreen(
 }
 
 @Composable
-private fun StatusBanner(status: AccountStatus) {
-    val (text, color) = when (status) {
+private fun StatusBanner(status: AccountStatus, releaseApproved: Boolean = false) {
+    val (text, color) = if (releaseApproved) {
+        "Release approved — customer app can be removed" to emerald
+    } else when (status) {
         AccountStatus.ACTIVE -> "Active" to emerald
         AccountStatus.WARNING -> "Warning — Payment Due Soon" to Color(0xFFFBBF24)
         AccountStatus.LOCKED -> "Locked — Payment Overdue" to Color(0xFFEF4444)

@@ -20,6 +20,7 @@ import com.touchbase.user.ui.lock.LockTaskActivity
 import com.touchbase.user.ui.theme.SecurePayTheme
 import com.touchbase.user.util.BatteryOptimizationHelper
 import com.touchbase.user.worker.HeartbeatWorker
+import com.touchbase.user.worker.AppUpdateWorker
 import com.touchbase.user.worker.NetworkMonitor
 import kotlinx.coroutines.launch
 
@@ -83,6 +84,7 @@ class MainActivity : ComponentActivity() {
             return false
         }
         if (!tokenManager.isRegistered) return false
+        if (tokenManager.cachedReleaseApproved) return false
 
         val cachedDue = tokenManager.cachedNextPaymentDue
         if (cachedDue <= 0L) return false
@@ -131,6 +133,7 @@ class MainActivity : ComponentActivity() {
         }
 
         runCatching { HeartbeatWorker.schedule(this) }
+        runCatching { AppUpdateWorker.schedule(this) }
         networkMonitor?.let { runCatching { it.startMonitoring() } }
         runCatching { BatteryOptimizationHelper.requestIfRegistered(this) }
 

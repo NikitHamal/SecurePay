@@ -12,7 +12,8 @@ data class DeviceUiState(
     val isProcessingPayment: Boolean = false,
     val isRequestingGrace: Boolean = false,
     val message: String? = null,
-    val isOffline: Boolean = false
+    val isOffline: Boolean = false,
+    val releaseApproved: Boolean = account?.releaseApproved == true
 ) {
-    val isLocked: Boolean get() = status == DeviceStatus.LOCKED
+    val isLocked: Boolean get() = status == DeviceStatus.LOCKED && !releaseApproved
 }

@@ -31,10 +31,11 @@ class DeviceTokenManager private constructor(
         _imei = imei
     }
 
-    fun saveCachedStatus(nextPaymentDue: Long, lockedByDealer: Boolean) {
+    fun saveCachedStatus(nextPaymentDue: Long, lockedByDealer: Boolean, releaseApproved: Boolean = false) {
         prefs.edit()
             .putLong(KEY_CACHED_NEXT_DUE, nextPaymentDue)
             .putBoolean(KEY_CACHED_LOCKED_BY_DEALER, lockedByDealer)
+            .putBoolean(KEY_CACHED_RELEASE_APPROVED, releaseApproved)
             .apply()
     }
 
@@ -46,6 +47,7 @@ class DeviceTokenManager private constructor(
 
     val cachedNextPaymentDue: Long get() = prefs.getLong(KEY_CACHED_NEXT_DUE, 0L)
     val cachedLockedByDealer: Boolean get() = prefs.getBoolean(KEY_CACHED_LOCKED_BY_DEALER, false)
+    val cachedReleaseApproved: Boolean get() = prefs.getBoolean(KEY_CACHED_RELEASE_APPROVED, false)
     val serverTimeOffset: Long get() = prefs.getLong(KEY_SERVER_TIME_OFFSET, 0L)
 
     fun getTrustedTimeMillis(): Long {
@@ -67,6 +69,7 @@ class DeviceTokenManager private constructor(
         private const val KEY_IMEI = "device_imei"
         private const val KEY_CACHED_NEXT_DUE = "cached_next_payment_due"
         private const val KEY_CACHED_LOCKED_BY_DEALER = "cached_locked_by_dealer"
+        private const val KEY_CACHED_RELEASE_APPROVED = "cached_release_approved"
         private const val KEY_SERVER_TIME_OFFSET = "server_time_offset_millis"
 
         // Set by openPrefs() during the (synchronous) primary constructor call.

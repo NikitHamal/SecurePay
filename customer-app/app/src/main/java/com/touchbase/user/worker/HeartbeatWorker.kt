@@ -37,6 +37,13 @@ class HeartbeatWorker(
             SecureLog.i(TAG, "Heartbeat successful")
 
             val account = repository.account.value
+            if (account?.releaseApproved == true || tokenManager.cachedReleaseApproved) {
+                SecureLog.i(TAG, "Release approved — removing device management")
+                runCatching { repository.reportReleaseComplete() }
+                runCatching { com.touchbase.user.admin.DevicePolicyController(applicationContext).releaseManagementForPaidLoan() }
+                return Result.success()
+            }
+
             val cachedDue = if (account != null) account.nextPaymentDueEpochMillis else tokenManager.cachedNextPaymentDue
             val lockedByDealer = account?.lockedByDealer ?: tokenManager.cachedLockedByDealer
             val trustedNow = tokenManager.getTrustedTimeMillis()

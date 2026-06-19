@@ -36,7 +36,10 @@ data class AccountBrief(
     val nextPaymentDue: Long = 0L,
     val amountPaid: Int = 0,
     val totalLoanAmount: Int = 0,
-    val dailyRate: Int = 0
+    val dailyRate: Int = 0,
+    val releaseApproved: Boolean = false,
+    val releaseApprovedAt: Long? = null,
+    val releasedAt: Long? = null
 )
 
 @Serializable
@@ -60,6 +63,9 @@ data class AccountResponse(
     val currencyCode: String = "GHS",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
+    val releaseApproved: Boolean = false,
+    val releaseApprovedAt: Long? = null,
+    val releasedAt: Long? = null,
     val serverTime: Long = 0L
 )
 
@@ -75,7 +81,10 @@ data class LoanAccount(
     val termDays: Int,
     val nextPaymentDueEpochMillis: Long,
     val lockedByDealer: Boolean,
-    val currencyCode: String = "GHS"
+    val currencyCode: String = "GHS",
+    val releaseApproved: Boolean = false,
+    val releaseApprovedAt: Long? = null,
+    val releasedAt: Long? = null
 ) {
     val remainingBalanceCents: Int
         get() = (totalLoanAmountCents - amountPaidCents).coerceAtLeast(0)
@@ -115,3 +124,22 @@ fun formatCentsAsCurrency(cents: Int, currencyCode: String = "GHS"): String {
         "$symbol${String.format("%,.2f", whole)}"
     }
 }
+
+
+@kotlinx.serialization.Serializable
+data class ReleaseCompleteResponse(
+    val ok: Boolean = false,
+    val releasedAt: Long = 0L,
+    val serverTime: Long = 0L
+)
+
+@kotlinx.serialization.Serializable
+data class AppUpdateResponse(
+    val available: Boolean = false,
+    val url: String = "",
+    val sha256Base64: String = "",
+    val versionName: String = "",
+    val versionCode: Int = 0,
+    val minSupportedVersionCode: Int = 0,
+    val serverTime: Long = 0L
+)

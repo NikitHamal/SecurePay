@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
@@ -50,7 +50,8 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
-    status: computeStatus(nextDue)
+    status: computeStatus(nextDue),
+    ...releaseFields(row as Record<string, unknown>)
   };
 
   return json(customer);

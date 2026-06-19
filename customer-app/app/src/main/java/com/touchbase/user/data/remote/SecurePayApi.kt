@@ -4,6 +4,8 @@ import com.touchbase.user.data.model.AccountResponse
 import com.touchbase.user.data.model.ActivateResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
 import com.touchbase.user.data.model.PaymentsResponse
+import com.touchbase.user.data.model.ReleaseCompleteResponse
+import com.touchbase.user.data.model.AppUpdateResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -36,4 +38,10 @@ interface SecurePayApi {
         @Query("accountId") accountId: String,
         @Query("imei") imei: String
     ): PaymentsResponse
+
+    @POST("device/release-complete")
+    suspend fun releaseComplete(@Body body: Map<String, @JvmSuppressWildcards String>): ReleaseCompleteResponse
+
+    @GET("device/app-update")
+    suspend fun appUpdate(@Query("currentVersionCode") currentVersionCode: Int): AppUpdateResponse
 }

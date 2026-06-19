@@ -8,6 +8,7 @@ import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.PaymentEntry
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.SecurePayApi
+import com.touchbase.user.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,7 @@ class DeviceRepository(
 
     val cachedNextPaymentDue: Long get() = tokenManager.cachedNextPaymentDue
     val cachedLockedByDealer: Boolean get() = tokenManager.cachedLockedByDealer
+    val cachedReleaseApproved: Boolean get() = tokenManager.cachedReleaseApproved
 
     val trustedTime: Long
         get() = tokenManager.getTrustedTimeMillis()
@@ -109,7 +111,7 @@ class DeviceRepository(
             updateServerTimeOffset(requestTime, response.serverTime)
             val account = response.toLoanAccount()
             _account.value = account
-            tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer)
+            tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer, account.releaseApproved)
             _error.value = null
         } catch (e: Exception) {
             SecureLog.e(TAG, "refresh failed", e)
@@ -149,6 +151,33 @@ class DeviceRepository(
         }
     }
 
+
+    suspend fun reportReleaseComplete(): Result<Unit> = withContext(Dispatchers.IO) {
+        val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
+        val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
+        try {
+            val requestTime = System.currentTimeMillis()
+            val response = api.releaseComplete(mapOf("accountId" to accountId, "imei" to imei))
+            updateServerTimeOffset(requestTime, response.serverTime)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "releaseComplete failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun checkForAppUpdate(): Result<com.touchbase.user.data.model.AppUpdateResponse> = withContext(Dispatchers.IO) {
+        try {
+            val requestTime = System.currentTimeMillis()
+            val response = api.appUpdate(BuildConfig.VERSION_CODE)
+            updateServerTimeOffset(requestTime, response.serverTime)
+            Result.success(response)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "appUpdate check failed", e)
+            Result.failure(e)
+        }
+    }
+
     private fun updateServerTimeOffset(requestSentAt: Long, serverTime: Long) {
         if (serverTime <= 0L) return
         val receivedAt = System.currentTimeMillis()
@@ -181,5 +210,8 @@ fun AccountResponse.toLoanAccount(): LoanAccount = LoanAccount(
     termDays = termDays,
     nextPaymentDueEpochMillis = nextPaymentDueEpochMillis,
     lockedByDealer = lockedByDealer == 1,
-    currencyCode = currencyCode.ifEmpty { "GHS" }
+    currencyCode = currencyCode.ifEmpty { "GHS" },
+    releaseApproved = releaseApproved,
+    releaseApprovedAt = releaseApprovedAt,
+    releasedAt = releasedAt
 )

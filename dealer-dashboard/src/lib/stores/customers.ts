@@ -3,7 +3,8 @@ import type { Customer, KpiSummary } from '$lib/types';
 import {
   listCustomers as apiListCustomers,
   extendTimer as apiExtendTimer,
-  forceRemoteLock as apiForceRemoteLock
+  forceRemoteLock as apiForceRemoteLock,
+  approveRelease as apiApproveRelease
 } from '$lib/api/client';
 
 export const customers: Writable<Customer[]> = writable<Customer[]>([]);
@@ -48,6 +49,19 @@ export async function extendTimer(id: string, hours: number): Promise<void> {
     replaceCustomer(updated);
   } catch (err) {
     error.set(err instanceof Error ? err.message : 'Failed to extend timer');
+  } finally {
+    setPending(id, false);
+  }
+}
+
+export async function approveRelease(id: string, allowEarlyRelease = false): Promise<void> {
+  setPending(id, true);
+  error.set(null);
+  try {
+    const updated = await apiApproveRelease(id, allowEarlyRelease, allowEarlyRelease ? 'Manual test/settlement release approved from dashboard' : undefined);
+    replaceCustomer(updated);
+  } catch (err) {
+    error.set(err instanceof Error ? err.message : 'Failed to approve release');
   } finally {
     setPending(id, false);
   }

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, releaseHorizon } from '$lib/api/server';
 import { parsePaymentMethod, paymentMethodStorageValue } from '$lib/payment-method';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
@@ -36,6 +36,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   const newAmountPaid = currentPaid + amount;
+  const paidOff = newAmountPaid >= totalLoan;
   const dailyRate = Number(account.daily_rate);
   if (!Number.isSafeInteger(dailyRate) || dailyRate <= 0) {
     return errorResponse('Account daily rate is invalid', 409);
@@ -43,9 +44,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const currentDue = Number(account.next_payment_due);
   const now = Date.now();
+  const nowSec = Math.floor(now / 1000);
   const daysExtended = Math.floor(amount / dailyRate);
   const base = Math.max(currentDue, now);
-  const newDue = daysExtended > 0 ? base + daysExtended * 24 * 60 * 60 * 1000 : currentDue;
+  const newDue = paidOff
+    ? releaseHorizon(now)
+    : (daysExtended > 0 ? base + daysExtended * 24 * 60 * 60 * 1000 : currentDue);
 
   const paymentId = uuidv4();
   await db.batch([
@@ -62,8 +66,15 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       Math.floor(now / 1000)
     ),
     db.prepare(
-      'UPDATE accounts SET amount_paid = ?, next_payment_due = ?, locked_by_dealer = 0, updated_at = ? WHERE id = ?'
-    ).bind(newAmountPaid, newDue, Math.floor(now / 1000), accountId)
+      `UPDATE accounts
+          SET amount_paid = ?,
+              next_payment_due = ?,
+              locked_by_dealer = 0,
+              release_approved = CASE WHEN ? THEN 1 ELSE release_approved END,
+              release_approved_at = CASE WHEN ? THEN COALESCE(release_approved_at, ?) ELSE release_approved_at END,
+              updated_at = ?
+        WHERE id = ?`
+    ).bind(newAmountPaid, newDue, paidOff ? 1 : 0, paidOff ? 1 : 0, nowSec, nowSec, accountId)
   ]);
 
   const row = await db.prepare(`
@@ -80,7 +91,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const nextDue = Number(row.next_payment_due);
   const amtPaid = Number(row.amount_paid);
-  const status: Status = row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue);
+  const status: Status = releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
 
   const customer: Customer = {
     id: row.id as string,
@@ -95,7 +106,8 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate,
     nextPaymentDueEpochMillis: nextDue,
-    status
+    status,
+    ...releaseFields(row as Record<string, unknown>)
   };
 
   return json({

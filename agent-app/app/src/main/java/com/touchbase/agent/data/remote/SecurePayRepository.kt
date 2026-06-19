@@ -69,6 +69,18 @@ class SecurePayRepository(
         try { Result.success(api.forceUnlock(id)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
+    suspend fun approveRelease(id: String, allowEarlyRelease: Boolean): Result<Account> = withContext(Dispatchers.IO) {
+        try {
+            val body = mapOf(
+                "allowEarlyRelease" to allowEarlyRelease,
+                "note" to if (allowEarlyRelease) "Manual test/settlement release approved from agent app" else "Paid-off release approved from agent app"
+            )
+            Result.success(api.approveRelease(id, body))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
+    }
+
     suspend fun recordPayment(request: RecordPaymentRequest): Result<RecordPaymentResponse> = withContext(Dispatchers.IO) {
         try { Result.success(api.recordPayment(request)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
