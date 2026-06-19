@@ -31,10 +31,12 @@ class SecurePayApplication : Application() {
     val api: SecurePayApi
         get() = apiCache ?: synchronized(this) {
             apiCache ?: run {
-                val secret = runCatching { tokenManager.imei }.getOrNull() ?: "unregistered-device"
-                val a = runCatching { ApiModule.provideApi(secret) }.getOrElse {
+                val signingSecret = runCatching { tokenManager.apiSecret }.getOrNull()
+                    ?: BuildConfig.HMAC_SECRET
+                val deviceId = runCatching { tokenManager.accountId ?: tokenManager.imei.orEmpty() }.getOrDefault("")
+                val a = runCatching { ApiModule.provideApi(signingSecret, deviceId) }.getOrElse {
                     Log.e(TAG, "ApiModule.provideApi failed", it)
-                    ApiModule.provideApiSafe(secret)
+                    ApiModule.provideApiSafe(signingSecret, deviceId)
                 }
                 apiCache = a
                 a

@@ -7,6 +7,7 @@ data class DeviceCheckResponse(
     val enrolled: Boolean = false,
     val device: DeviceInfo? = null,
     val account: AccountBrief? = null,
+    val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy(),
     val serverTime: Long = 0L
 )
 
@@ -15,8 +16,10 @@ data class ActivateResponse(
     val enrolled: Boolean = false,
     val activated: Boolean = false,
     val imei: String = "",
+    val apiSecret: String = "",
     val device: DeviceInfo? = null,
     val account: AccountBrief? = null,
+    val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy(),
     val serverTime: Long = 0L
 )
 
@@ -43,6 +46,18 @@ data class AccountBrief(
 )
 
 @Serializable
+data class DeviceSecurityPolicy(
+    val version: Long = 0L,
+    val frpEnabled: Boolean = false,
+    val frpAccountIds: List<String> = emptyList(),
+    val blockFactoryReset: Boolean = true,
+    val blockSafeBoot: Boolean = true,
+    val blockDeveloperOptions: Boolean = true,
+    val blockUnknownSources: Boolean = true,
+    val blockAccountModification: Boolean = true
+)
+
+@Serializable
 data class AccountResponse(
     val id: String = "",
     val customerName: String = "",
@@ -66,6 +81,7 @@ data class AccountResponse(
     val releaseApproved: Boolean = false,
     val releaseApprovedAt: Long? = null,
     val releasedAt: Long? = null,
+    val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy(),
     val serverTime: Long = 0L
 )
 
@@ -84,7 +100,8 @@ data class LoanAccount(
     val currencyCode: String = "GHS",
     val releaseApproved: Boolean = false,
     val releaseApprovedAt: Long? = null,
-    val releasedAt: Long? = null
+    val releasedAt: Long? = null,
+    val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy()
 ) {
     val remainingBalanceCents: Int
         get() = (totalLoanAmountCents - amountPaidCents).coerceAtLeast(0)

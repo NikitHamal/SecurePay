@@ -65,6 +65,11 @@ class ProvisioningActivity : ComponentActivity() {
             val isOwner = runCatching { dpm.isDeviceOwnerApp(packageName) }.getOrDefault(false)
             if (isOwner) {
                 SecureLog.i(TAG, "Confirmed: app is now Device Owner")
+                runCatching {
+                    DevicePolicyController(this).applyBaseLoanSecurity(
+                        ProvisioningExtrasStore.frpAccountIds(this)
+                    )
+                }.onFailure { SecureLog.w(TAG, "Initial loan security policy failed: ${it.message}") }
             } else {
                 SecureLog.w(TAG, "Provisioning completed but app is NOT device owner (admin-only)")
             }

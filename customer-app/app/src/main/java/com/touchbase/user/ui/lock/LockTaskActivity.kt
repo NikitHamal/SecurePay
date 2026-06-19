@@ -36,8 +36,9 @@ class LockTaskActivity : ComponentActivity() {
         policyController = DevicePolicyController(this)
 
         SecureLog.w(TAG, "LockTaskActivity created — entering pinned lock mode")
+        val tokenManager = com.touchbase.user.data.remote.DeviceTokenManager(this)
         policyController.startLockTask(this)
-        policyController.enforceLock()
+        policyController.enforceLock(tokenManager.cachedFrpAccountIds)
 
         val app = application as SecurePayApplication
         val repository = app.deviceRepository

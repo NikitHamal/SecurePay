@@ -11,6 +11,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   }
 
   const meta = await readApkMeta({ platform });
+  const configuredMin = Number(platform?.env?.CUSTOMER_APP_MIN_SUPPORTED_VERSION_CODE ?? 0);
+  const minSupportedVersionCode = Number.isSafeInteger(configuredMin) && configuredMin > 0
+    ? configuredMin
+    : meta.versionCode;
   const available = meta.versionCode > currentVersionCode;
   return json({
     available,
@@ -18,7 +22,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     sha256Base64: available ? meta.sha256Base64 : '',
     versionName: meta.versionName,
     versionCode: meta.versionCode,
-    minSupportedVersionCode: meta.versionCode,
+    minSupportedVersionCode,
     serverTime: Date.now()
   });
 };

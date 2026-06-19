@@ -7,10 +7,45 @@
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
+  import { getSecurityPolicy, updateSecurityPolicy } from '$lib/api/client';
+  import { onMount } from 'svelte';
 
   let view: 'cards' | 'table' = 'cards';
+  let frpAccountIdsText = '';
+  let securityStatus = 'Loading EFRP policy...';
+  let securityError: string | null = null;
+  let isSavingSecurity = false;
 
   $: m = $portfolioMetrics;
+
+  onMount(async () => {
+    try {
+      const policy = await getSecurityPolicy();
+      frpAccountIdsText = policy.frpAccountIds.join(String.fromCharCode(10));
+      securityStatus = policy.frpEnabled
+        ? `EFRP enabled with ${policy.frpAccountIds.length} admin account ID(s).`
+        : 'EFRP is not configured yet. Add Google admin numeric user IDs before production provisioning.';
+    } catch (error) {
+      securityError = error instanceof Error ? error.message : 'Failed to load security policy';
+    }
+  });
+
+  async function saveSecurityPolicy() {
+    isSavingSecurity = true;
+    securityError = null;
+    try {
+      const ids = frpAccountIdsText.split(/[\s,]+/).map((id) => id.trim()).filter(Boolean);
+      const policy = await updateSecurityPolicy(ids);
+      frpAccountIdsText = policy.frpAccountIds.join(String.fromCharCode(10));
+      securityStatus = policy.frpEnabled
+        ? `EFRP enabled with ${policy.frpAccountIds.length} admin account ID(s). Generate fresh QRs after this change.`
+        : 'EFRP is not configured. Factory-reset recovery protection will not be added to new QRs.';
+    } catch (error) {
+      securityError = error instanceof Error ? error.message : 'Failed to save security policy';
+    } finally {
+      isSavingSecurity = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -46,6 +81,34 @@
   </PageHeader>
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="card p-6 lg:col-span-3">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="max-w-2xl">
+          <p class="section-title">Production security policy</p>
+          <p class="mt-1 text-sm text-ink-secondary">
+            EFRP IDs are embedded into new Device Owner QRs and applied on the customer phone. Use numeric Google user IDs, not email addresses.
+          </p>
+          <p class="mt-2 text-xs {securityStatus.startsWith('EFRP enabled') ? 'text-emerald' : 'text-amber'}">{securityStatus}</p>
+          {#if securityError}
+            <p class="mt-2 text-xs text-crimson">{securityError}</p>
+          {/if}
+        </div>
+        <div class="w-full lg:max-w-xl">
+          <textarea
+            bind:value={frpAccountIdsText}
+            rows="3"
+            class="w-full rounded-xl border border-edge bg-surface-100 px-3 py-2 font-mono text-xs text-ink-primary outline-none transition focus:border-emerald"
+            placeholder="One Google numeric user ID per line"
+          ></textarea>
+          <div class="mt-2 flex justify-end">
+            <button type="button" class="btn-primary" on:click={saveSecurityPolicy} disabled={isSavingSecurity}>
+              {isSavingSecurity ? 'Saving...' : 'Save EFRP policy'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card p-6">
       <p class="section-title">Model mix</p>
       <p class="mt-1 text-sm text-ink-secondary">{m.deviceDistribution.length} models deployed</p>

@@ -97,7 +97,13 @@ fun SecurePayApp(
         val report = SecurityChecker.runAllChecks(context)
         securityReport = report
         if (report.shouldLock) {
-            policyController.enforceLock()
+            policyController.enforceLock(state.account?.securityPolicy?.frpAccountIds.orEmpty())
+        }
+    }
+
+    LaunchedEffect(state.account?.securityPolicy, state.releaseApproved, isRegistered) {
+        if (isRegistered && !state.releaseApproved) {
+            policyController.applyBaseLoanSecurity(state.account?.securityPolicy?.frpAccountIds.orEmpty())
         }
     }
 
@@ -112,7 +118,7 @@ fun SecurePayApp(
         val nowLocked = state.isLocked
         if (nowLocked != lastEnforcedLocked) {
             if (nowLocked) {
-                policyController.enforceLock()
+                policyController.enforceLock(state.account?.securityPolicy?.frpAccountIds.orEmpty())
                 onLocked()
             } else {
                 policyController.releaseRestrictions()

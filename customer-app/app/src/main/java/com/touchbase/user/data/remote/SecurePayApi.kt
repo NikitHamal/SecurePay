@@ -43,5 +43,9 @@ interface SecurePayApi {
     suspend fun releaseComplete(@Body body: Map<String, @JvmSuppressWildcards String>): ReleaseCompleteResponse
 
     @GET("device/app-update")
-    suspend fun appUpdate(@Query("currentVersionCode") currentVersionCode: Int): AppUpdateResponse
+    suspend fun appUpdate(
+        @Query("currentVersionCode") currentVersionCode: Int,
+        @Query("accountId") accountId: String,
+        @Query("imei") imei: String
+    ): AppUpdateResponse
 }

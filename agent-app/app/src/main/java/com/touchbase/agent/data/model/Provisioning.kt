@@ -15,8 +15,16 @@ data class ProvisioningQrResponse(
     val activationCode: String = "",
     val qrPayload: String = "",
     val expiresAt: Long = 0L,
+    val securityPolicy: ProvisioningSecurityPolicy = ProvisioningSecurityPolicy(),
     val account: ProvisioningAccountSummary = ProvisioningAccountSummary(),
     val device: ProvisioningDeviceSummary = ProvisioningDeviceSummary()
+)
+
+@Serializable
+data class ProvisioningSecurityPolicy(
+    val frpEnabled: Boolean = false,
+    val frpAccountCount: Int = 0,
+    val version: Long = 0L
 )
 
 @Serializable

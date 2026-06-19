@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy } from '$lib/api/server';
 
 /**
  * Device-scoped account endpoint.
@@ -31,6 +31,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 
   const nextPaymentDue = Number(row.next_payment_due);
   const amountPaid = Number(row.amount_paid);
+  const securityPolicy = await getDealerSecurityPolicy({ platform }, String(row.dealer_id));
   const totalLoanAmount = Number(row.total_loan_amount);
   const lockedByDealer = Number(row.locked_by_dealer) === 1;
 
@@ -55,6 +56,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     createdAt: Number(row.created_at) * 1000,
     updatedAt: Number(row.updated_at) * 1000,
     ...releaseFields(row as Record<string, unknown>),
+    securityPolicy,
     serverTime: Date.now()
   });
 };

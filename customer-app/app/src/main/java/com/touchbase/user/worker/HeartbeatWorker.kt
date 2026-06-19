@@ -30,13 +30,17 @@ class HeartbeatWorker(
         return try {
             val app = applicationContext as? com.touchbase.user.SecurePayApplication
             val repository = app?.deviceRepository ?: run {
-                val api = com.touchbase.user.data.remote.ApiModule.provideApi(imei)
+                val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
+                val api = com.touchbase.user.data.remote.ApiModule.provideApi(signingSecret, accountId)
                 DeviceRepository(api, tokenManager)
             }
             repository.heartbeat()
             SecureLog.i(TAG, "Heartbeat successful")
 
             val account = repository.account.value
+            val frpIds = account?.securityPolicy?.frpAccountIds ?: tokenManager.cachedFrpAccountIds
+            runCatching { com.touchbase.user.admin.DevicePolicyController(applicationContext).applyBaseLoanSecurity(frpIds) }
+
             if (account?.releaseApproved == true || tokenManager.cachedReleaseApproved) {
                 SecureLog.i(TAG, "Release approved — removing device management")
                 runCatching { repository.reportReleaseComplete() }

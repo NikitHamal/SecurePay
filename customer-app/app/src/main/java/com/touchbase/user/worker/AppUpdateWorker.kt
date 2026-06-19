@@ -27,7 +27,10 @@ class AppUpdateWorker(
         return try {
             val app = applicationContext as? SecurePayApplication
             val repository = app?.deviceRepository ?: DeviceRepository(
-                ApiModule.provideApi(tokenManager.imei ?: "registered-device"),
+                ApiModule.provideApi(
+                    tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET,
+                    tokenManager.accountId ?: tokenManager.imei.orEmpty()
+                ),
                 tokenManager
             )
             val update = repository.checkForAppUpdate().getOrNull() ?: return Result.retry()

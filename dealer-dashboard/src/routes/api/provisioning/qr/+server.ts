@@ -6,7 +6,8 @@ import {
   generateToken,
   generateActivationCode,
   buildQrPayload,
-  readApkMeta
+  readApkMeta,
+  getDealerSecurityPolicy
 } from '$lib/api/server';
 
 const TOKEN_TTL_SEC = 24 * 60 * 60;
@@ -118,7 +119,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   let qrPayload: string;
+  let securityPolicy;
   try {
+    securityPolicy = await getDealerSecurityPolicy({ platform }, locals.dealer.id);
     qrPayload = buildQrPayload({
       apk: apkMeta,
       wifiSsid: wifiSsid || null,
@@ -128,7 +131,8 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       expectedImei: imei,
       accountId: account.id as string,
       deviceId: device.id as string,
-      dealerId: locals.dealer.id
+      dealerId: locals.dealer.id,
+      securityPolicy
     });
   } catch (error) {
     await db.prepare("UPDATE provisioning_tokens SET status = 'revoked' WHERE id = ?")
@@ -142,12 +146,17 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     token: tokenId,
     activationCode,
     qrPayload,
-    qrPayloadVersion: 2,
+    qrPayloadVersion: 3,
     expiresAt: expiresAt * 1000,
     apk: {
       versionName: apkMeta.versionName,
       versionCode: apkMeta.versionCode,
       updatedAt: apkMeta.updatedAt
+    },
+    securityPolicy: {
+      frpEnabled: securityPolicy.frpEnabled,
+      frpAccountCount: securityPolicy.frpAccountIds.length,
+      version: securityPolicy.version
     },
     account: {
       id: account.id,
