@@ -27,14 +27,17 @@ data class Account(
     val termDays: Int = 0,
     val currencyCode: String = "GHS",
     val createdAt: Long = 0L,
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val releaseApproved: Boolean = false,
+    val releaseApprovedAt: Long? = null,
+    val releasedAt: Long? = null
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED
 fun Account.isWarning(): Boolean = status == AccountStatus.WARNING
 fun Account.isActive(): Boolean = status == AccountStatus.ACTIVE
 
-fun Account.displayStatus(): String = when (status) {
+fun Account.displayStatus(): String = if (releaseApproved) "Release approved" else when (status) {
     AccountStatus.ACTIVE -> "Active"
     AccountStatus.WARNING -> "Warning"
     AccountStatus.LOCKED -> "Locked"

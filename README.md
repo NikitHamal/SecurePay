@@ -15,7 +15,19 @@ The previously published customer APK did not expose the two Android 12+ DPC act
 - `android.app.action.GET_PROVISIONING_MODE`
 - `android.app.action.ADMIN_POLICY_COMPLIANCE`
 
-The fixed customer app adds minimal, synchronous handlers for both actions and stores the QR-delivered one-time activation data in device-protected storage. Customer version is now `1.0.1` (`versionCode 2`).
+The fixed customer app adds minimal, synchronous handlers for both actions and stores the QR-delivered one-time activation data in device-protected storage. Customer version is now `1.0.2` (`versionCode 3`).
+
+
+## Customer release and update lifecycle
+
+This pass adds the missing end-of-loan lifecycle:
+
+1. When a final payment clears, the dashboard marks `release_approved=1`, clears dealer lock, and pushes the next due date far into the future.
+2. For testing or manual settlement, a dealer can press **Release customer app** in the dashboard/agent app; early release requires an explicit `allowEarlyRelease=true` API request.
+3. On the next heartbeat/app refresh/boot, the customer app reports `/api/device/release-complete`, clears Device Owner restrictions where Android permits it, and shows a final screen with **Remove TB User**.
+4. After management removal succeeds, Android's normal uninstall confirmation is opened for the customer.
+
+Auto-update support is also included. The customer app schedules a 12-hour WorkManager job that calls `/api/device/app-update`, downloads the HTTPS APK from the current R2 `latest.json`, verifies the SHA-256 base64url checksum, and commits a package installer update. The reliable production channel is still the Android Enterprise / managed-device app-update path; this in-app updater is a fallback for your direct APK/R2 deployment and may show an approval prompt on devices that are not fully managed.
 
 ## Release invariants
 

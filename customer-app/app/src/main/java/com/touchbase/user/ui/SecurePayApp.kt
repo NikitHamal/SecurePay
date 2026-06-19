@@ -1,11 +1,14 @@
 package com.touchbase.user.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +24,8 @@ import com.touchbase.user.ui.activation.ActivationViewModel
 import com.touchbase.user.ui.dashboard.DashboardScreen
 import com.touchbase.user.ui.navigation.Screen
 import com.touchbase.user.ui.payments.PaymentsScreen
+import com.touchbase.user.ui.release.ReleaseApprovedScreen
+import kotlinx.coroutines.launch
 
 @Composable
 fun SecurePayApp(
@@ -63,6 +68,28 @@ fun SecurePayApp(
 
     val state by deviceViewModel.uiState.collectAsState()
     var lastEnforcedLocked by remember { mutableStateOf(false) }
+    var releaseInProgress by remember { mutableStateOf(false) }
+    var managementReleased by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun removeThisApp() {
+        runCatching {
+            val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${context.packageName}")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        }
+    }
+
+    fun runRelease() {
+        if (releaseInProgress) return
+        releaseInProgress = true
+        scope.launch {
+            runCatching { repository.reportReleaseComplete() }
+            managementReleased = runCatching { policyController.releaseManagementForPaidLoan() }.getOrDefault(false)
+            releaseInProgress = false
+        }
+    }
 
     var securityReport by remember { mutableStateOf<SecurityChecker.SecurityReport?>(null) }
 
@@ -74,7 +101,14 @@ fun SecurePayApp(
         }
     }
 
-    LaunchedEffect(state.isLocked) {
+    LaunchedEffect(state.releaseApproved) {
+        if (state.releaseApproved && !managementReleased) {
+            runRelease()
+        }
+    }
+
+    LaunchedEffect(state.isLocked, state.releaseApproved) {
+        if (state.releaseApproved) return@LaunchedEffect
         val nowLocked = state.isLocked
         if (nowLocked != lastEnforcedLocked) {
             if (nowLocked) {
@@ -85,6 +119,17 @@ fun SecurePayApp(
             }
             lastEnforcedLocked = nowLocked
         }
+    }
+
+    if (state.releaseApproved) {
+        ReleaseApprovedScreen(
+            account = state.account,
+            isReleasing = releaseInProgress,
+            managementReleased = managementReleased,
+            onRemoveApp = ::removeThisApp,
+            onRefresh = { runRelease() }
+        )
+        return
     }
 
     NavHost(

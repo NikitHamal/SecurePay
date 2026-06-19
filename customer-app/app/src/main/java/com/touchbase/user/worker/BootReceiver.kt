@@ -16,12 +16,19 @@ class BootReceiver : BroadcastReceiver() {
         SecureLog.i(TAG, "Boot received: ${intent.action}, scheduling heartbeat and enforcing lock state")
 
         HeartbeatWorker.schedule(context)
+        AppUpdateWorker.schedule(context)
 
         val policyController = DevicePolicyController(context)
         val tokenManager = DeviceTokenManager(context)
 
         if (!tokenManager.isRegistered) {
             SecureLog.i(TAG, "Device not registered, skipping lock enforcement")
+            return
+        }
+
+        if (tokenManager.cachedReleaseApproved) {
+            SecureLog.i(TAG, "Release approved, skipping lock enforcement")
+            policyController.releaseManagementForPaidLoan()
             return
         }
 

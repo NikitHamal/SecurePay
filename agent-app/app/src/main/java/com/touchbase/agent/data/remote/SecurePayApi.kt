@@ -29,6 +29,12 @@ interface SecurePayApi {
     @POST("accounts/{id}/force-unlock")
     suspend fun forceUnlock(@Path("id") id: String): Account
 
+    @POST("accounts/{id}/release")
+    suspend fun approveRelease(
+        @Path("id") id: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any>
+    ): Account
+
     @POST("payments")
     suspend fun recordPayment(@Body request: RecordPaymentRequest): RecordPaymentResponse
 

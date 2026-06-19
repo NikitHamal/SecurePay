@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, errorResponse } from '$lib/api/server';
+import { getDb, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
@@ -16,6 +16,9 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
 
   if (!acct) {
     return errorResponse('Account not found', 404);
+  }
+  if (releaseApproved(acct as Record<string, unknown>)) {
+    return errorResponse('Cannot lock a release-approved account', 409);
   }
 
   const now = Date.now();
@@ -50,7 +53,8 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
-    status: 'LOCKED'
+    status: 'LOCKED',
+    ...releaseFields(row as Record<string, unknown>)
   };
 
   return json(customer);

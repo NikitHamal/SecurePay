@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Customer } from '$lib/types';
-  import { customers, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
+  import { customers, extendTimer, forceRemoteLock, approveRelease, pending } from '$lib/stores/customers';
   import { formatCountdown, formatCurrency, formatDate, formatPhone, formatRelative } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
@@ -21,6 +21,9 @@
   }
   async function lock(): Promise<void> {
     if (customer) await forceRemoteLock(customer.id);
+  }
+  async function releaseAccount(): Promise<void> {
+    if (customer) await approveRelease(customer.id, customer.remainingBalance > 0);
   }
 
   function handleKey(e: KeyboardEvent) {
@@ -78,7 +81,12 @@
         <div class="card flex items-center justify-between p-4">
           <div>
             <p class="section-title">Status</p>
-            <div class="mt-2"><StatusBadge status={customer.status} /></div>
+            <div class="mt-2 flex flex-col gap-2">
+              <StatusBadge status={customer.status} />
+              {#if customer.releaseApproved}
+                <span class="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-2xs font-semibold uppercase tracking-wide text-emerald">Release approved</span>
+              {/if}
+            </div>
           </div>
           <div class="text-right">
             <p class="section-title">Next payment</p>
@@ -164,6 +172,19 @@
             <path d="M6 11V8a6 6 0 1112 0v3M5 11h14v10H5z" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           Force remote lock
+        </button>
+        <button
+          type="button"
+          class="btn-outline flex-1"
+          disabled={customer.releaseApproved || isPending}
+          on:click={releaseAccount}
+          title={customer.remainingBalance > 0 ? 'Manual early release for test/settlement only' : 'Approve final app removal'}
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Release customer app
         </button>
       </footer>
     </div>

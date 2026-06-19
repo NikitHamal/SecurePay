@@ -109,6 +109,13 @@ export async function forceRemoteUnlock(id: string): Promise<Customer> {
   return request<Customer>(`/accounts/${id}/force-unlock`, { method: 'POST' });
 }
 
+export async function approveRelease(id: string, allowEarlyRelease = false, note?: string): Promise<Customer> {
+  return request<Customer>(`/accounts/${id}/release`, {
+    method: 'POST',
+    body: JSON.stringify({ allowEarlyRelease, note })
+  });
+}
+
 export async function recordPayment(data: {
   accountId: string;
   amount: number;

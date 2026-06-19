@@ -5,6 +5,30 @@ import type { Status } from '$lib/types';
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+const RELEASE_HORIZON_MS = 10 * 365 * DAY_MS;
+
+export function releaseHorizon(now = Date.now()): number {
+  return now + RELEASE_HORIZON_MS;
+}
+
+export function releaseApproved(row: Record<string, unknown>): boolean {
+  return Number(row.release_approved ?? 0) === 1 || Number(row.amount_paid ?? 0) >= Number(row.total_loan_amount ?? 1);
+}
+
+export function releaseFields(row: Record<string, unknown>): {
+  releaseApproved: boolean;
+  releaseApprovedAt: number | null;
+  releasedAt: number | null;
+} {
+  const approvedAt = row.release_approved_at == null ? null : Number(row.release_approved_at) * 1000;
+  const releasedAt = row.released_at == null ? null : Number(row.released_at) * 1000;
+  return {
+    releaseApproved: releaseApproved(row),
+    releaseApprovedAt: approvedAt,
+    releasedAt
+  };
+}
+
 const DEVICE_ADMIN_COMPONENT = 'com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
 const DEVICE_ADMIN_LABEL = 'TB User';
 

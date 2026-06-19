@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS accounts (
   down_payment            INTEGER NOT NULL,
   term_days               INTEGER NOT NULL,
   currency_code           TEXT NOT NULL DEFAULT 'GHS',
+  release_approved        INTEGER NOT NULL DEFAULT 0,
+  release_approved_at     INTEGER,
+  released_at             INTEGER,
   created_at              INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at              INTEGER NOT NULL DEFAULT (unixepoch())
 );

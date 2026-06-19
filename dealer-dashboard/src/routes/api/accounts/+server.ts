@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
@@ -26,9 +26,9 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
     const nextPaymentDue = Number(row.next_payment_due);
     const amountPaid = Number(row.amount_paid);
     const totalLoanAmount = Number(row.total_loan_amount);
-    const status: Status = row.locked_by_dealer === 1
-      ? 'LOCKED'
-      : computeStatus(nextPaymentDue);
+    const status: Status = releaseApproved(row as Record<string, unknown>)
+      ? 'ACTIVE'
+      : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue));
 
     return {
       id: row.id as string,
@@ -43,7 +43,8 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
       remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
       dailyRate: Number(row.daily_rate),
       nextPaymentDueEpochMillis: nextPaymentDue,
-      status
+      status,
+      ...releaseFields(row as Record<string, unknown>)
     };
   });
 
@@ -121,7 +122,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const amtPaid = Number(row!.amount_paid);
   const totalLoan = Number(row!.total_loan_amount);
-  const status: Status = computeStatus(Number(row!.next_payment_due));
+  const status: Status = releaseApproved(row as Record<string, unknown>)
+    ? 'ACTIVE'
+    : computeStatus(Number(row!.next_payment_due));
 
   const customer: Customer = {
     id: row!.id as string,
@@ -136,7 +139,8 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: Number(row!.next_payment_due),
-    status
+    status,
+    ...releaseFields(row as Record<string, unknown>)
   };
 
   return json(customer, { status: 201 });

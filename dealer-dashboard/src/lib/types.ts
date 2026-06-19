@@ -19,7 +19,11 @@ export interface Customer {
   dailyRate: number;
   nextPaymentDueEpochMillis: number;
   status: Status;
+  releaseApproved?: boolean;
+  releaseApprovedAt?: number | null;
+  releasedAt?: number | null;
 }
+
 
 /** A single KPI tile displayed on the Overview screen. */
 export interface Kpi {

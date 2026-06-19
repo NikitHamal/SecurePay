@@ -49,6 +49,7 @@ class DeviceViewModel(
         if (account == null) {
             val cachedDue = repository.cachedNextPaymentDue
             val cachedLock = repository.cachedLockedByDealer
+            val cachedReleaseApproved = repository.cachedReleaseApproved
             if (cachedDue > 0L && repository.isRegistered.value) {
                 val status = DeviceStatus.evaluate(cachedDue, cachedLock, now)
                 DeviceUiState(
@@ -58,7 +59,8 @@ class DeviceViewModel(
                     isProcessingPayment = paying,
                     isRequestingGrace = grace,
                     message = message,
-                    isOffline = true
+                    isOffline = true,
+                    releaseApproved = cachedReleaseApproved
                 )
             } else {
                 DeviceUiState(isLoading = true)
@@ -76,7 +78,8 @@ class DeviceViewModel(
                 remaining = RemainingTime.until(account.nextPaymentDueEpochMillis, now),
                 isProcessingPayment = paying,
                 isRequestingGrace = grace,
-                message = message
+                message = message,
+                releaseApproved = account.releaseApproved
             )
         }
     }.stateIn(

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
 
 /**
  * Device-scoped account endpoint.
@@ -47,13 +47,14 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
-    status: lockedByDealer ? 'LOCKED' : computeStatus(nextPaymentDue),
+    status: releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (lockedByDealer ? 'LOCKED' : computeStatus(nextPaymentDue)),
     lockedByDealer: lockedByDealer ? 1 : 0,
     downPayment: Number(row.down_payment),
     termDays: Number(row.term_days),
     currencyCode: String(row.currency_code || 'GHS'),
     createdAt: Number(row.created_at) * 1000,
     updatedAt: Number(row.updated_at) * 1000,
+    ...releaseFields(row as Record<string, unknown>),
     serverTime: Date.now()
   });
 };

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
 import type { Customer, Status } from '$lib/types';
 
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
@@ -24,9 +24,9 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
   const nextPaymentDue = Number(row.next_payment_due);
   const amountPaid = Number(row.amount_paid);
   const totalLoanAmount = Number(row.total_loan_amount);
-  const status: Status = row.locked_by_dealer === 1
-    ? 'LOCKED'
-    : computeStatus(nextPaymentDue);
+  const status: Status = releaseApproved(row as Record<string, unknown>)
+    ? 'ACTIVE'
+    : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue));
 
   const customer: Customer = {
     id: row.id as string,
@@ -41,7 +41,8 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
-    status
+    status,
+    ...releaseFields(row as Record<string, unknown>)
   };
 
   return json(customer);
@@ -90,9 +91,9 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   const nextDue = Number(row!.next_payment_due);
   const amtPaid = Number(row!.amount_paid);
   const totalLoan = Number(row!.total_loan_amount);
-  const status: Status = row!.locked_by_dealer === 1
-    ? 'LOCKED'
-    : computeStatus(nextDue);
+  const status: Status = releaseApproved(row as Record<string, unknown>)
+    ? 'ACTIVE'
+    : (row!.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
 
   const customer: Customer = {
     id: row!.id as string,
@@ -107,7 +108,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
-    status
+    status,
+    ...releaseFields(row as Record<string, unknown>)
   };
 
   return json(customer);

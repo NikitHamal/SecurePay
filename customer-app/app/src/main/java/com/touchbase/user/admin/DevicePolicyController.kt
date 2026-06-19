@@ -57,6 +57,38 @@ class DevicePolicyController(context: Context) {
         clearPermittedInputMethods()
     }
 
+
+    /**
+     * Final loan-settlement path. The DPC is intentionally allowed to remove its
+     * own management state after the server approves release, so the customer can
+     * uninstall TB User without a factory reset.
+     */
+    fun releaseManagementForPaidLoan(): Boolean {
+        if (!isAdminActive) return true
+        releaseRestrictions()
+        if (isDeviceOwner) {
+            runCatching { dpm.setLockTaskPackages(admin, emptyArray()) }
+                .onFailure { SecureLog.w(TAG, "Clearing lock-task packages denied: ${it.message}") }
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_DEBUGGING_FEATURES)
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_FACTORY_RESET)
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_ADD_USER)
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_USB_FILE_TRANSFER)
+                }
+            }.onFailure { SecureLog.w(TAG, "Clearing user restrictions denied: ${it.message}") }
+            @Suppress("DEPRECATION")
+            runCatching { dpm.clearDeviceOwnerApp(appContext.packageName) }
+                .onFailure { SecureLog.e(TAG, "clearDeviceOwnerApp failed", it) }
+        }
+        if (runCatching { dpm.isAdminActive(admin) }.getOrDefault(false)) {
+            runCatching { dpm.removeActiveAdmin(admin) }
+                .onFailure { SecureLog.e(TAG, "removeActiveAdmin failed", it) }
+        }
+        return !runCatching { dpm.isDeviceOwnerApp(appContext.packageName) || dpm.isAdminActive(admin) }.getOrDefault(true)
+    }
+
     fun startLockTask(activity: android.app.Activity) {
         if (!isDeviceOwner) {
             SecureLog.w(TAG, "startLockTask requires device owner privilege")
@@ -161,6 +193,10 @@ class DevicePolicyController(context: Context) {
             dpm.setGlobalSetting(admin, Settings.Global.ADB_ENABLED, "0")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 dpm.addUserRestriction(admin, UserManager.DISALLOW_DEBUGGING_FEATURES)
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_FACTORY_RESET)
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_ADD_USER)
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_USB_FILE_TRANSFER)
             }
         }.onFailure { SecureLog.w(TAG, "Disabling USB debugging denied: ${it.message}") }
     }
@@ -170,6 +206,10 @@ class DevicePolicyController(context: Context) {
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 dpm.clearUserRestriction(admin, UserManager.DISALLOW_DEBUGGING_FEATURES)
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_FACTORY_RESET)
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_ADD_USER)
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_USB_FILE_TRANSFER)
             }
         }.onFailure { SecureLog.w(TAG, "Restoring USB debugging denied: ${it.message}") }
     }
