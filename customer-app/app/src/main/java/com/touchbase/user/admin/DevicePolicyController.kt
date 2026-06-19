@@ -42,8 +42,10 @@ class DevicePolicyController(context: Context) {
      * server-approved release path.
      */
     fun applyBaseLoanSecurity(frpAccountIds: List<String> = emptyList()) {
-        if (!isDeviceOwner) {
-            SecureLog.i(TAG, "Base loan security requires Device Owner; admin-only fallback active")
+        val owner = runCatching { isDeviceOwner }.getOrDefault(false)
+        SecureLog.i(TAG, "applyBaseLoanSecurity: isDeviceOwner=$owner, isAdminActive=${isAdminActive}, frpIds=${frpAccountIds.size}")
+        if (!owner) {
+            SecureLog.w(TAG, "Base loan security REQUIRES Device Owner. Restrictions will NOT apply in admin-only mode.")
             return
         }
 
@@ -54,6 +56,7 @@ class DevicePolicyController(context: Context) {
         setPasswordQuality()
         setMaximumTimeToLock(30_000L)
         applyFactoryResetProtection(frpAccountIds)
+        SecureLog.i(TAG, "applyBaseLoanSecurity: all restrictions applied")
     }
 
     fun enforceLock(frpAccountIds: List<String> = emptyList()) {
