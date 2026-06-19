@@ -81,7 +81,6 @@ class HeartbeatWorker(
                         .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
                         .build()
                 )
-                .setExpedited(false)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
