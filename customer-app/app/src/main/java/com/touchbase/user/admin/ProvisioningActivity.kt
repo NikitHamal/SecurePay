@@ -1,8 +1,6 @@
 package com.touchbase.user.admin
 
 import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -56,35 +54,20 @@ class ProvisioningActivity : ComponentActivity() {
     }
 
     private fun onProvisioningComplete() {
-        SecureLog.i(TAG, "Device owner provisioning completed!")
+        SecureLog.i(TAG, "Device owner provisioning completion callback reached")
 
         runCatching {
-            val componentName = ComponentName(this, SecurePayDeviceAdminReceiver::class.java)
-            val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-
-            val isOwner = runCatching { dpm.isDeviceOwnerApp(packageName) }.getOrDefault(false)
-            if (isOwner) {
-                SecureLog.i(TAG, "Confirmed: app is now Device Owner")
-                runCatching {
-                    DevicePolicyController(this).applyBaseLoanSecurity(
-                        ProvisioningExtrasStore.frpAccountIds(this)
-                    )
-                }.onFailure { SecureLog.w(TAG, "Initial loan security policy failed: ${it.message}") }
-            } else {
-                SecureLog.w(TAG, "Provisioning completed but app is NOT device owner (admin-only)")
-            }
-
-            runCatching { dpm.setProfileName(componentName, "SecurePay") }
-                .onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
-        }.onFailure { SecureLog.e(TAG, "onProvisioningComplete body failed", it) }
+            ProvisioningFinalizer.finalizeProvisioning(
+                context = this,
+                sourceIntent = intent,
+                stage = "PROVISIONING_SUCCESSFUL"
+            )
+        }.onFailure { SecureLog.e(TAG, "Provisioning finalizer failed", it) }
 
         // Launch MainActivity no matter what happened above. This MUST succeed or
-        // Android's setup wizard reports a provisioning failure to the user.
+        // Android's setup wizard can report a provisioning failure to the user.
         runCatching {
-            val mainIntent = Intent(this, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            }
-            startActivity(mainIntent)
+            startActivity(ProvisioningFinalizer.launchIntent(this))
         }.onFailure {
             Log.e(TAG, "Failed to launch MainActivity after provisioning", it)
         }

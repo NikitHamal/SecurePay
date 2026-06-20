@@ -8,7 +8,10 @@
 # --- Manifest-referenced classes instantiated by the Android framework ---
 -keep class com.touchbase.user.SecurePayApplication { *; }
 -keep class com.touchbase.user.MainActivity { *; }
+-keep class com.touchbase.user.admin.GetProvisioningModeActivity { *; }
+-keep class com.touchbase.user.admin.PolicyComplianceActivity { *; }
 -keep class com.touchbase.user.admin.ProvisioningActivity { *; }
+-keep class com.touchbase.user.admin.ProvisioningFinalizer { *; }
 -keep class com.touchbase.user.admin.SecurePayDeviceAdminReceiver { *; }
 -keep class com.touchbase.user.worker.BootReceiver { *; }
 -keep class com.touchbase.user.ui.lock.LockTaskActivity { *; }
