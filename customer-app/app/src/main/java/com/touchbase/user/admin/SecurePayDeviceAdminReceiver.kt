@@ -31,9 +31,14 @@ class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
     }
 
     override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
-        ProvisioningExtrasStore.recordStage(context, "PROFILE_PROVISIONING_COMPLETE")
-        ProvisioningExtrasStore.persistFromIntent(context, intent)
-        SecureLog.i(TAG, "Profile provisioning complete")
+        SecureLog.i(TAG, "Profile/device provisioning complete broadcast")
+        runCatching {
+            ProvisioningFinalizer.finalizeProvisioning(
+                context = context,
+                sourceIntent = intent,
+                stage = "PROFILE_PROVISIONING_COMPLETE"
+            )
+        }.onFailure { SecureLog.e(TAG, "Provisioning broadcast finalization failed", it) }
     }
 
     companion object {

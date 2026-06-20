@@ -86,7 +86,6 @@ export function releaseFields(row: Record<string, unknown>): {
   };
 }
 
-const DEVICE_ADMIN_PACKAGE = 'com.touchbase.user';
 const DEVICE_ADMIN_COMPONENT = 'com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
 const DEVICE_ADMIN_LABEL = 'TB User';
 
@@ -178,6 +177,9 @@ export async function readApkMeta(event: { platform?: App.Platform | null }): Pr
   if (!/^[A-Za-z0-9_-]{43}$/.test(sha256Base64)) {
     throw new Error('Published APK manifest contains an invalid base64url SHA-256 checksum');
   }
+  if (parsed.signatureChecksumBase64 && !/^[A-Za-z0-9_-]{43}$/.test(String(parsed.signatureChecksumBase64))) {
+    throw new Error('Published APK manifest contains an invalid base64url signing-certificate checksum');
+  }
   if (!Number.isSafeInteger(versionCode) || versionCode <= 0 || !versionName || updatedAt <= 0) {
     throw new Error('Published APK manifest is incomplete');
   }
@@ -222,19 +224,20 @@ export function buildQrPayload({
   dealerId,
   securityPolicy
 }: QrPayloadInput): string {
-  // Pin provisioning to the exact, versioned APK bytes and include both the
-  // component and package metadata. Some OEM setup wizards are stricter about
-  // component matching; keeping the package name aligned with the component
-  // avoids admin-only fallbacks while the APK checksum still pins the bytes.
+  // Pin provisioning to the exact, versioned APK bytes and component.
+  // For Android M+ the component extra is preferred over the deprecated
+  // package-name extra; Samsung's QR DO examples also use component + APK checksum.
   const payload: Record<string, JsonValue> = {
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME': DEVICE_ADMIN_COMPONENT,
-    'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME': DEVICE_ADMIN_PACKAGE,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION': apk.url,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM': apk.sha256Base64,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE': apk.versionCode,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL': DEVICE_ADMIN_LABEL,
     'android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED': true,
     'android.app.extra.PROVISIONING_SKIP_EDUCATION_SCREENS': true,
+    // Android 13+ can launch the result intent supplied by the DPC compliance handler.
+    // Older setup wizards ignore unknown extras.
+    'android.app.extra.PROVISIONING_SHOULD_LAUNCH_RESULT_INTENT': true,
     'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
       schemaVersion: 1,
       provisioningToken,
@@ -247,6 +250,10 @@ export function buildQrPayload({
       securityPolicyVersion: securityPolicy?.version ?? 0
     }
   };
+
+  if (apk.signatureChecksumBase64 && /^[A-Za-z0-9_-]{43}$/.test(apk.signatureChecksumBase64)) {
+    payload['android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM'] = apk.signatureChecksumBase64;
+  }
 
   const ssid = wifiSsid?.trim();
   if (ssid) {

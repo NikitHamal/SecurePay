@@ -1,6 +1,7 @@
 package com.touchbase.user
 
 import android.app.Application
+import android.os.Looper
 import android.util.Log
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
@@ -55,13 +56,15 @@ class SecurePayApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Global safety net: if ANYTHING throws during DPC launch, log it instead of
-        // crashing — Android's provisioning rolls back ("something went wrong") if the
-        // DPC process dies within the first few seconds after being set as device owner.
+        // Global safety net: background-thread failures during early DPC launch must not
+        // kill provisioning. Main-thread crashes still go to Android's normal handler so
+        // real UI faults are visible during development and crash reporting.
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             SecureLog.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
-            previous?.uncaughtException(thread, throwable)
+            if (thread == Looper.getMainLooper().thread) {
+                previous?.uncaughtException(thread, throwable)
+            }
         }
 
         runCatching {
