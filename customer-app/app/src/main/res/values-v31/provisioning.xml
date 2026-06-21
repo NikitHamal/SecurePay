@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ requires ACTION_GET_PROVISIONING_MODE and
+         ACTION_ADMIN_POLICY_COMPLIANCE handlers for QR/zero-touch provisioning. -->
+    <bool name="provisioning_mode_handlers_enabled">true</bool>
+</resources>

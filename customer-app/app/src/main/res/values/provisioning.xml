@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 11 and lower use the legacy provisioning completion path. Keeping
+         the Android 12+ admin-integrated provisioning handlers disabled there avoids
+         OEM Setup Wizard edge cases on older firmware. -->
+    <bool name="provisioning_mode_handlers_enabled">false</bool>
+</resources>

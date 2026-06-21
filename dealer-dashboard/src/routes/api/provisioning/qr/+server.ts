@@ -146,7 +146,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     token: tokenId,
     activationCode,
     qrPayload,
-    qrPayloadVersion: 3,
+    qrPayloadVersion: 4,
     expiresAt: expiresAt * 1000,
     apk: {
       versionName: apkMeta.versionName,

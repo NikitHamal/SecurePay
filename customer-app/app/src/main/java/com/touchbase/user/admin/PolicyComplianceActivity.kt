@@ -5,34 +5,35 @@ import android.os.Bundle
 import com.touchbase.user.util.SecureLog
 
 /**
- * Required by Android 12+ managed-device provisioning.
+ * Android 12+ compliance/finalization handoff.
  *
- * This is the real finalization callback during QR provisioning from Setup Wizard on
- * Android 12+. Keep it local and synchronous: no network, no Compose, no WorkManager.
+ * This callback runs inside Setup Wizard after Android has set the DPC as owner.
+ * Any uncaught exception or invalid result here makes provisioning roll back to
+ * Samsung's generic IT-team failure page, so the handler is deliberately minimal
+ * and never performs network, Compose, WorkManager or long asynchronous work.
  */
 class PolicyComplianceActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val successful = runCatching {
+        val setupResult = runCatching {
+            ProvisioningExtrasStore.recordStage(this, "ADMIN_POLICY_COMPLIANCE")
             ProvisioningFinalizer.finalizeProvisioning(
                 context = this,
                 sourceIntent = intent,
                 stage = "ADMIN_POLICY_COMPLIANCE"
             )
             ProvisioningExtrasStore.recordStage(this, "ADMIN_POLICY_COMPLIANT")
-            setResult(
-                RESULT_OK,
-                ProvisioningFinalizer.buildSetupWizardResult(this, intent)
-            )
-            true
+            ProvisioningFinalizer.buildSetupWizardResult(this)
         }.onFailure {
             SecureLog.e(TAG, "Compliance finalization failed", it)
-        }.getOrDefault(false)
+        }.getOrNull()
 
-        if (!successful) {
+        if (setupResult == null) {
             setResult(RESULT_CANCELED)
+        } else {
+            setResult(RESULT_OK, setupResult)
         }
         finish()
     }
