@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Receipt
@@ -101,7 +104,7 @@ fun LedgerScreen(
     LaunchedEffect(methodFilter) { load() }
 
     val view = LocalView.current
-    val backgroundColor = Color(0xFF212121)
+    val backgroundColor = MaterialTheme.colorScheme.background
 
     if (!isPreview) {
         SideEffect {
@@ -116,7 +119,7 @@ fun LedgerScreen(
         containerColor = backgroundColor,
         topBar = {
             TopAppBar(
-                title = { Text("Payment Ledger", color = Color.White) },
+                title = { Text("Payment Ledger", color = MaterialTheme.colorScheme.onBackground) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = backgroundColor,
                     scrolledContainerColor = backgroundColor
@@ -124,45 +127,96 @@ fun LedgerScreen(
             )
         },
         bottomBar = {
-            Column {
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.1f),
-                    thickness = 0.5.dp
-                )
-                NavigationBar(
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.padding(bottom = 0.dp)
+            val isDark = isSystemInDarkTheme()
+            val containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+            val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFF005C3A)
+            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF8BE4A7)
+            val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+
+            val navItemColors = NavigationBarItemDefaults.colors(
+                selectedIconColor = selectedIconColor,
+                selectedTextColor = Color.Transparent,
+                indicatorColor = indicatorColor,
+                unselectedIconColor = unselectedIconColor,
+                unselectedTextColor = Color.Transparent
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+            ) {
+                Card(
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = containerColor
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToHome,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_dashboard), contentDescription = "Dashboard", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Home") }
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToCustomers,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_customers), contentDescription = "Customers", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Customers") }
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToInventory,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_inventory), contentDescription = "Inventory", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Inventory") }
-                    )
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { },
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_ledger), contentDescription = "Ledger", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Ledger") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF10B981),
-                            selectedTextColor = Color(0xFF10B981),
-                            indicatorColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(72.dp)
+                    ) {
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToHome,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_dashboard),
+                                    contentDescription = "Dashboard",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
                         )
-                    )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToCustomers,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_customers),
+                                    contentDescription = "Customers",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToInventory,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_inventory),
+                                    contentDescription = "Inventory",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = true,
+                            onClick = { },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_ledger),
+                                    contentDescription = "Ledger",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                    }
                 }
             }
         }
@@ -188,11 +242,11 @@ fun LedgerScreen(
                     FilterChip(
                         selected = isSelected,
                         onClick = { methodFilter = filterValue },
-                        label = { Text(label, color = if (isSelected) Color.White else Color.Gray) },
+                        label = { Text(label, color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) },
                         shape = RoundedCornerShape(360.dp),
                         colors = FilterChipDefaults.filterChipColors(
-                            containerColor = Color(0xFF2A2A2A),
-                            selectedContainerColor = Color(0xFF10B981)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            selectedContainerColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -241,7 +295,7 @@ fun LedgerScreen(
 @Composable
 private fun LedgerEntryCard(entry: LedgerEntry, modifier: Modifier = Modifier) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -253,7 +307,7 @@ private fun LedgerEntryCard(entry: LedgerEntry, modifier: Modifier = Modifier) {
                     text = entry.customerName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = formatAmount(entry.amount),
