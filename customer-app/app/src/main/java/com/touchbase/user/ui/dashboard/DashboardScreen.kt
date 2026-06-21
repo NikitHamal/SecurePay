@@ -83,7 +83,7 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("SecurePay", fontWeight = FontWeight.Bold) },
+                title = { Text("TB User", fontWeight = FontWeight.Bold) },
                 actions = {
                     OutlinedButton(
                         onClick = onViewPayments,

@@ -212,12 +212,12 @@ private fun SummaryRow(label: String, value: String) {
 @Preview(showBackground = true)
 @Composable
 fun PlanStepPreview() {
-    val samplePlans = listOf(
+    val previewPlans = listOf(
         Plan("p1", "Basic Solar", 15000, 300, 50, 1500)
     )
     SecurePayAgentTheme {
         PlanStep(
-            state = EnrollmentUiState(availablePlans = samplePlans, selectedPlan = samplePlans[0], downPaymentInput = "2000"),
+            state = EnrollmentUiState(availablePlans = previewPlans, selectedPlan = previewPlans[0], downPaymentInput = "2000"),
             onSelectPlan = {},
             onDownPaymentChange = {}
         )

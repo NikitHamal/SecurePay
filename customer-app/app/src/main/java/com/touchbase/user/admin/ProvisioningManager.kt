@@ -54,7 +54,7 @@ class ProvisioningManager(context: Context) {
             @Suppress("DEPRECATION")
             Intent(DevicePolicyManager.ACTION_PROVISION_MANAGED_DEVICE).apply {
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, admin)
-                putExtra("android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL", "SecurePay")
+                putExtra("android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL", "TB User")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
         } catch (e: Exception) {
@@ -68,7 +68,7 @@ class ProvisioningManager(context: Context) {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
             putExtra(
                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                "SecurePay requires device management to enforce your financing terms."
+                "TB User requires device management to enforce your financing terms."
             )
         }
     }
@@ -98,7 +98,7 @@ class ProvisioningManager(context: Context) {
             append("{")
             append("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME\":\"${admin.flattenToString()}\"")
             append(",")
-            append("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL\":\"SecurePay\"")
+            append("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL\":\"TB User\"")
             append("}")
         }
     }
