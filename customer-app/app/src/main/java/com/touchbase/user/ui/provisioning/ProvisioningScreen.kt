@@ -108,7 +108,7 @@ fun ProvisioningScreen(
             )
 
             Text(
-                text = "SecurePay Device Setup",
+                text = "TB User Device Setup",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -295,7 +295,7 @@ private fun ProvisioningActions(
 
         if (state.provisioningState == ProvisioningState.ADMIN_ACTIVE) {
             Text(
-                text = "This phone is only Device Admin. Do not activate a loan on it. Factory reset and scan a fresh SecurePay QR to become Device Owner.",
+                text = "This phone is only Device Admin. Do not activate a loan on it. Factory reset and scan a fresh dealer QR to become Device Owner.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Crimson,
                 textAlign = TextAlign.Center,

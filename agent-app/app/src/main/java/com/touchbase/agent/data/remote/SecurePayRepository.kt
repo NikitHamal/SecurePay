@@ -73,7 +73,7 @@ class SecurePayRepository(
         try {
             val body = mapOf(
                 "allowEarlyRelease" to allowEarlyRelease,
-                "note" to if (allowEarlyRelease) "Manual test/settlement release approved from agent app" else "Paid-off release approved from agent app"
+                "note" to if (allowEarlyRelease) "Manual settlement release approved from TB Agent" else "Paid-off release approved from TB Agent"
             )
             Result.success(api.approveRelease(id, body))
         } catch (e: Exception) {

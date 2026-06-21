@@ -286,7 +286,7 @@ fun CustomerDetailScreen(
             ) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (acc.remainingBalance > 0) "Release app (test/settlement)" else "Approve app removal")
+                Text(if (acc.remainingBalance > 0) "Release app (settlement)" else "Approve app removal")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

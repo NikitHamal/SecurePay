@@ -156,7 +156,7 @@ class EnrollmentViewModel(
 
         viewModelScope.launch {
             if (repository == null) {
-                _uiState.update { it.copy(submission = SubmissionState.Success("MOCK_ENROLL_ID")) }
+                _uiState.update { it.copy(submission = SubmissionState.Success("LOCAL_PREVIEW_ENROLLMENT_ID")) }
                 return@launch
             }
             val request = CreateAccountRequest(

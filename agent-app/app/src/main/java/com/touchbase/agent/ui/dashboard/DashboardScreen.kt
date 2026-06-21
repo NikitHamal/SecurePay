@@ -116,7 +116,7 @@ fun DashboardScreen(
         }
     }
 
-    val dealerName by (repository?.dealerName ?: MutableStateFlow(isPreview.let { if(it) "Demo Agent" else null })).collectAsState()
+    val dealerName by (repository?.dealerName ?: MutableStateFlow<String?>(null)).collectAsState()
 
     LaunchedEffect(Unit) {
         if (isPreview || previewKpis != null) return@LaunchedEffect
@@ -148,7 +148,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("SecurePay", fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("TB Agent", fontWeight = FontWeight.Bold, color = Color.White)
                             Text(
                                 dealerName ?: "Agent",
                                 style = MaterialTheme.typography.bodySmall,
@@ -932,7 +932,7 @@ fun DashboardLoadingPreview() {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DashboardDataPreview() {
-    val mockKpi = KpiSummary(
+    val previewKpi = KpiSummary(
         activeCount = 45,
         lockedCount = 12,
         warningCount = 15,
@@ -946,7 +946,7 @@ fun DashboardDataPreview() {
     SecurePayAgentTheme {
         DashboardScreen(
             repository = null,
-            previewKpis = mockKpi,
+            previewKpis = previewKpi,
             onNavigateToCustomers = {},
             onNavigateToEnrollment = {},
             onNavigateToInventory = {},

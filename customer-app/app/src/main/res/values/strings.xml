@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TB User</string>
-    <string name="device_admin_label">SecurePay Device Management</string>
-    <string name="device_admin_description">Allows SecurePay to enforce financing terms by restricting the device while the balance is overdue. Restrictions are removed automatically once payment is received.</string>
+    <string name="device_admin_label">TB User Device Management</string>
+    <string name="device_admin_description">Allows TB User to enforce financing terms by restricting the device while the balance is overdue. Restrictions are removed automatically once payment is received.</string>
     <string name="provisioning_complete">Device provisioning complete</string>
 </resources>

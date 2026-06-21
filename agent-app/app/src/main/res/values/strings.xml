@@ -26,8 +26,8 @@
     <string name="summary_daily_rate">Daily rate</string>
     <string name="summary_term">Term (days)</string>
 
-    <string name="login_title">SecurePay</string>
-    <string name="login_subtitle">Field Agent Login</string>
+    <string name="login_title">TB Agent</string>
+    <string name="login_subtitle">Agent Login</string>
     <string name="login_email">Email</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign In</string>

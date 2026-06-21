@@ -107,7 +107,7 @@ fun LoginScreen(
                 // Logo
                 Icon(
                     painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = "SecurePay Logo",
+                    contentDescription = "TB Agent Logo",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .size(80.dp)

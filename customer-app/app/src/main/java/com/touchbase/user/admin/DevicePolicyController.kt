@@ -28,7 +28,7 @@ class DevicePolicyController(context: Context) {
         putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
         putExtra(
             DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-            "SecurePay requires device management to enforce your financing terms."
+            "TB User requires device management to enforce your financing terms."
         )
     }
 

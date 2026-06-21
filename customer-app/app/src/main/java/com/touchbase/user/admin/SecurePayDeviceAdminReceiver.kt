@@ -10,15 +10,15 @@ class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
         ProvisioningExtrasStore.recordStage(context, "DEVICE_ADMIN_ENABLED")
         ProvisioningExtrasStore.persistFromIntent(context, intent)
-        SecureLog.i(TAG, "SecurePay device administration enabled.")
+        SecureLog.i(TAG, "TB User device administration enabled.")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
-        SecureLog.i(TAG, "SecurePay device administration disabled.")
+        SecureLog.i(TAG, "TB User device administration disabled.")
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
-        return "Removing SecurePay management will violate your financing agreement " +
+        return "Removing TB User management will violate your financing agreement " +
             "and may immediately restrict this device."
     }
 
