@@ -37,6 +37,8 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -64,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -201,7 +204,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
             ) {
                 Card(
                     shape = RoundedCornerShape(32.dp),
@@ -412,6 +415,9 @@ fun OutstandingSection(
                 Text(text = formatAmount(minVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
 
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+
             Canvas(
                 modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
@@ -420,7 +426,7 @@ fun OutstandingSection(
                 val spacing = width / (kpi.outstandingHistory.size - 1).coerceAtLeast(1)
 
                 // Draw Grid
-                val gridColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+                val gridColor = onBackgroundColor.copy(alpha = 0.05f)
                 val horizontalLines = 4
                 for (i in 0..horizontalLines) {
                     val yLine = (height / horizontalLines) * i
@@ -463,15 +469,15 @@ fun OutstandingSection(
                     path = fillPath,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.0f)
+                            primaryColor.copy(alpha = 0.2f),
+                            primaryColor.copy(alpha = 0.0f)
                         )
                     )
                 )
 
                 drawPath(
                     path = path,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = primaryColor,
                     style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
 
@@ -481,12 +487,12 @@ fun OutstandingSection(
                     val y = height - ((height - targetY) * animationProgress.value)
 
                     drawCircle(
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = animationProgress.value),
+                        color = onBackgroundColor.copy(alpha = animationProgress.value),
                         radius = 4.dp.toPx(),
                         center = androidx.compose.ui.geometry.Offset(x, y)
                     )
                     drawCircle(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = animationProgress.value),
+                        color = primaryColor.copy(alpha = animationProgress.value),
                         radius = 4.dp.toPx(),
                         center = androidx.compose.ui.geometry.Offset(x, y),
                         style = Stroke(width = 2.dp.toPx())
@@ -800,6 +806,9 @@ fun CollectionAreaChart(
                     Text(text = "0", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
 
+                val primaryColor = MaterialTheme.colorScheme.primary
+                val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+
                 // The Chart
                 Canvas(
                     modifier = Modifier.weight(1f).fillMaxHeight()
@@ -810,7 +819,7 @@ fun CollectionAreaChart(
                     val height = size.height
                     val spacing = width / (data.size - 1).coerceAtLeast(1)
 
-                    val gridColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+                    val gridColor = onBackgroundColor.copy(alpha = 0.05f)
                     val numberOfLines = 5
                     for (i in 0..numberOfLines) {
                         val y = (height / numberOfLines) * i
@@ -861,15 +870,15 @@ fun CollectionAreaChart(
                         path = fillPath,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.0f)
+                                primaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.0f)
                             )
                         )
                     )
 
                     drawPath(
                         path = path,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = primaryColor,
                         style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                     )
 
@@ -879,12 +888,12 @@ fun CollectionAreaChart(
                         val y = height - ((height - targetY) * animationProgress.value)
 
                         drawCircle(
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = animationProgress.value),
+                            color = onBackgroundColor.copy(alpha = animationProgress.value),
                             radius = 4.dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(x, y)
                         )
                         drawCircle(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = animationProgress.value),
+                            color = primaryColor.copy(alpha = animationProgress.value),
                             radius = 4.dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(x, y),
                             style = Stroke(width = 2.dp.toPx())
@@ -956,6 +965,9 @@ fun SoldPhonesHistogram(
                 Text(text = "0", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
 
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+
             Canvas(
                 modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
@@ -965,7 +977,7 @@ fun SoldPhonesHistogram(
                 val barWidth = width / (data.size * 2f)
 
                 // Draw Grid
-                val gridColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+                val gridColor = onBackgroundColor.copy(alpha = 0.05f)
                 val numberOfLines = 4
                 for (i in 0..numberOfLines) {
                     val y = (height / numberOfLines) * i
@@ -979,7 +991,7 @@ fun SoldPhonesHistogram(
                     val y = height - animatedHeight
 
                     drawRoundRect(
-                        color = MaterialTheme.colorScheme.primary,
+                        color = primaryColor,
                         topLeft = androidx.compose.ui.geometry.Offset(x, y),
                         size = androidx.compose.ui.geometry.Size(barWidth, animatedHeight),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())

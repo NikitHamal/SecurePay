@@ -51,6 +51,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ButtonDefaults
 import android.app.Activity
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
@@ -152,7 +154,7 @@ fun InventoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
             ) {
                 Card(
                     shape = RoundedCornerShape(32.dp),
