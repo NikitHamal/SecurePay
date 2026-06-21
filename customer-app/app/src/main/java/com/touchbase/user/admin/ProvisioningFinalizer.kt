@@ -9,11 +9,12 @@ import com.touchbase.user.MainActivity
 import com.touchbase.user.util.SecureLog
 
 /**
- * Shared, crash-resistant finalization for every Android managed-provisioning callback.
+ * Shared, crash-resistant finalization for Android managed-provisioning callbacks.
  *
- * Android 12+ setup-wizard provisioning finalizes through ACTION_ADMIN_POLICY_COMPLIANCE;
- * ACTION_PROVISIONING_SUCCESSFUL is not reliable in that path. Keep all work here
- * synchronous, local, and non-Compose so Setup Wizard never sees the DPC process die.
+ * Android 12+ setup-wizard provisioning finalizes through
+ * ACTION_ADMIN_POLICY_COMPLIANCE. ACTION_PROVISIONING_SUCCESSFUL remains as a
+ * fallback for older/legacy flows. Keep this work synchronous and local so Setup
+ * Wizard never sees the DPC process die during enrollment.
  */
 object ProvisioningFinalizer {
 
@@ -42,7 +43,7 @@ object ProvisioningFinalizer {
             }.onFailure {
                 SecureLog.w(TAG, "Initial Device Owner policy application failed: ${it.message}")
             }
-            runCatching { dpm.setProfileName(admin, "SecurePay") }
+            runCatching { dpm.setProfileName(admin, "TB User") }
                 .onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
         } else {
             ProvisioningExtrasStore.recordStage(
@@ -59,16 +60,16 @@ object ProvisioningFinalizer {
         return Result(isDeviceOwner = owner, isAdminActive = adminActive)
     }
 
-    fun buildSetupWizardResult(context: Context, sourceIntent: Intent?): Intent {
+    /**
+     * Result sent back to Setup Wizard from ADMIN_POLICY_COMPLIANCE.
+     *
+     * Keep this result intentionally small. The QR/admin extras have already been
+     * persisted, and some OEM setup wizards are strict about unexpected result
+     * extras during this step.
+     */
+    fun buildSetupWizardResult(context: Context): Intent {
         return Intent().apply {
-            ProvisioningExtrasStore.adminExtras(sourceIntent)?.let { adminExtras ->
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE, adminExtras)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true)
-            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SHOULD_LAUNCH_RESULT_INTENT, true)
                 putExtra(DevicePolicyManager.EXTRA_RESULT_LAUNCH_INTENT, launchIntent(context))
             }
         }
@@ -79,10 +80,10 @@ object ProvisioningFinalizer {
     }
 
     private fun waitForDeviceOwner(dpm: DevicePolicyManager, packageName: String): Boolean {
-        repeat(8) { attempt ->
+        repeat(12) { attempt ->
             val owner = runCatching { dpm.isDeviceOwnerApp(packageName) }.getOrDefault(false)
             if (owner) return true
-            if (attempt < 7) {
+            if (attempt < 11) {
                 runCatching { Thread.sleep(250L) }
             }
         }

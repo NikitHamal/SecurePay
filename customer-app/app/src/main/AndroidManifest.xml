@@ -39,10 +39,9 @@
         <activity
             android:name=".admin.GetProvisioningModeActivity"
             android:exported="true"
+            android:enabled="@bool/provisioning_mode_handlers_enabled"
             android:excludeFromRecents="true"
             android:directBootAware="true"
-            android:noHistory="true"
-            android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
                 <action android:name="android.app.action.GET_PROVISIONING_MODE" />
@@ -53,10 +52,9 @@
         <activity
             android:name=".admin.PolicyComplianceActivity"
             android:exported="true"
+            android:enabled="@bool/provisioning_mode_handlers_enabled"
             android:excludeFromRecents="true"
             android:directBootAware="true"
-            android:noHistory="true"
-            android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
                 <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />

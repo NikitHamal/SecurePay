@@ -225,8 +225,9 @@ export function buildQrPayload({
   securityPolicy
 }: QrPayloadInput): string {
   // Pin provisioning to the exact, versioned APK bytes and component.
-  // For Android M+ the component extra is preferred over the deprecated
-  // package-name extra; Samsung's QR DO examples also use component + APK checksum.
+  // Keep the QR payload close to Android/Samsung's documented DO contract;
+  // Samsung Setup Wizard can fail late with a generic IT-team error when
+  // non-provisioning result extras are placed in the initial QR payload.
   const payload: Record<string, JsonValue> = {
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME': DEVICE_ADMIN_COMPONENT,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION': apk.url,
@@ -234,10 +235,6 @@ export function buildQrPayload({
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE': apk.versionCode,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL': DEVICE_ADMIN_LABEL,
     'android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED': true,
-    'android.app.extra.PROVISIONING_SKIP_EDUCATION_SCREENS': true,
-    // Android 13+ can launch the result intent supplied by the DPC compliance handler.
-    // Older setup wizards ignore unknown extras.
-    'android.app.extra.PROVISIONING_SHOULD_LAUNCH_RESULT_INTENT': true,
     'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
       schemaVersion: 1,
       provisioningToken,
