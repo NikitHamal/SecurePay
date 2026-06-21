@@ -145,7 +145,7 @@ fun LedgerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
             ) {
                 Card(
                     shape = RoundedCornerShape(32.dp),
