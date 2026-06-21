@@ -50,6 +50,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.isSystemInDarkTheme
 import android.app.Activity
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
@@ -98,7 +99,7 @@ fun InventoryScreen(
 
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
-    val backgroundColor = Color(0xFF212121)
+    val backgroundColor = MaterialTheme.colorScheme.background
 
     if (!isPreview) {
         SideEffect {
@@ -113,7 +114,7 @@ fun InventoryScreen(
         containerColor = backgroundColor,
         topBar = {
             TopAppBar(
-                title = { Text("Inventory", color = Color.White) },
+                title = { Text("Inventory", color = MaterialTheme.colorScheme.onBackground) },
                 actions = {
                     IconButton(
                         onClick = { showAddDialog = true },
@@ -122,7 +123,7 @@ fun InventoryScreen(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_device),
                             contentDescription = "Add device",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -133,45 +134,96 @@ fun InventoryScreen(
             )
         },
         bottomBar = {
-            Column {
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.1f),
-                    thickness = 0.5.dp
-                )
-                NavigationBar(
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.navigationBarsPadding()
+            val isDark = isSystemInDarkTheme()
+            val containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+            val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFF005C3A)
+            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF8BE4A7)
+            val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+
+            val navItemColors = NavigationBarItemDefaults.colors(
+                selectedIconColor = selectedIconColor,
+                selectedTextColor = Color.Transparent,
+                indicatorColor = indicatorColor,
+                unselectedIconColor = unselectedIconColor,
+                unselectedTextColor = Color.Transparent
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+            ) {
+                Card(
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = containerColor
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToHome,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_dashboard), contentDescription = "Dashboard", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Home") }
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToCustomers,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_customers), contentDescription = "Customers", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Customers") }
-                    )
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { },
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_inventory), contentDescription = "Inventory", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Inventory") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF10B981),
-                            selectedTextColor = Color(0xFF10B981),
-                            indicatorColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(72.dp)
+                    ) {
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToHome,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_dashboard),
+                                    contentDescription = "Dashboard",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
                         )
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToLedger,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_ledger), contentDescription = "Ledger", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Ledger") }
-                    )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToCustomers,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_customers),
+                                    contentDescription = "Customers",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = true,
+                            onClick = { },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_inventory),
+                                    contentDescription = "Inventory",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToLedger,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_ledger),
+                                    contentDescription = "Ledger",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                    }
                 }
             }
         }
@@ -204,9 +256,9 @@ fun InventoryScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(Icons.Filled.Devices, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray)
+                Icon(Icons.Filled.Devices, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("No devices in inventory", color = Color.Gray)
+                Text("No devices in inventory", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             return@Scaffold
         }
@@ -243,7 +295,7 @@ fun InventoryScreen(
 @Composable
 private fun DeviceCard(device: Device, modifier: Modifier = Modifier) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
@@ -255,12 +307,12 @@ private fun DeviceCard(device: Device, modifier: Modifier = Modifier) {
                     text = device.model,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "IMEI: ${device.imei}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             DeviceStatusBadge(status = device.status)
@@ -301,7 +353,7 @@ private fun AddDeviceBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF2A2A2A)
+        containerColor = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Column(
             modifier = Modifier
@@ -310,43 +362,43 @@ private fun AddDeviceBottomSheet(
                 .padding(bottom = 32.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Add Device", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text("Add Device", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("IMEI (15 digits)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("IMEI (15 digits)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = imei,
                     onValueChange = { imei = it.filter { c -> c.isDigit() }.take(15) },
-                    placeholder = { Text("Enter IMEI", color = Color.Gray.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Enter IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF212121),
-                        unfocusedContainerColor = Color(0xFF212121),
-                        focusedBorderColor = Color(0xFF10B981),
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedContainerColor = MaterialTheme.colorScheme.background,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.Transparent,
-                        cursorColor = Color(0xFF10B981)
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(360.dp)
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Device model", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("Device model", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
-                    placeholder = { Text("Enter model", color = Color.Gray.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Enter model", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF212121),
-                        unfocusedContainerColor = Color(0xFF212121),
-                        focusedBorderColor = Color(0xFF10B981),
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedContainerColor = MaterialTheme.colorScheme.background,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.Transparent,
-                        cursorColor = Color(0xFF10B981)
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(360.dp)
                 )
@@ -360,7 +412,11 @@ private fun AddDeviceBottomSheet(
                     if (model.isBlank()) { errorMessage = "Model is required"; return@Button }
                     onAdd(imei, model)
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp)
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) { Text("Add") }
         }
     }

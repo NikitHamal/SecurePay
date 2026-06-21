@@ -65,6 +65,7 @@ import com.touchbase.agent.data.model.displayStatus
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.R
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import kotlinx.coroutines.launch
 
@@ -112,53 +113,104 @@ fun CustomersScreen(
                 account.phoneNumber.contains(searchQuery, ignoreCase = true)
     }
 
-    val backgroundColor = Color(0xFF212121)
-    val cardColor = Color(0xFF2A2A2A)
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val cardColor = MaterialTheme.colorScheme.surfaceVariant
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = backgroundColor,
 
         bottomBar = {
-            Column {
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.1f),
-                    thickness = 0.5.dp
-                )
-                NavigationBar(
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.navigationBarsPadding()
+            val isDark = isSystemInDarkTheme()
+            val containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+            val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFF005C3A)
+            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF8BE4A7)
+            val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+
+            val navItemColors = NavigationBarItemDefaults.colors(
+                selectedIconColor = selectedIconColor,
+                selectedTextColor = Color.Transparent,
+                indicatorColor = indicatorColor,
+                unselectedIconColor = unselectedIconColor,
+                unselectedTextColor = Color.Transparent
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+            ) {
+                Card(
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = containerColor
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToHome,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_dashboard), contentDescription = "Dashboard", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Home") }
-                    )
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { },
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_customers), contentDescription = "Customers", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Customers") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF10B981),
-                            selectedTextColor = Color(0xFF10B981),
-                            indicatorColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(72.dp)
+                    ) {
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToHome,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_dashboard),
+                                    contentDescription = "Dashboard",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
                         )
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToInventory,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_inventory), contentDescription = "Inventory", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Inventory") }
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToLedger,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_ledger), contentDescription = "Ledger", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Ledger") }
-                    )
+                        NavigationBarItem(
+                            selected = true,
+                            onClick = { },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_customers),
+                                    contentDescription = "Customers",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToInventory,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_inventory),
+                                    contentDescription = "Inventory",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToLedger,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_ledger),
+                                    contentDescription = "Ledger",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                    }
                 }
             }
         }
@@ -175,8 +227,8 @@ fun CustomersScreen(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
-                cursorBrush = SolidColor(Color(0xFF10B981)),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -189,13 +241,13 @@ fun CustomersScreen(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_search),
                             contentDescription = null,
-                            tint = Color.Gray,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 16.dp).size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.weight(1f)) {
                             if (searchQuery.isEmpty()) {
-                                Text("Search customers...", color = Color.Gray)
+                                Text("Search customers...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                             }
                             innerTextField()
                         }
@@ -222,10 +274,10 @@ fun CustomersScreen(
                     FilterChip(
                         selected = isSelected,
                         onClick = { statusFilter = filterValue },
-                        label = { Text(label, color = if (isSelected) Color.White else Color.Gray) },
+                        label = { Text(label, color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) },
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = cardColor,
-                            selectedContainerColor = Color(0xFF10B981)
+                            selectedContainerColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(24.dp)
                     )
@@ -260,10 +312,10 @@ fun CustomersScreen(
                         Icons.Filled.People,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = Color.Gray
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("No customers found", color = Color.Gray)
+                    Text("No customers found", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -290,7 +342,7 @@ private fun CustomerRow(
 ) {
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -305,17 +357,17 @@ private fun CustomerRow(
                     text = account.customerName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${account.id} · ${account.deviceModel}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Balance: ${formatAmount(account.remainingBalance)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             StatusBadge(status = account.status)
@@ -325,10 +377,11 @@ private fun CustomerRow(
 
 @Composable
 private fun StatusBadge(status: AccountStatus) {
+    val isDark = isSystemInDarkTheme()
     val (text, color) = when (status) {
-        AccountStatus.ACTIVE -> "Active" to Color(0xFF10B981)
-        AccountStatus.WARNING -> "Warning" to Color(0xFFFDE047)
-        AccountStatus.LOCKED -> "Locked" to Color(0xFFFDA4AF)
+        AccountStatus.ACTIVE -> "Active" to (if (isDark) Color(0xFF10B981) else Color(0xFF047857))
+        AccountStatus.WARNING -> "Warning" to (if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309))
+        AccountStatus.LOCKED -> "Locked" to (if (isDark) Color(0xFFFDA4AF) else Color(0xFFB91C1C))
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),

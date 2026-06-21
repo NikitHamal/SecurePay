@@ -89,7 +89,7 @@ fun EnrollmentWizardScreen(
 
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
-    val backgroundColor = Color(0xFF212121)
+    val backgroundColor = MaterialTheme.colorScheme.background
 
     if (!isPreview) {
         SideEffect {
@@ -105,10 +105,10 @@ fun EnrollmentWizardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.wizard_title), color = Color.White) },
+                title = { Text(stringResource(R.string.wizard_title), color = MaterialTheme.colorScheme.onBackground) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -212,7 +212,7 @@ private fun WizardControls(
             enabled = !state.isFirstStep && !state.isSubmitting,
             modifier = Modifier.weight(1f).height(52.dp)
         ) {
-            Text(stringResource(R.string.action_back), color = Color.White)
+            Text(stringResource(R.string.action_back), color = MaterialTheme.colorScheme.onBackground)
         }
 
         if (state.isLastStep) {
@@ -264,12 +264,12 @@ private fun EnrollmentSuccess(
         Text(
             text = "Enrollment submitted!",
             style = MaterialTheme.typography.titleLarge,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = "Reference: $enrollmentId",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Button(
             onClick = onProvision,

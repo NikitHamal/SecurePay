@@ -65,13 +65,12 @@ import androidx.compose.ui.unit.dp
 import com.touchbase.agent.data.model.Account
 import com.touchbase.agent.data.model.AccountStatus
 import com.touchbase.agent.data.model.formatAmount
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import kotlinx.coroutines.launch
 
-private val backgroundColor = Color(0xFF212121)
-private val cardColor = Color(0xFF2A2A2A)
-private val emerald = Color(0xFF10B981)
+// Removed static top-level colors to support dynamic theme colors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,11 +90,14 @@ fun CustomerDetailScreen(
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
 
+    val isDark = isSystemInDarkTheme()
+    val dynamicBgColor = MaterialTheme.colorScheme.background
+
     if (!isPreview) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = backgroundColor.toArgb()
-            window.navigationBarColor = backgroundColor.toArgb()
+            window.statusBarColor = dynamicBgColor.toArgb()
+            window.navigationBarColor = dynamicBgColor.toArgb()
         }
     }
 
@@ -119,17 +121,17 @@ fun CustomerDetailScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = backgroundColor,
+        containerColor = dynamicBgColor,
         topBar = {
             TopAppBar(
-                title = { Text(account?.customerName ?: "Account", color = Color.White) },
+                title = { Text(account?.customerName ?: "Account", color = MaterialTheme.colorScheme.onBackground) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backgroundColor
+                    containerColor = dynamicBgColor
                 )
             )
         }
@@ -140,7 +142,7 @@ fun CustomerDetailScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CircularProgressIndicator(color = emerald)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
             return@Scaffold
         }
@@ -201,8 +203,8 @@ fun CustomerDetailScreen(
                     modifier = Modifier.weight(1f).height(48.dp),
                     enabled = !actionInProgress,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = emerald,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(360.dp)
                 ) {
@@ -224,7 +226,7 @@ fun CustomerDetailScreen(
                         modifier = Modifier.weight(1f).height(48.dp),
                         enabled = !actionInProgress,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = emerald
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(360.dp)
                     ) {
@@ -261,7 +263,7 @@ fun CustomerDetailScreen(
             OutlinedButton(
                 onClick = { onProvisionDevice(acc.imei) },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = emerald),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(360.dp)
             ) {
                 Icon(Icons.Filled.QrCode2, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -281,7 +283,7 @@ fun CustomerDetailScreen(
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 enabled = !actionInProgress && !acc.releaseApproved,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = emerald),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(360.dp)
             ) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -308,12 +310,13 @@ fun CustomerDetailScreen(
 
 @Composable
 private fun StatusBanner(status: AccountStatus, releaseApproved: Boolean = false) {
+    val isDark = isSystemInDarkTheme()
     val (text, color) = if (releaseApproved) {
-        "Release approved — customer app can be removed" to emerald
+        "Release approved — customer app can be removed" to (if (isDark) Color(0xFF10B981) else Color(0xFF047857))
     } else when (status) {
-        AccountStatus.ACTIVE -> "Active" to emerald
-        AccountStatus.WARNING -> "Warning — Payment Due Soon" to Color(0xFFFBBF24)
-        AccountStatus.LOCKED -> "Locked — Payment Overdue" to Color(0xFFEF4444)
+        AccountStatus.ACTIVE -> "Active" to (if (isDark) Color(0xFF10B981) else Color(0xFF047857))
+        AccountStatus.WARNING -> "Warning — Payment Due Soon" to (if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309))
+        AccountStatus.LOCKED -> "Locked — Payment Overdue" to (if (isDark) Color(0xFFEF4444) else Color(0xFFB91C1C))
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
@@ -336,7 +339,7 @@ private fun InfoCard(
     content: @Composable () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = cardColor),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -344,7 +347,7 @@ private fun InfoCard(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = emerald
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             content()
@@ -365,20 +368,20 @@ private fun InfoRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.width(8.dp))
         }
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -400,19 +403,19 @@ private fun PaymentBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val inputColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White,
-        focusedContainerColor = backgroundColor,
-        unfocusedContainerColor = backgroundColor,
-        focusedBorderColor = emerald,
+        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+        focusedContainerColor = MaterialTheme.colorScheme.background,
+        unfocusedContainerColor = MaterialTheme.colorScheme.background,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = Color.Transparent,
-        cursorColor = emerald
+        cursorColor = MaterialTheme.colorScheme.primary
     )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = cardColor
+        containerColor = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Column(
             modifier = Modifier
@@ -421,17 +424,17 @@ private fun PaymentBottomSheet(
                 .padding(bottom = 32.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Record Payment", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text("Record Payment", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Amount (GHS)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("Amount (GHS)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { input ->
                         val filtered = input.filter { c -> c.isDigit() || c == '.' }
                         if (filtered.count { it == '.' } <= 1 && filtered.substringAfter('.', "").length <= 2) amount = filtered
                     },
-                    placeholder = { Text("Enter amount", color = Color.Gray.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Enter amount", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = inputColors,
@@ -440,15 +443,15 @@ private fun PaymentBottomSheet(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Payment Method", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("Payment Method", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("MOBILE_MONEY", "CASH", "BANK").forEach { m ->
                         val isSelected = method == m
                         Button(
                             onClick = { method = m },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) emerald else backgroundColor,
-                                contentColor = if (isSelected) Color.White else Color.Gray
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             shape = RoundedCornerShape(360.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -460,11 +463,11 @@ private fun PaymentBottomSheet(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Reference (optional)", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                Text("Reference (optional)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = reference,
                     onValueChange = { reference = it },
-                    placeholder = { Text("Enter reference", color = Color.Gray.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Enter reference", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = inputColors,
@@ -503,12 +506,12 @@ private fun PaymentBottomSheet(
                 enabled = !isSubmitting && amount.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = emerald,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(360.dp)
             ) {
-                if (isSubmitting) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = Color.White)
+                if (isSubmitting) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
                 else Text("Record Payment")
             }
         }

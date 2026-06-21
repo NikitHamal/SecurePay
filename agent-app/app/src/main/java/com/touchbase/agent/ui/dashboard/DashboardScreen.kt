@@ -70,12 +70,20 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
+import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.touchbase.agent.R
 import com.touchbase.agent.data.model.KpiSummary
 import com.touchbase.agent.data.model.formatAmount
@@ -107,12 +115,13 @@ fun DashboardScreen(
     var isLoading by remember { mutableStateOf(previewKpis == null && !isPreview) }
     var error by remember { mutableStateOf<String?>(null) }
     val view = LocalView.current
-    val backgroundColor = Color(0xFF212121) // Updated main background
+    val backgroundColor = MaterialTheme.colorScheme.background
 
     if (!isPreview) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
+            window.navigationBarColor = backgroundColor.toArgb()
         }
     }
 
@@ -148,11 +157,11 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("TB Agent", fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("TB Agent", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                             Text(
                                 dealerName ?: "Agent",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -174,53 +183,104 @@ fun DashboardScreen(
             )
         },
         bottomBar = {
-            Column {
-                HorizontalDivider(
-                    color = Color.White.copy(alpha = 0.1f),
-                    thickness = 0.5.dp
-                )
-                NavigationBar(
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.navigationBarsPadding()
+            val isDark = isSystemInDarkTheme()
+            val containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+            val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFF005C3A)
+            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF8BE4A7)
+            val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+
+            val navItemColors = NavigationBarItemDefaults.colors(
+                selectedIconColor = selectedIconColor,
+                selectedTextColor = Color.Transparent,
+                indicatorColor = indicatorColor,
+                unselectedIconColor = unselectedIconColor,
+                unselectedTextColor = Color.Transparent
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, bottom = 16.dp, top = 8.dp)
+            ) {
+                Card(
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = containerColor
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { },
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_dashboard), contentDescription = "Dashboard", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Home") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF10B981),
-                            selectedTextColor = Color(0xFF10B981),
-                            indicatorColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(72.dp)
+                    ) {
+                        NavigationBarItem(
+                            selected = true,
+                            onClick = { },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_dashboard),
+                                    contentDescription = "Dashboard",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
                         )
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToCustomers,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_customers), contentDescription = "Customers", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Customers") }
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToInventory,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_inventory), contentDescription = "Inventory", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Inventory") }
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToLedger,
-                        icon = { Icon(painter = painterResource(id = R.drawable.ic_ledger), contentDescription = "Ledger", modifier = Modifier.size(20.dp)) },
-                        label = { Text("Ledger") }
-                    )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToCustomers,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_customers),
+                                    contentDescription = "Customers",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToInventory,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_inventory),
+                                    contentDescription = "Inventory",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = onNavigateToLedger,
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_ledger),
+                                    contentDescription = "Ledger",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = null,
+                            alwaysShowLabel = false,
+                            colors = navItemColors
+                        )
+                    }
                 }
             }
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToEnrollment,
-                containerColor = Color(0xFF10B981),
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = CircleShape,
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
             ) {
@@ -251,10 +311,20 @@ fun DashboardScreen(
                     val today = remember { LocalDate.now(ZoneOffset.UTC) }
                     var selectedIndex by remember { mutableStateOf(today.dayOfMonth - 1) }
 
+                    val context = LocalContext.current
                     DateSelectorCard(
                         currentOutstanding = kpi.totalOutstanding,
                         selectedIndex = selectedIndex,
-                        onDateSelected = { selectedIndex = it }
+                        onDateSelected = { selectedIndex = it },
+                        onNavigateToLedger = onNavigateToLedger
+                    )
+
+                    CollectionOverviewCard(
+                        collectedToday = kpi.collectedToday,
+                        onSyncData = {
+                            Toast.makeText(context, "Data synchronized", Toast.LENGTH_SHORT).show()
+                        },
+                        onNewRecord = onNavigateToEnrollment
                     )
 
                     WidgetsSection(kpi = kpi)
@@ -306,7 +376,7 @@ fun OutstandingSection(
                 text = formatAmount(kpi.totalOutstanding),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Box(
@@ -350,7 +420,7 @@ fun OutstandingSection(
                 val spacing = width / (kpi.outstandingHistory.size - 1).coerceAtLeast(1)
 
                 // Draw Grid
-                val gridColor = Color.White.copy(alpha = 0.05f)
+                val gridColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
                 val horizontalLines = 4
                 for (i in 0..horizontalLines) {
                     val yLine = (height / horizontalLines) * i
@@ -393,15 +463,15 @@ fun OutstandingSection(
                     path = fillPath,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF10B981).copy(alpha = 0.2f),
-                            Color(0xFF10B981).copy(alpha = 0.0f)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.0f)
                         )
                     )
                 )
 
                 drawPath(
                     path = path,
-                    color = Color(0xFF10B981),
+                    color = MaterialTheme.colorScheme.primary,
                     style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
 
@@ -411,12 +481,12 @@ fun OutstandingSection(
                     val y = height - ((height - targetY) * animationProgress.value)
 
                     drawCircle(
-                        color = Color.White.copy(alpha = animationProgress.value),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = animationProgress.value),
                         radius = 4.dp.toPx(),
                         center = androidx.compose.ui.geometry.Offset(x, y)
                     )
                     drawCircle(
-                        color = Color(0xFF10B981).copy(alpha = animationProgress.value),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = animationProgress.value),
                         radius = 4.dp.toPx(),
                         center = androidx.compose.ui.geometry.Offset(x, y),
                         style = Stroke(width = 2.dp.toPx())
@@ -451,7 +521,7 @@ fun WidgetsSection(
         Text(
             text = "Your Widgets",
             style = MaterialTheme.typography.titleSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold
         )
 
@@ -519,7 +589,7 @@ fun WidgetCard(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -547,6 +617,7 @@ fun DateSelectorCard(
     currentOutstanding: Int,
     selectedIndex: Int,
     onDateSelected: (Int) -> Unit,
+    onNavigateToLedger: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
@@ -574,19 +645,42 @@ fun DateSelectorCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp)
         ) {
-            Text(
-                text = "Sales Overview",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Sales Overview",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Row(
+                    modifier = Modifier.clickable { onNavigateToLedger() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "View Ledger",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primary else Color(0xFF004B30)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "View Ledger",
+                        tint = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primary else Color(0xFF004B30),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -605,7 +699,7 @@ fun DateSelectorCard(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .background(
-                                color = if (selected) Color(0xFF10B981) else Color.Transparent,
+                                color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                 shape = RoundedCornerShape(360.dp)
                             )
                             .clickable {
@@ -619,9 +713,9 @@ fun DateSelectorCard(
                         Text(
                             text = item.first,
                             color = if (selected)
-                                Color.White
+                                MaterialTheme.colorScheme.onPrimary
                             else
-                                Color.Gray,
+                                MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall
                         )
 
@@ -631,7 +725,7 @@ fun DateSelectorCard(
                             modifier = Modifier
                                 .size(34.dp)
                                 .background(
-                                    color = if (selected) Color.White else Color.Transparent,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else Color.Transparent,
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -641,9 +735,9 @@ fun DateSelectorCard(
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (selected)
-                                    Color.Black
+                                    MaterialTheme.colorScheme.primary
                                 else
-                                    Color.White.copy(alpha = 0.9f)
+                                    MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
@@ -688,7 +782,7 @@ fun CollectionAreaChart(
                 text = formatAmount(collectedToday),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(2.dp))
 
@@ -716,7 +810,7 @@ fun CollectionAreaChart(
                     val height = size.height
                     val spacing = width / (data.size - 1).coerceAtLeast(1)
 
-                    val gridColor = Color.White.copy(alpha = 0.05f)
+                    val gridColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
                     val numberOfLines = 5
                     for (i in 0..numberOfLines) {
                         val y = (height / numberOfLines) * i
@@ -767,15 +861,15 @@ fun CollectionAreaChart(
                         path = fillPath,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xFF10B981).copy(alpha = 0.2f),
-                                Color(0xFF10B981).copy(alpha = 0.0f)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.0f)
                             )
                         )
                     )
 
                     drawPath(
                         path = path,
-                        color = Color(0xFF10B981),
+                        color = MaterialTheme.colorScheme.primary,
                         style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                     )
 
@@ -785,12 +879,12 @@ fun CollectionAreaChart(
                         val y = height - ((height - targetY) * animationProgress.value)
 
                         drawCircle(
-                            color = Color.White.copy(alpha = animationProgress.value),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = animationProgress.value),
                             radius = 4.dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(x, y)
                         )
                         drawCircle(
-                            color = Color(0xFF10B981).copy(alpha = animationProgress.value),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = animationProgress.value),
                             radius = 4.dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(x, y),
                             style = Stroke(width = 2.dp.toPx())
@@ -846,7 +940,7 @@ fun SoldPhonesHistogram(
             text = "${data.sum()} total",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -871,7 +965,7 @@ fun SoldPhonesHistogram(
                 val barWidth = width / (data.size * 2f)
 
                 // Draw Grid
-                val gridColor = Color.White.copy(alpha = 0.05f)
+                val gridColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
                 val numberOfLines = 4
                 for (i in 0..numberOfLines) {
                     val y = (height / numberOfLines) * i
@@ -885,7 +979,7 @@ fun SoldPhonesHistogram(
                     val y = height - animatedHeight
 
                     drawRoundRect(
-                        color = Color(0xFF10B981),
+                        color = MaterialTheme.colorScheme.primary,
                         topLeft = androidx.compose.ui.geometry.Offset(x, y),
                         size = androidx.compose.ui.geometry.Size(barWidth, animatedHeight),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
@@ -907,6 +1001,183 @@ fun SoldPhonesHistogram(
                 labels.forEach { label ->
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CollectionOverviewCard(
+    collectedToday: Int,
+    onSyncData: () -> Unit,
+    onNewRecord: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val cediValue = collectedToday / 100.0
+    val formattedAmount = String.format(Locale.US, "%,.2f", cediValue)
+
+    val cardBg = if (isDark) {
+        Brush.horizontalGradient(colors = listOf(Color(0xFF1E1E1E), Color(0xFF2A2A2A)))
+    } else {
+        Brush.horizontalGradient(colors = listOf(Color.White, Color(0xFFEAF5EE)))
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = false
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(cardBg)
+                .padding(20.dp)
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header Row: Wallet/Receipt Icon + Title on left, +12% pill badge on right
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_ledger),
+                            contentDescription = null,
+                            tint = if (isDark) Color.LightGray else Color(0xFF4B5563),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Total Collected Today",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            color = if (isDark) Color.LightGray else Color(0xFF4B5563)
+                        )
+                    }
+
+                    // Green Pill Badge: ↗ +12%
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isDark) Color(0xFF065F46) else Color(0xFF047857))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "↗",
+                                color = if (isDark) Color(0xFF34D399) else Color(0xFF6EE7B7),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "+12%",
+                                color = if (isDark) Color(0xFF34D399) else Color(0xFF6EE7B7),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
+                }
+
+                // Middle: GHS 4,250.00
+                Row(
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = "GHS",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        ),
+                        color = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF004B30)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = formattedAmount,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 36.sp
+                        ),
+                        color = if (isDark) Color.White else Color(0xFF111827)
+                    )
+                }
+
+                // Bottom Buttons: Sync Data & New Record
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Sync Data Button
+                    Button(
+                        onClick = onSyncData,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isDark) Color(0xFF2A2A2A) else Color(0xFFE5E7EB),
+                            contentColor = if (isDark) Color.White else Color(0xFF111827)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Sync Data",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
+
+                    // New Record Button
+                    Button(
+                        onClick = onNewRecord,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF004B30),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(48.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.AddCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "New Record",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
                     }
                 }
             }
