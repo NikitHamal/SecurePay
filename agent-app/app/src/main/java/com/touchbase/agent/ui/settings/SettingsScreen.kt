@@ -54,7 +54,6 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
     val view = LocalView.current
     val backgroundColor = MaterialTheme.colorScheme.background
 

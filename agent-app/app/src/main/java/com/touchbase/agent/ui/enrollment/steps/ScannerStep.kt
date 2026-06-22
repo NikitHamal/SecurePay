@@ -86,7 +86,7 @@ fun ScannerStep(
     }
 
     val flashColor by animateColorAsState(
-        if (scanFlash) Color(0xFF10B981) else Color.Transparent,
+        if (scanFlash) MaterialTheme.colorScheme.primary else Color.Transparent,
         label = "scanFlash"
     )
 
@@ -103,7 +103,7 @@ fun ScannerStep(
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF2A2A2A)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -150,27 +150,27 @@ fun ScannerStep(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.label_imei), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Text(stringResource(R.string.label_imei), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = state.draft.imei,
                 onValueChange = onImeiChange,
-                placeholder = { Text("Scan or enter IMEI", color = Color.Gray.copy(alpha = 0.5f)) },
+                placeholder = { Text("Scan or enter IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 isError = state.draft.imei.isNotEmpty() && !state.isImeiValid,
                 supportingText = {
-                    Text("${state.draft.imei.length}/15 digits", color = Color.Gray)
+                    Text("${state.draft.imei.length}/15 digits", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 },
                 textStyle = TextStyle(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color(0xFF2A2A2A),
-                    unfocusedContainerColor = Color(0xFF2A2A2A),
-                    focusedBorderColor = Color(0xFF10B981),
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Color(0xFF10B981)
+                    cursorColor = MaterialTheme.colorScheme.primary
                 ),
                 shape = RoundedCornerShape(360.dp)
             )
@@ -180,32 +180,32 @@ fun ScannerStep(
 
         val isModelFromInventory = state.deviceLookupStatus is DeviceLookupStatus.Found
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.label_device_model), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Text(stringResource(R.string.label_device_model), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = state.draft.deviceModel,
                 onValueChange = onDeviceModelChange,
-                placeholder = { Text("Enter device model", color = Color.Gray.copy(alpha = 0.5f), fontSize = 15.sp) },
+                placeholder = { Text("Enter device model", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 15.sp) },
                 singleLine = true,
                 enabled = !isModelFromInventory,
                 isError = state.draft.deviceModel.isNotEmpty() && !state.isDeviceModelValid,
                 textStyle = TextStyle(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color(0xFF2A2A2A),
-                    unfocusedContainerColor = Color(0xFF2A2A2A),
-                    focusedBorderColor = Color(0xFF10B981),
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Color(0xFF10B981),
-                    disabledTextColor = Color.White,
-                    disabledContainerColor = Color(0xFF2A2A2A),
-                    disabledBorderColor = Color(0xFF10B981).copy(alpha = 0.5f)
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 ),
                 shape = RoundedCornerShape(360.dp)
             )
             if (isModelFromInventory) {
-                Text("Auto-filled from inventory", style = MaterialTheme.typography.bodySmall, color = Color(0xFF10B981))
+                Text("Auto-filled from inventory", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -216,7 +216,7 @@ private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
     when (lookupStatus) {
         is DeviceLookupStatus.Found -> {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF10B981).copy(alpha = 0.15f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -227,14 +227,14 @@ private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
                     Icon(
                         Icons.Filled.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "${lookupStatus.model} (in stock)",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF10B981),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
                 }
@@ -242,7 +242,7 @@ private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
         }
         is DeviceLookupStatus.AlreadySold -> {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.15f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f)),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -253,14 +253,14 @@ private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
                     Icon(
                         Icons.Filled.Warning,
                         contentDescription = null,
-                        tint = Color(0xFFEF4444),
+                        tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Device already enrolled",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFEF4444),
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
                 }
@@ -268,7 +268,7 @@ private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
         }
         is DeviceLookupStatus.NotFound -> {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF59E0B).copy(alpha = 0.15f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -279,14 +279,14 @@ private fun DeviceLookupChip(lookupStatus: DeviceLookupStatus) {
                     Icon(
                         Icons.Filled.Warning,
                         contentDescription = null,
-                        tint = Color(0xFFF59E0B),
+                        tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Not in inventory \u2014 enter model manually",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFF59E0B),
+                        color = MaterialTheme.colorScheme.tertiary,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
                 }
