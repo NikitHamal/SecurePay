@@ -11,6 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.touchbase.agent.ui.settings.SettingsScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -77,9 +80,25 @@ fun SecurePayNavHost(
                 onNavigateToEnrollment = { navController.navigate(Screen.Enrollment.route) },
                 onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
                 onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            val scope = rememberCoroutineScope()
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    scope.launch {
+                        repository.logout()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 }
             )

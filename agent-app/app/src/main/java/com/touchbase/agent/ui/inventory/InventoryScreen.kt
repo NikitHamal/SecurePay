@@ -142,94 +142,102 @@ fun InventoryScreen(
         bottomBar = {
             val isDark = isSystemInDarkTheme()
             val containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White
-            val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFF005C3A)
-            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF8BE4A7)
+            val selectedIndicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFFB5D8C7)
+            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF004B30)
             val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
 
-            val navItemColors = NavigationBarItemDefaults.colors(
-                selectedIconColor = selectedIconColor,
-                selectedTextColor = Color.Transparent,
-                indicatorColor = indicatorColor,
-                unselectedIconColor = unselectedIconColor,
-                unselectedTextColor = Color.Transparent
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
+            Surface(
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = containerColor,
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Card(
-                    shape = RoundedCornerShape(32.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = containerColor
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                NavigationBar(
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .height(80.dp)
                 ) {
-                    NavigationBar(
-                        containerColor = Color.Transparent,
-                        tonalElevation = 0.dp,
-                        modifier = Modifier.height(72.dp)
-                    ) {
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = onNavigateToHome,
-                            icon = {
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = onNavigateToHome,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                        icon = {
+                            Box(
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Home,
                                     contentDescription = "Dashboard",
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
+                                    tint = unselectedIconColor
                                 )
-                            },
-                            label = null,
-                            alwaysShowLabel = false,
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = onNavigateToCustomers,
-                            icon = {
+                            }
+                        },
+                        label = null,
+                        alwaysShowLabel = false
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = onNavigateToCustomers,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                        icon = {
+                            Box(
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
                                     imageVector = Icons.Outlined.People,
                                     contentDescription = "Customers",
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
+                                    tint = unselectedIconColor
                                 )
-                            },
-                            label = null,
-                            alwaysShowLabel = false,
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = true,
-                            onClick = { },
-                            icon = {
+                            }
+                        },
+                        label = null,
+                        alwaysShowLabel = false
+                    )
+                    NavigationBarItem(
+                        selected = true,
+                        onClick = { },
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                        icon = {
+                            Box(
+                                modifier = Modifier
+                                    .background(selectedIndicatorColor, RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Inbox,
                                     contentDescription = "Inventory",
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
+                                    tint = selectedIconColor
                                 )
-                            },
-                            label = null,
-                            alwaysShowLabel = false,
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = onNavigateToLedger,
-                            icon = {
+                            }
+                        },
+                        label = null,
+                        alwaysShowLabel = false
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = onNavigateToLedger,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
+                        icon = {
+                            Box(
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Receipt,
                                     contentDescription = "Ledger",
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
+                                    tint = unselectedIconColor
                                 )
-                            },
-                            label = null,
-                            alwaysShowLabel = false,
-                            colors = navItemColors
-                        )
-                    }
+                            }
+                        },
+                        label = null,
+                        alwaysShowLabel = false
+                    )
                 }
             }
         }

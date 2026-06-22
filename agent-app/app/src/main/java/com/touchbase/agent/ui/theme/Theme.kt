@@ -42,9 +42,33 @@ private val SecurePayLightColorScheme = lightColorScheme(
     outline = TextGray.copy(alpha = 0.5f)
 )
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import android.content.Context
+
+object ThemeManager {
+    var themeMode by mutableStateOf("system")
+    private var sharedPrefs: android.content.SharedPreferences? = null
+
+    fun init(context: Context) {
+        sharedPrefs = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+        themeMode = sharedPrefs?.getString("theme_mode", "system") ?: "system"
+    }
+
+    fun updateTheme(mode: String) {
+        themeMode = mode
+        sharedPrefs?.edit()?.putString("theme_mode", mode)?.apply()
+    }
+}
+
 @Composable
 fun SecurePayAgentTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = when (ThemeManager.themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> isSystemInDarkTheme()
+    },
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) {
