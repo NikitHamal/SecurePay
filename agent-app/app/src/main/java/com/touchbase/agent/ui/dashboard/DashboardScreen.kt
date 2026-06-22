@@ -96,6 +96,7 @@ import com.touchbase.agent.R
 import com.touchbase.agent.data.model.KpiSummary
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
+import com.touchbase.agent.ui.components.SecurePayBottomNavBar
 import com.touchbase.agent.ui.theme.Poppins
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -192,106 +193,13 @@ fun DashboardScreen(
             )
         },
         bottomBar = {
-            val isDark = isSystemInDarkTheme()
-            val containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White
-            val selectedIndicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFFB5D8C7)
-            val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF004B30)
-            val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
-
-            Surface(
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = containerColor,
-                shadowElevation = 8.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                NavigationBar(
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .height(80.dp)
-                ) {
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { },
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
-                        icon = {
-                            Box(
-                                modifier = Modifier
-                                    .background(selectedIndicatorColor, RoundedCornerShape(16.dp))
-                                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Home,
-                                    contentDescription = "Dashboard",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = selectedIconColor
-                                )
-                            }
-                        },
-                        label = null,
-                        alwaysShowLabel = false
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToCustomers,
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
-                        icon = {
-                            Box(
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.People,
-                                    contentDescription = "Customers",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = unselectedIconColor
-                                )
-                            }
-                        },
-                        label = null,
-                        alwaysShowLabel = false
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToInventory,
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
-                        icon = {
-                            Box(
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Inbox,
-                                    contentDescription = "Inventory",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = unselectedIconColor
-                                )
-                            }
-                        },
-                        label = null,
-                        alwaysShowLabel = false
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = onNavigateToLedger,
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent),
-                        icon = {
-                            Box(
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Receipt,
-                                    contentDescription = "Ledger",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = unselectedIconColor
-                                )
-                            }
-                        },
-                        label = null,
-                        alwaysShowLabel = false
-                    )
-                }
-            }
+            SecurePayBottomNavBar(
+                selectedTab = 0,
+                onHomeClick = {},
+                onCustomersClick = onNavigateToCustomers,
+                onInventoryClick = onNavigateToInventory,
+                onLedgerClick = onNavigateToLedger
+            )
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -381,7 +289,7 @@ fun OutstandingSection(
         Text(
             text = "Total unpaid balance",
             style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
         Row(
@@ -424,9 +332,9 @@ fun OutstandingSection(
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.End
             ) {
-                Text(text = formatAmount(maxVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(text = formatAmount(((maxVal + minVal) / 2).toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(text = formatAmount(minVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = formatAmount(maxVal.toInt()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = formatAmount(((maxVal + minVal) / 2).toInt()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = formatAmount(minVal.toInt()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             val primaryColor = MaterialTheme.colorScheme.primary
@@ -522,7 +430,7 @@ fun OutstandingSection(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
-                Text(text = day, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = day, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -554,13 +462,13 @@ fun WidgetsSection(
             WidgetCard(
                 title = "Active",
                 count = kpi.activeCount,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             WidgetCard(
                 title = "Warning",
                 count = kpi.warningCount,
-                color = Color(0xFFFDE047),
+                color = Color(0xFFF59E0B),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -619,7 +527,7 @@ fun WidgetCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -690,7 +598,7 @@ fun DateSelectorCard(
                     Text(
                         text = "View Ledger",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primary else Color(0xFF004B30)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
@@ -778,7 +686,7 @@ fun CollectionAreaChart(
             modifier = modifier.fillMaxWidth().height(200.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("No collection data", color = Color.Gray)
+            Text("No collection data", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
         // Animation State
@@ -795,7 +703,7 @@ fun CollectionAreaChart(
             Text(
                 text = "Collections today",
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -815,9 +723,9 @@ fun CollectionAreaChart(
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.End
                 ) {
-                    Text(text = formatAmount(maxVal.toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(text = formatAmount((maxVal / 2).toInt()), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(text = "0", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(text = formatAmount(maxVal.toInt()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = formatAmount((maxVal / 2).toInt()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = "0", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 val primaryColor = MaterialTheme.colorScheme.primary
@@ -926,7 +834,7 @@ fun CollectionAreaChart(
                     Text(
                         text = day,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -956,7 +864,7 @@ fun SoldPhonesHistogram(
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -974,9 +882,9 @@ fun SoldPhonesHistogram(
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.End
             ) {
-                Text(text = maxVal.toInt().toString(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(text = (maxVal / 2).toInt().toString(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(text = "0", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(text = maxVal.toInt().toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = (maxVal / 2).toInt().toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = "0", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             val primaryColor = MaterialTheme.colorScheme.primary
@@ -1026,7 +934,7 @@ fun SoldPhonesHistogram(
             ) {
                 labels.forEach { label ->
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -1071,7 +979,6 @@ fun CollectionOverviewCard(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header Row: Wallet/Receipt Icon + Title on left, +12% pill badge on right
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1084,21 +991,20 @@ fun CollectionOverviewCard(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_ledger),
                             contentDescription = null,
-                            tint = if (isDark) Color.LightGray else Color(0xFF4B5563),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
                             text = "Total Collected Today",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            color = if (isDark) Color.LightGray else Color(0xFF4B5563)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Green Pill Badge: ↗ +12%
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isDark) Color(0xFF065F46) else Color(0xFF047857))
+                            .background(MaterialTheme.colorScheme.primary)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Row(
@@ -1107,20 +1013,19 @@ fun CollectionOverviewCard(
                         ) {
                             Text(
                                 text = "↗",
-                                color = if (isDark) Color(0xFF34D399) else Color(0xFF6EE7B7),
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
                             Text(
                                 text = "+12%",
-                                color = if (isDark) Color(0xFF34D399) else Color(0xFF6EE7B7),
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                     }
                 }
 
-                // Middle: GHS 4,250.00
                 Row(
                     verticalAlignment = Alignment.Bottom
                 ) {
@@ -1130,7 +1035,7 @@ fun CollectionOverviewCard(
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp
                         ),
-                        color = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF004B30)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -1139,21 +1044,19 @@ fun CollectionOverviewCard(
                             fontWeight = FontWeight.Bold,
                             fontSize = 36.sp
                         ),
-                        color = if (isDark) Color.White else Color(0xFF111827)
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
-                // Bottom Buttons: Sync Data & New Record
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Sync Button
                     Button(
                         onClick = onSyncData,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isDark) Color(0xFF2A2A2A) else Color(0xFFE5E7EB),
-                            contentColor = if (isDark) Color.White else Color(0xFF111827)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onBackground
                         ),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier
@@ -1177,12 +1080,11 @@ fun CollectionOverviewCard(
                         }
                     }
 
-                    // Record Button
                     Button(
                         onClick = onNewRecord,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF004B30),
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier

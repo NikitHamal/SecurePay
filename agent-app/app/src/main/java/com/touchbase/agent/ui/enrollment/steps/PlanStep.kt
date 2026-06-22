@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,16 +27,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import com.touchbase.agent.R
 import com.touchbase.agent.data.model.Plan
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
-import androidx.compose.ui.tooling.preview.Preview
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +55,7 @@ fun PlanStep(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.label_plan), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Text(stringResource(R.string.label_plan), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = it }
@@ -64,7 +64,7 @@ fun PlanStep(
                     value = selectedPlan?.name ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    placeholder = { Text("Select financing plan", color = Color.Gray.copy(alpha = 0.5f), fontSize = 15.sp) },
+                    placeholder = { Text("Select financing plan", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 15.sp) },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     },
@@ -74,13 +74,13 @@ fun PlanStep(
                         .height(50.dp)
                         .menuAnchor(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF2A2A2A),
-                        unfocusedContainerColor = Color(0xFF2A2A2A),
-                        focusedBorderColor = Color(0xFF10B981),
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.Transparent,
-                        cursorColor = Color(0xFF10B981)
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(360.dp)
                 )
@@ -111,11 +111,11 @@ fun PlanStep(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.label_down_payment), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Text(stringResource(R.string.label_down_payment), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = state.downPaymentInput,
                 onValueChange = onDownPaymentChange,
-                placeholder = { Text("Enter down payment", color = Color.Gray.copy(alpha = 0.5f)) },
+                placeholder = { Text("Enter down payment", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                 singleLine = true,
                 enabled = selectedPlan != null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -125,22 +125,22 @@ fun PlanStep(
                         if (state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid) {
                             Text("Must be between ${formatAmount(selectedPlan.minDownPayment)} and ${formatAmount(selectedPlan.totalAmount)}", color = MaterialTheme.colorScheme.error)
                         } else {
-                            Text("Min: ${formatAmount(selectedPlan.minDownPayment)}", color = Color.Gray)
+                            Text("Min: ${formatAmount(selectedPlan.minDownPayment)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 },
                 textStyle = TextStyle(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color(0xFF2A2A2A),
-                    unfocusedContainerColor = Color(0xFF2A2A2A),
-                    focusedBorderColor = Color(0xFF10B981),
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Color(0xFF10B981),
-                    disabledContainerColor = Color(0xFF2A2A2A).copy(alpha = 0.5f),
-                    disabledTextColor = Color.Gray,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     disabledBorderColor = Color.Transparent
                 ),
                 shape = RoundedCornerShape(360.dp)
@@ -157,7 +157,7 @@ fun PlanStep(
 private fun SummaryCard(plan: Plan, modifier: Modifier = Modifier) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -170,7 +170,7 @@ private fun SummaryCard(plan: Plan, modifier: Modifier = Modifier) {
             Text(
                 text = plan.name,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             SummaryRow(
@@ -198,13 +198,13 @@ private fun SummaryRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onBackground
         )
     }
 }

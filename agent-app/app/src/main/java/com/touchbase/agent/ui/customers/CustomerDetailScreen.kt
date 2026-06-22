@@ -247,7 +247,7 @@ fun CustomerDetailScreen(
                         modifier = Modifier.weight(1f).height(48.dp),
                         enabled = !actionInProgress,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFFEF4444)
+                            contentColor = MaterialTheme.colorScheme.error
                         ),
                         shape = RoundedCornerShape(360.dp)
                     ) {
@@ -310,13 +310,12 @@ fun CustomerDetailScreen(
 
 @Composable
 private fun StatusBanner(status: AccountStatus, releaseApproved: Boolean = false) {
-    val isDark = isSystemInDarkTheme()
     val (text, color) = if (releaseApproved) {
-        "Release approved — customer app can be removed" to (if (isDark) Color(0xFF10B981) else Color(0xFF047857))
+        "Release approved — customer app can be removed" to Color(0xFF10B981)
     } else when (status) {
-        AccountStatus.ACTIVE -> "Active" to (if (isDark) Color(0xFF10B981) else Color(0xFF047857))
-        AccountStatus.WARNING -> "Warning — Payment Due Soon" to (if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309))
-        AccountStatus.LOCKED -> "Locked — Payment Overdue" to (if (isDark) Color(0xFFEF4444) else Color(0xFFB91C1C))
+        AccountStatus.ACTIVE -> "Active" to Color(0xFF10B981)
+        AccountStatus.WARNING -> "Warning — Payment Due Soon" to Color(0xFFF59E0B)
+        AccountStatus.LOCKED -> "Locked — Payment Overdue" to Color(0xFFDC2626)
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
@@ -476,7 +475,7 @@ private fun PaymentBottomSheet(
             }
 
             if (errorMessage != null) {
-                Text(errorMessage!!, color = Color(0xFFEF4444), style = MaterialTheme.typography.bodySmall)
+                Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             Button(
