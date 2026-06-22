@@ -18,6 +18,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Card
@@ -165,7 +169,7 @@ fun LedgerScreen(
                             onClick = onNavigateToHome,
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_dashboard),
+                                    imageVector = Icons.Outlined.Home,
                                     contentDescription = "Dashboard",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -179,7 +183,7 @@ fun LedgerScreen(
                             onClick = onNavigateToCustomers,
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_customers),
+                                    imageVector = Icons.Outlined.People,
                                     contentDescription = "Customers",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -193,7 +197,7 @@ fun LedgerScreen(
                             onClick = onNavigateToInventory,
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_inventory),
+                                    imageVector = Icons.Outlined.Inbox,
                                     contentDescription = "Inventory",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -207,7 +211,7 @@ fun LedgerScreen(
                             onClick = { },
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_ledger),
+                                    imageVector = Icons.Outlined.Receipt,
                                     contentDescription = "Ledger",
                                     modifier = Modifier.size(24.dp)
                                 )

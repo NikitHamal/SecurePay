@@ -29,6 +29,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Devices
@@ -224,7 +228,7 @@ fun DashboardScreen(
                             onClick = { },
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_dashboard),
+                                    imageVector = Icons.Outlined.Home,
                                     contentDescription = "Dashboard",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -238,7 +242,7 @@ fun DashboardScreen(
                             onClick = onNavigateToCustomers,
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_customers),
+                                    imageVector = Icons.Outlined.People,
                                     contentDescription = "Customers",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -252,7 +256,7 @@ fun DashboardScreen(
                             onClick = onNavigateToInventory,
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_inventory),
+                                    imageVector = Icons.Outlined.Inbox,
                                     contentDescription = "Inventory",
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -266,7 +270,7 @@ fun DashboardScreen(
                             onClick = onNavigateToLedger,
                             icon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_ledger),
+                                    imageVector = Icons.Outlined.Receipt,
                                     contentDescription = "Ledger",
                                     modifier = Modifier.size(24.dp)
                                 )
