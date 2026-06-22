@@ -6,6 +6,27 @@ import { v4 as uuidv4 } from 'uuid';
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+export const DELETE: RequestHandler = async ({ locals, platform }) => {
+  if (!locals.dealer) return errorResponse('Unauthorized', 401);
+
+  const db = getDb({ platform });
+  const dealerId = locals.dealer.id;
+
+  const accountIds = await db.prepare('SELECT id FROM accounts WHERE dealer_id = ?')
+    .bind(dealerId).all();
+
+  for (const row of accountIds.results) {
+    const aid = row.id as string;
+    await db.prepare('DELETE FROM payments WHERE account_id = ?').bind(aid).run();
+    await db.prepare('DELETE FROM lock_events WHERE account_id = ?').bind(aid).run();
+  }
+
+  await db.prepare('DELETE FROM accounts WHERE dealer_id = ?').bind(dealerId).run();
+  await db.prepare('UPDATE devices SET status = \'in_stock\', dealer_id = NULL WHERE dealer_id = ?').bind(dealerId).run();
+
+  return json({ success: true, message: 'All accounts, payments, and device assignments cleared for this dealer' });
+};
+
 export const POST: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
   if (platform?.env?.ALLOW_DEMO_SEED !== 'true') {
