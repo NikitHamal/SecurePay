@@ -5,6 +5,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import android.content.Context
 
 private val SecurePayDarkColorScheme = darkColorScheme(
     primary = EmeraldGreen,
@@ -41,11 +45,6 @@ private val SecurePayLightColorScheme = lightColorScheme(
     onSurfaceVariant = TextGray,
     outline = TextGray.copy(alpha = 0.5f)
 )
-
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import android.content.Context
 
 object ThemeManager {
     var themeMode by mutableStateOf("system")

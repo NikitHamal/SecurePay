@@ -1221,7 +1221,8 @@ fun DashboardLoadingPreview() {
             onNavigateToEnrollment = {},
             onNavigateToInventory = {},
             onNavigateToLedger = {},
-            onLogout = {}
+            onLogout = {},
+            onNavigateToSettings = {}
         )
     }
 }
@@ -1248,7 +1249,8 @@ fun DashboardDataPreview() {
             onNavigateToEnrollment = {},
             onNavigateToInventory = {},
             onNavigateToLedger = {},
-            onLogout = {}
+            onLogout = {},
+            onNavigateToSettings = {}
         )
     }
 }
