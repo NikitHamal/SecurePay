@@ -95,27 +95,31 @@ export async function deleteCustomer(id: string): Promise<void> {
 }
 
 export const kpiSummary: Readable<KpiSummary> = derived(customers, ($customers) => {
-  const summary: KpiSummary = {
-    activeNodes: 0,
-    lockedCount: 0,
-    warningCount: 0,
-    totalOutstanding: 0,
-    collectedToday: 0
-  };
+  let activeNodes = 0;
+  let lockedCount = 0;
+  let warningCount = 0;
+  let paidCount = 0;
+  let totalOutstanding = 0;
+  let totalAccounts = $customers.length;
 
-  for (const customer of $customers) {
-    if (customer.status === 'ACTIVE') {
-      summary.activeNodes += 1;
-    } else if (customer.status === 'WARNING') {
-      summary.warningCount += 1;
-    } else {
-      summary.lockedCount += 1;
-    }
-    summary.totalOutstanding += customer.remainingBalance;
-    if (customer.status !== 'LOCKED') {
-      summary.collectedToday += customer.dailyRate;
-    }
+  for (const c of $customers) {
+    if (c.status === 'ACTIVE') activeNodes++;
+    else if (c.status === 'WARNING') warningCount++;
+    else lockedCount++;
+    if (c.amountPaid >= c.totalLoanAmount) paidCount++;
+    totalOutstanding += c.remainingBalance;
   }
 
-  return summary;
+  return {
+    activeNodes,
+    activeCount: activeNodes,
+    lockedCount,
+    warningCount,
+    paidCount,
+    totalOutstanding,
+    collectedToday: 0,
+    totalAccounts,
+    collectionHistory: [],
+    outstandingHistory: []
+  };
 });

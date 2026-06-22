@@ -160,15 +160,28 @@ export const portfolioMetrics: Readable<PortfolioMetrics> = derived(
 );
 
 export const kpis: Readable<KpiSummary> = derived(customers, ($customers) => {
-  const counts = { activeNodes: 0, lockedCount: 0, warningCount: 0 };
+  let activeNodes = 0;
+  let lockedCount = 0;
+  let warningCount = 0;
+  let paidCount = 0;
   let totalOutstanding = 0;
-  let collectedToday = 0;
   for (const c of $customers) {
-    if (c.status === 'ACTIVE') counts.activeNodes += 1;
-    else if (c.status === 'WARNING') counts.warningCount += 1;
-    else counts.lockedCount += 1;
+    if (c.status === 'ACTIVE') activeNodes++;
+    else if (c.status === 'WARNING') warningCount++;
+    else lockedCount++;
+    if (c.amountPaid >= c.totalLoanAmount) paidCount++;
     totalOutstanding += c.remainingBalance;
-    if (c.status !== 'LOCKED') collectedToday += c.dailyRate;
   }
-  return { ...counts, totalOutstanding, collectedToday };
+  return {
+    activeNodes,
+    activeCount: activeNodes,
+    lockedCount,
+    warningCount,
+    paidCount,
+    totalOutstanding,
+    collectedToday: 0,
+    totalAccounts: $customers.length,
+    collectionHistory: [],
+    outstandingHistory: []
+  };
 });

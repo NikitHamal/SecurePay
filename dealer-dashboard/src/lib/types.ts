@@ -39,10 +39,15 @@ export type KpiAccent = 'emerald' | 'crimson' | 'amber' | 'neutral';
 /** Aggregated portfolio metrics derived from the customer dataset. */
 export interface KpiSummary {
   activeNodes: number;
+  activeCount: number;
   lockedCount: number;
   warningCount: number;
+  paidCount: number;
   totalOutstanding: number;
   collectedToday: number;
+  totalAccounts: number;
+  collectionHistory: number[];
+  outstandingHistory: number[];
 }
 
 /** A payment-ledger row from the API. */
