@@ -13,6 +13,7 @@ import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.data.remote.TokenManager
 import com.touchbase.agent.ui.navigation.SecurePayNavHost
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
+import com.touchbase.agent.ui.theme.ThemeManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,6 +23,8 @@ class MainActivity : ComponentActivity() {
         val app = application as SecurePayAgentApplication
         val tokenManager = app.tokenManager
         val repository = app.repository
+
+        ThemeManager.init(applicationContext)
 
         setContent {
             SecurePayAgentTheme {

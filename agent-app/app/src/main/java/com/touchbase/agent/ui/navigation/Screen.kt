@@ -13,4 +13,5 @@ sealed class Screen(val route: String) {
     data object Provisioning : Screen("provisioning?imei={imei}") {
         fun createRoute(imei: String = "") = "provisioning?imei=$imei"
     }
+    data object Settings : Screen("settings")
 }
