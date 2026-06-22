@@ -1138,14 +1138,14 @@ fun CollectionOverviewCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Sync Data Button
+                    // Sync Button
                     Button(
                         onClick = onSyncData,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isDark) Color(0xFF2A2A2A) else Color(0xFFE5E7EB),
                             contentColor = if (isDark) Color.White else Color(0xFF111827)
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(24.dp),
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
@@ -1161,20 +1161,20 @@ fun CollectionOverviewCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Sync Data",
+                                text = "Sync",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                     }
 
-                    // New Record Button
+                    // Record Button
                     Button(
                         onClick = onNewRecord,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isDark) MaterialTheme.colorScheme.primary else Color(0xFF004B30),
                             contentColor = Color.White
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(24.dp),
                         modifier = Modifier
                             .weight(1.2f)
                             .height(48.dp),
@@ -1190,7 +1190,7 @@ fun CollectionOverviewCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "New Record",
+                                text = "Record",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
