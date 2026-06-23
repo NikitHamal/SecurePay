@@ -7,7 +7,21 @@ export interface Dealer {
   email: string;
 }
 
-export const dealer: Writable<Dealer | null> = writable(null);
+const initialDealer = typeof window !== 'undefined' && localStorage.getItem('securepay_token')
+  ? (() => {
+      const stored = localStorage.getItem('securepay_dealer');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    })()
+  : null;
+
+export const dealer: Writable<Dealer | null> = writable(initialDealer);
 export const isAuthenticated: Readable<boolean> = derived(dealer, ($dealer) => $dealer !== null);
 export const authError: Writable<string | null> = writable(null);
 
@@ -29,17 +43,7 @@ export async function logout(): Promise<void> {
 }
 
 export function initAuth(): void {
-  const token = getToken();
-  if (token) {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('securepay_dealer') : null;
-    if (stored) {
-      try {
-        dealer.set(JSON.parse(stored));
-      } catch {
-        dealer.set(null);
-      }
-    }
-  }
+  // Synchronous initialization complete
 }
 
 dealer.subscribe((d) => {

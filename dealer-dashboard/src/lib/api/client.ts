@@ -2,7 +2,8 @@ import type { Customer, KpiSummary, LedgerEntry, PaymentMethod } from '$lib/type
 
 const API_BASE = '/api';
 
-let authToken: string | null = null;
+let authToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('securepay_token') : null;
+
 
 export function setToken(token: string): void {
   authToken = token;
