@@ -161,7 +161,7 @@ fun ScannerStep(
                 supportingText = {
                     Text("${state.draft.imei.length}/15 digits", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 },
-                textStyle = TextStyle(fontSize = 15.sp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -184,11 +184,11 @@ fun ScannerStep(
             OutlinedTextField(
                 value = state.draft.deviceModel,
                 onValueChange = onDeviceModelChange,
-                placeholder = { Text("Enter device model", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 15.sp) },
+                placeholder = { Text("Enter device model", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                 singleLine = true,
                 enabled = !isModelFromInventory,
                 isError = state.draft.deviceModel.isNotEmpty() && !state.isDeviceModelValid,
-                textStyle = TextStyle(fontSize = 15.sp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,

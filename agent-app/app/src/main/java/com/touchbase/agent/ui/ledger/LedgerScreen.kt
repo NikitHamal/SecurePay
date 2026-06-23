@@ -1,6 +1,9 @@
 package com.touchbase.agent.ui.ledger
 
 import android.app.Activity
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -118,6 +121,7 @@ fun LedgerScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             window.navigationBarColor = backgroundColor.toArgb()
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
         }
     }
 
@@ -151,7 +155,10 @@ fun LedgerScreen(
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 8.dp)
             ) {
                 val filters = listOf(
                     null to "All",

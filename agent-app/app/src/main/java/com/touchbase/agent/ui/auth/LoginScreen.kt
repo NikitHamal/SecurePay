@@ -1,6 +1,7 @@
 package com.touchbase.agent.ui.auth
 
 import android.app.Activity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -85,11 +86,12 @@ fun LoginScreen(
     val view = LocalView.current
 
     if (!isPreview) {
-        val backgroundColor = MaterialTheme.colorScheme.background.toArgb()
+        val bgColor = MaterialTheme.colorScheme.background
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = backgroundColor
-            window.navigationBarColor = backgroundColor
+            window.statusBarColor = bgColor.toArgb()
+            window.navigationBarColor = bgColor.toArgb()
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = bgColor.luminance() > 0.5f
         }
     }
 
@@ -324,9 +326,8 @@ fun LoginScreen(
                             } else {
                                 Text(
                                     text = "Sign In",
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                         }
@@ -389,7 +390,7 @@ fun SecurePayLogo(modifier: Modifier = Modifier, isDark: Boolean = false) {
                 drawLine(color = strokeColor, start = androidx.compose.ui.geometry.Offset(cx, cy), end = points[i], strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
             }
         }
-        Text(text = "$", color = strokeColor, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
+        Text(text = "$", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = strokeColor, modifier = Modifier.padding(bottom = 2.dp))
     }
 }
 

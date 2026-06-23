@@ -1,6 +1,7 @@
 package com.touchbase.agent.ui.dashboard
 
 import android.app.Activity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -132,6 +133,7 @@ fun DashboardScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             window.navigationBarColor = backgroundColor.toArgb()
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
         }
     }
 
@@ -166,14 +168,7 @@ fun DashboardScreen(
                             tint = Color(0xFF10B981),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("TB Agent", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-                            Text(
-                                dealerName ?: "Agent",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
-                            )
-                        }
+                        Text("TB Agent", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 actions = {
@@ -950,8 +945,8 @@ fun CollectionOverviewCard(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
-    val cediValue = collectedToday / 100.0
-    val formattedAmount = String.format(Locale.US, "%,.2f", cediValue)
+    val currencyValue = collectedToday / 100.0
+    val formattedAmount = String.format(Locale.US, "%,.2f", currencyValue)
 
     val cardBg = if (isDark) {
         Brush.horizontalGradient(colors = listOf(Color(0xFF1E1E1E), Color(0xFF2A2A2A)))
@@ -991,13 +986,13 @@ fun CollectionOverviewCard(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_ledger),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
                             text = "Total Collected Today",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
@@ -1013,9 +1008,8 @@ fun CollectionOverviewCard(
                         ) {
                             Text(
                                 text = "↗",
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                             Text(
                                 text = "+12%",
@@ -1030,7 +1024,7 @@ fun CollectionOverviewCard(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Text(
-                        text = "GHS",
+                        text = "KES",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp

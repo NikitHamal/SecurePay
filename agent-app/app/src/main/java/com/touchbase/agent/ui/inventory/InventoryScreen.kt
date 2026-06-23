@@ -60,6 +60,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import android.app.Activity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -115,6 +116,7 @@ fun InventoryScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             window.navigationBarColor = backgroundColor.toArgb()
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
         }
     }
 

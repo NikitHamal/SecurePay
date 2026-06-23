@@ -64,11 +64,11 @@ fun PlanStep(
                     value = selectedPlan?.name ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    placeholder = { Text("Select financing plan", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 15.sp) },
+                    placeholder = { Text("Select financing plan", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     },
-                    textStyle = TextStyle(fontSize = 15.sp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
@@ -92,7 +92,7 @@ fun PlanStep(
                         DropdownMenuItem(
                             text = {
                                 Column {
-                                    Text(plan.name, fontWeight = FontWeight.SemiBold)
+                                    Text(plan.name, style = MaterialTheme.typography.titleMedium)
                                     Text(
                                         "${formatAmount(plan.totalAmount)} · ${plan.termDays} days",
                                         style = MaterialTheme.typography.bodySmall,
@@ -129,7 +129,7 @@ fun PlanStep(
                         }
                     }
                 },
-                textStyle = TextStyle(fontSize = 15.sp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
