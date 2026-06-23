@@ -4,8 +4,6 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import com.touchbase.user.MainActivity
 import com.touchbase.user.util.SecureLog
 
 /**
@@ -78,24 +76,7 @@ object ProvisioningFinalizer {
         return Result(isDeviceOwner = owner, isAdminActive = adminActive)
     }
 
-    /**
-     * Result sent back to Setup Wizard from ADMIN_POLICY_COMPLIANCE.
-     *
-     * Keep this result intentionally small. The QR/admin extras have already been
-     * persisted, and some OEM setup wizards are strict about unexpected result
-     * extras during this step.
-     */
-    fun buildSetupWizardResult(context: Context): Intent {
-        return Intent().apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                putExtra(DevicePolicyManager.EXTRA_RESULT_LAUNCH_INTENT, launchIntent(context))
-            }
-        }
-    }
-
-    fun launchIntent(context: Context): Intent = Intent(context, MainActivity::class.java).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-    }
+    fun buildSetupWizardResult(): Intent = Intent()
 
     private fun waitForDeviceOwner(dpm: DevicePolicyManager, packageName: String): Boolean {
         repeat(3) { attempt ->
