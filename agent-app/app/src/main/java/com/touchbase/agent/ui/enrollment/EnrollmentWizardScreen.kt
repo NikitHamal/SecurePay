@@ -167,7 +167,10 @@ fun EnrollmentWizardScreen(
                                 state = state,
                                 onNameChange = viewModel::updateKycName,
                                 onNationalIdChange = viewModel::updateKycNationalId,
-                                onPhoneChange = viewModel::updateKycPhone
+                                onPhoneChange = viewModel::updateKycPhone,
+                                onPhotoSelected = viewModel::updateKycPhoto,
+                                onIdFrontSelected = viewModel::updateKycIdFront,
+                                onIdBackSelected = viewModel::updateKycIdBack
                             )
                             EnrollmentStep.DEVICE -> ScannerStep(
                                 state = state,

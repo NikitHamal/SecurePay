@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS accounts (
   released_at             INTEGER,
   device_hmac_secret      TEXT,
   device_hmac_secret_created_at INTEGER,
+  customer_photo_path      TEXT,
+  national_id_front_path   TEXT,
+  national_id_back_path    TEXT,
   created_at              INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at              INTEGER NOT NULL DEFAULT (unixepoch())
 );

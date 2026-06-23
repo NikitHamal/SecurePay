@@ -161,6 +161,65 @@
             </div>
           </div>
         </div>
+
+        {#if customer.customerPhotoPath || customer.nationalIdFrontPath || customer.nationalIdBackPath}
+          <div class="card mt-4 p-5">
+            <p class="section-title">KYC Photo Validation</p>
+            <div class="mt-4 flex flex-col gap-4">
+              {#if customer.customerPhotoPath}
+                <div class="flex items-center gap-4">
+                  <a href="/api/accounts/{customer.id}/photos/photo" target="_blank" class="block shrink-0 rounded-full border border-edge shadow-sm overflow-hidden cursor-zoom-in">
+                    <img 
+                      src="/api/accounts/{customer.id}/photos/photo" 
+                      alt="Customer Selfie" 
+                      class="h-16 w-16 object-cover"
+                    />
+                  </a>
+                  <div>
+                    <p class="text-sm font-semibold text-ink-primary">Customer Selfie</p>
+                    <p class="text-2xs text-ink-muted">Captured live during agent registration</p>
+                  </div>
+                </div>
+              {/if}
+              
+              <div class="grid grid-cols-2 gap-3 mt-2">
+                {#if customer.nationalIdFrontPath}
+                  <div class="flex flex-col gap-1.5">
+                    <span class="text-2xs font-semibold text-ink-secondary">ID Document Front</span>
+                    <a 
+                      href="/api/accounts/{customer.id}/photos/id_front" 
+                      target="_blank" 
+                      class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
+                    >
+                      <img 
+                        src="/api/accounts/{customer.id}/photos/id_front" 
+                        alt="ID Card Front" 
+                        class="h-24 w-full object-cover hover:scale-105 transition duration-200"
+                      />
+                    </a>
+                  </div>
+                {/if}
+                
+                {#if customer.nationalIdBackPath}
+                  <div class="flex flex-col gap-1.5">
+                    <span class="text-2xs font-semibold text-ink-secondary">ID Document Back</span>
+                    <a 
+                      href="/api/accounts/{customer.id}/photos/id_back" 
+                      target="_blank" 
+                      class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
+                    >
+                      <img 
+                        src="/api/accounts/{customer.id}/photos/id_back" 
+                        alt="ID Card Back" 
+                        class="h-24 w-full object-cover hover:scale-105 transition duration-200"
+                      />
+                    </a>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          </div>
+        {/if}
       </div>
 
       <footer class="flex flex-wrap items-center gap-2 border-t border-edge bg-surface-200/80 px-6 py-4 backdrop-blur">
