@@ -87,7 +87,6 @@ export function releaseFields(row: Record<string, unknown>): {
 }
 
 const DEVICE_ADMIN_COMPONENT = 'com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
-const DEVICE_ADMIN_LABEL = 'TB User';
 
 export interface ApkMeta {
   url: string;
@@ -233,7 +232,6 @@ export function buildQrPayload({
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION': apk.url,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM': apk.sha256Base64,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE': apk.versionCode,
-    'android.app.extra.PROVISIONING_DEVICE_ADMIN_LABEL': DEVICE_ADMIN_LABEL,
     'android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED': true,
     'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
       schemaVersion: 1,
