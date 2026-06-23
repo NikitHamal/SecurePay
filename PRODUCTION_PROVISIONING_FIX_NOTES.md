@@ -11,7 +11,7 @@ Key app-side changes:
 - Android 12+ provisioning mode handlers are API-gated with `android:enabled="@bool/provisioning_mode_handlers_enabled"` using `values-v31=true` and base `values=false`.
 - Both provisioning activities now declare the standard `android:permission="android.permission.BIND_DEVICE_ADMIN"` to prevent Google Play Protect from blocking the app as a security vulnerability.
 - All manifest activities and components are fully-qualified (prefixed with `com.touchbase.user`) to prevent runtime `ClassNotFoundException` under the new `applicationId` (`com.touchbase.securepay.client`).
-- TB User version bumped to `versionCode 11` / `versionName 1.1.7` so the APK and QR metadata cannot be confused with earlier builds.
+- TB User version bumped to `versionCode 13` / `versionName 1.1.9` so the APK and QR metadata cannot be confused with earlier builds.
 - Provisioning source audit script updated for the minimal Samsung QR contract.
 
 ## Dashboard-side changes
@@ -24,7 +24,7 @@ Key app-side changes:
 ## Required production rollout order
 
 1. Push this apps source.
-2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 11` / `versionName 1.1.7`.
+2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 13` / `versionName 1.1.9`.
 3. Deploy the patched dashboard source.
 4. Generate a brand-new QR code after both APK and dashboard are updated. Do not reuse old QR screenshots.
 5. Factory-reset the Samsung test phone and scan the new QR from Setup Wizard.
