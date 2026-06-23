@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.touchbase.agent.R
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
+import com.touchbase.agent.ui.theme.isLight
 import kotlinx.coroutines.launch
 
 @Composable
@@ -91,7 +92,7 @@ fun LoginScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = bgColor.toArgb()
             window.navigationBarColor = bgColor.toArgb()
-            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = bgColor.luminance() > 0.5f
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = bgColor.isLight()
         }
     }
 

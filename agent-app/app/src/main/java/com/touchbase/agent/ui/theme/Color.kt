@@ -19,3 +19,6 @@ val LightSurface = Color(0xFFFFFFFF)
 val SoftGrayInput = Color(0xFFF3F4F6)
 val TextDark = Color(0xFF111827)
 val TextGray = Color(0xFF6B7280)
+
+fun Color.isLight(): Boolean =
+    0.2126f * red + 0.7152f * green + 0.0722f * blue > 0.5f

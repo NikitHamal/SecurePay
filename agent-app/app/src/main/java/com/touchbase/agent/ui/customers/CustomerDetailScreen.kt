@@ -69,6 +69,7 @@ import com.touchbase.agent.data.model.formatAmount
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
+import com.touchbase.agent.ui.theme.isLight
 import kotlinx.coroutines.launch
 
 // Removed static top-level colors to support dynamic theme colors
@@ -99,7 +100,7 @@ fun CustomerDetailScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = dynamicBgColor.toArgb()
             window.navigationBarColor = dynamicBgColor.toArgb()
-            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = dynamicBgColor.luminance() > 0.5f
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = dynamicBgColor.isLight()
         }
     }
 

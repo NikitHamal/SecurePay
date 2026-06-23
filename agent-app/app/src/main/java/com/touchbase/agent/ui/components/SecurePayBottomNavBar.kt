@@ -27,6 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
+private data class TabItem(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit
+)
+
 @Composable
 fun SecurePayBottomNavBar(
     selectedTab: Int,
@@ -65,46 +71,41 @@ fun SecurePayBottomNavBar(
                 tonalElevation = 0.dp,
                 modifier = Modifier.height(72.dp)
             ) {
-            items.forEachIndexed { index, item ->
-                val selected = index == selectedTab
-                NavigationBarItem(
-                    selected = selected,
-                    onClick = item.onClick,
-                    icon = {
-                        if (selected) {
-                            Box(
-                                modifier = Modifier
-                                    .background(indicatorColor, RoundedCornerShape(16.dp))
-                                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
+                items.forEachIndexed { index, item ->
+                    val selected = index == selectedTab
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = item.onClick,
+                        icon = {
+                            if (selected) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(indicatorColor, RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = item.icon,
+                                        contentDescription = item.label,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = selectedIconColor
+                                    )
+                                }
+                            } else {
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = item.label,
                                     modifier = Modifier.size(24.dp),
-                                    tint = selectedIconColor
+                                    tint = unselectedIconColor
                                 )
                             }
-                        } else {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label,
-                                modifier = Modifier.size(24.dp),
-                                tint = unselectedIconColor
-                            )
-                        }
-                    },
-                    label = null,
-                    alwaysShowLabel = false,
-                    colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
-                )
+                        },
+                        label = null,
+                        alwaysShowLabel = false,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+                    )
+                }
             }
         }
     }
 }
-
-private data class TabItem(
-    val label: String,
-    val icon: ImageVector,
-    val onClick: () -> Unit
-)

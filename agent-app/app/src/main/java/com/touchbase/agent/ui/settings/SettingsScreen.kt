@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.touchbase.agent.ui.theme.ThemeManager
+import com.touchbase.agent.ui.theme.isLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +63,7 @@ fun SettingsScreen(
         val window = (view.context as Activity).window
         window.statusBarColor = backgroundColor.toArgb()
         window.navigationBarColor = backgroundColor.toArgb()
-        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.isLight()
     }
 
     Scaffold(
