@@ -29,3 +29,14 @@ export const GET: RequestHandler = async ({ platform }) => {
     return errorResponse(err.message || 'Server error', 500);
   }
 };
+
+export const DELETE: RequestHandler = async ({ platform }) => {
+  try {
+    const db = getDb({ platform });
+    await db.prepare('DELETE FROM device_logs').run();
+    return json({ success: true });
+  } catch (err: any) {
+    return errorResponse(err.message || 'Server error', 500);
+  }
+};
+

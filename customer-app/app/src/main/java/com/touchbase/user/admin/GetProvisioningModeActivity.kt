@@ -7,50 +7,58 @@ import android.os.Bundle
 import android.os.PersistableBundle
 import com.touchbase.user.util.SecureLog
 
-/**
- * Android 12+ admin-integrated provisioning entry point.
- *
- * Setup Wizard calls this after the DPC APK is downloaded, before ownership is
- * finalized. Keep it tiny, synchronous and local: returning an unsupported mode
- * or crashing here produces Samsung's generic "Something went wrong" screen.
- */
 class GetProvisioningModeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val fullyManaged = DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
         val result = runCatching {
-            val adminExtras = readAndPersistExtras()
+            readAndPersistExtras()
             val allowedModes = allowedProvisioningModes(intent)
 
-            if (allowedModes.isNotEmpty() && fullyManaged !in allowedModes) {
-                SecureLog.w(TAG, "Setup Wizard did not offer fully-managed Device Owner mode: $allowedModes. Proceeding anyway.")
-            }
+            val selectedMode = resolveProvisioningMode(allowedModes)
 
-            ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE_DEVICE_OWNER_SELECTED")
-            val data = Intent().apply {
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, fullyManaged)
+            if (selectedMode != null) {
+                ProvisioningExtrasStore.recordStage(
+                    this,
+                    if (selectedMode == PROVISIONING_MODE_FULLY_MANAGED_DEVICE)
+                        "GET_PROVISIONING_MODE_FULLY_MANAGED"
+                    else
+                        "GET_PROVISIONING_MODE_FALLBACK_$selectedMode"
+                )
+                RESULT_OK to Intent().apply {
+                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, selectedMode)
+                }
+            } else {
+                RESULT_CANCELED to Intent()
             }
-            RESULT_OK to data
         }.onFailure {
             SecureLog.e(TAG, "Critical failure during provisioning mode selection", it)
         }.getOrElse {
-            // Last-resort fail-open to the only production-supported mode. This
-            // path avoids a DPC process crash; Setup Wizard will still validate
-            // whether fully-managed mode is allowed for the current enrollment.
-            val data = Intent().apply {
-                putExtra(
-                    DevicePolicyManager.EXTRA_PROVISIONING_MODE,
-                    DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
-                )
-            }
-            RESULT_OK to data
+            RESULT_CANCELED to Intent()
         }
 
-        val (code, data) = result
-        setResult(code, data)
+        setResult(result.first, result.second)
         finish()
+    }
+
+    private fun resolveProvisioningMode(allowedModes: Set<Int>): Int? {
+        val fullyManaged = DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
+
+        if (fullyManaged in allowedModes) return fullyManaged
+
+        if (allowedModes.isNotEmpty()) {
+            SecureLog.w(
+                TAG,
+                "Setup Wizard does not allow fully-managed mode (allowed=$allowedModes). " +
+                    "Falling back to first available mode."
+            )
+            return allowedModes.first()
+        }
+
+        // No allowed modes passed — assume DO is supported (standard AOSP path).
+        SecureLog.i(TAG, "No allowed provisioning modes from Setup Wizard; defaulting to fully-managed.")
+        return fullyManaged
     }
 
     private fun readAndPersistExtras(): PersistableBundle? {
@@ -82,8 +90,6 @@ class GetProvisioningModeActivity : Activity() {
         }.getOrNull()
         if (!fromArrayList.isNullOrEmpty()) return fromArrayList.toSet()
 
-        // Some OEM builds have historically delivered framework extras with a
-        // different concrete type. Be tolerant instead of crashing provisioning.
         return runCatching {
             val raw = source.extras?.get(DevicePolicyManager.EXTRA_PROVISIONING_ALLOWED_PROVISIONING_MODES)
             when (raw) {
@@ -97,5 +103,7 @@ class GetProvisioningModeActivity : Activity() {
 
     companion object {
         private const val TAG = "GetProvisioningMode"
+        private val PROVISIONING_MODE_FULLY_MANAGED_DEVICE =
+            DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
     }
 }

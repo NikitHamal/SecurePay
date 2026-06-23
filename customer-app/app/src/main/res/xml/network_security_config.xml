@@ -8,15 +8,4 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">192.168.1.66</domain>
     </domain-config>
-    <domain-config>
-        <domain includeSubdomains="true">securepay-dashboard.pages.dev</domain>
-        <pin-set>
-            <pin digest="SHA-256">DjLQVN7foWzyfDfw8rzJplr0P6Qt3ZARrePtjWGnmBo=</pin>
-            <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
-            <pin digest="SHA-256">mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=</pin>
-        </pin-set>
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </domain-config>
 </network-security-config>

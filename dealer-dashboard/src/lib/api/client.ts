@@ -216,3 +216,20 @@ export async function updateSecurityPolicy(frpAccountIds: string[]): Promise<Sec
     body: JSON.stringify({ frpAccountIds })
   });
 }
+
+export interface DeviceLog {
+  id: number;
+  tag: string;
+  message: string;
+  level: string;
+  time: string;
+}
+
+export async function listDeviceLogs(): Promise<DeviceLog[]> {
+  return request<DeviceLog[]>('/device/logs');
+}
+
+export async function clearDeviceLogs(): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>('/device/logs', { method: 'DELETE' });
+}
+
