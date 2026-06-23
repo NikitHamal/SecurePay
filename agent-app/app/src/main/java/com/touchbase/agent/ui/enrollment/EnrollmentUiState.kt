@@ -40,7 +40,10 @@ data class EnrollmentDraft(
     val downPayment: Int = 0,
     val dailyRate: Int = 0,
     val termDays: Int = 0,
-    val status: AccountStatus = AccountStatus.ACTIVE
+    val status: AccountStatus = AccountStatus.ACTIVE,
+    val customerPhotoBase64: String? = null,
+    val nationalIdFrontBase64: String? = null,
+    val nationalIdBackBase64: String? = null
 )
 
 data class EnrollmentUiState(
@@ -74,7 +77,8 @@ data class EnrollmentUiState(
             return valueCents in minCents..maxCents
         }
 
-    val isKycStepValid: Boolean get() = isNameValid && isNationalIdValid && isPhoneValid
+    val isKycStepValid: Boolean get() = isNameValid && isNationalIdValid && isPhoneValid &&
+            draft.customerPhotoBase64 != null && draft.nationalIdFrontBase64 != null && draft.nationalIdBackBase64 != null
     val isDeviceStepValid: Boolean
         get() = isImeiValid &&
             isDeviceModelValid &&

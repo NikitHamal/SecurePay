@@ -9,7 +9,10 @@ data class CreateAccountRequest(
     val phoneNumber: String,
     val imei: String,
     val planId: String,
-    val downPayment: Int? = null
+    val downPayment: Int? = null,
+    val customerPhoto: String? = null,
+    val nationalIdFront: String? = null,
+    val nationalIdBack: String? = null
 )
 
 @Serializable

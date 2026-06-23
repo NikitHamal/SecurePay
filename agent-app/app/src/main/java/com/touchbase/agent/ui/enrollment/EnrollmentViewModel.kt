@@ -75,6 +75,18 @@ class EnrollmentViewModel(
         it.copy(draft = it.draft.copy(phoneNumber = value))
     }
 
+    fun updateKycPhoto(value: String?) = _uiState.update {
+        it.copy(draft = it.draft.copy(customerPhotoBase64 = value))
+    }
+
+    fun updateKycIdFront(value: String?) = _uiState.update {
+        it.copy(draft = it.draft.copy(nationalIdFrontBase64 = value))
+    }
+
+    fun updateKycIdBack(value: String?) = _uiState.update {
+        it.copy(draft = it.draft.copy(nationalIdBackBase64 = value))
+    }
+
     fun updateImei(value: String) = _uiState.update {
         val sanitized = value.filter { ch -> ch.isDigit() }.take(IMEI_LENGTH)
         val status = if (sanitized.length == IMEI_LENGTH) {
@@ -165,7 +177,10 @@ class EnrollmentViewModel(
                 phoneNumber = state.draft.phoneNumber,
                 imei = state.draft.imei,
                 planId = plan.id,
-                downPayment = if (state.draft.downPayment > 0) state.draft.downPayment else null
+                downPayment = if (state.draft.downPayment > 0) state.draft.downPayment else null,
+                customerPhoto = state.draft.customerPhotoBase64,
+                nationalIdFront = state.draft.nationalIdFrontBase64,
+                nationalIdBack = state.draft.nationalIdBackBase64
             )
 
             val result = repository.createAccount(request)

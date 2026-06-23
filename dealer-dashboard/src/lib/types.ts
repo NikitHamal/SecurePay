@@ -22,6 +22,9 @@ export interface Customer {
   releaseApproved?: boolean;
   releaseApprovedAt?: number | null;
   releasedAt?: number | null;
+  customerPhotoPath?: string | null;
+  nationalIdFrontPath?: string | null;
+  nationalIdBackPath?: string | null;
 }
 
 

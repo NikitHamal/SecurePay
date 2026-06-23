@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getR2 } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
@@ -44,6 +44,9 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
       dailyRate: Number(row.daily_rate),
       nextPaymentDueEpochMillis: nextPaymentDue,
       status,
+      customerPhotoPath: row.customer_photo_path as string | null,
+      nationalIdFrontPath: row.national_id_front_path as string | null,
+      nationalIdBackPath: row.national_id_back_path as string | null,
       ...releaseFields(row as Record<string, unknown>)
     };
   });
@@ -62,7 +65,17 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   const body = await request.json();
-  const { customerName, nationalId, phoneNumber, imei, planId, downPayment } = body;
+  const { 
+    customerName, 
+    nationalId, 
+    phoneNumber, 
+    imei, 
+    planId, 
+    downPayment,
+    customerPhoto,
+    nationalIdFront,
+    nationalIdBack
+  } = body;
 
   if (!customerName || !nationalId || !phoneNumber || !imei || !planId) {
     return errorResponse('Missing required fields: customerName, nationalId, phoneNumber, imei, planId', 400);
@@ -95,13 +108,39 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const accountId = `ACC-${100000 + Math.floor(Math.random() * 900000)}`;
 
+  // Helper to decode Base64 and upload to R2
+  const uploadBase64ToR2 = async (base64Data: string | undefined | null, key: string): Promise<string | null> => {
+    if (!base64Data) return null;
+    try {
+      const r2 = getR2({ platform });
+      const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+      const binaryString = atob(cleanBase64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      await r2.put(key, bytes, {
+        httpMetadata: { contentType: 'image/jpeg' }
+      });
+      return key;
+    } catch (err) {
+      console.error('Error uploading R2 image:', err);
+      return null;
+    }
+  };
+
+  const customerPhotoPath = await uploadBase64ToR2(customerPhoto, `kyc/customer_${accountId}_photo.jpg`);
+  const nationalIdFrontPath = await uploadBase64ToR2(nationalIdFront, `kyc/customer_${accountId}_id_front.jpg`);
+  const nationalIdBackPath = await uploadBase64ToR2(nationalIdBack, `kyc/customer_${accountId}_id_back.jpg`);
+
   await db.prepare(
-    `INSERT INTO accounts (id, customer_name, national_id, phone_number, device_id, dealer_id, plan_id, total_loan_amount, amount_paid, daily_rate, next_payment_due, status, locked_by_dealer, down_payment, term_days, currency_code, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO accounts (id, customer_name, national_id, phone_number, device_id, dealer_id, plan_id, total_loan_amount, amount_paid, daily_rate, next_payment_due, status, locked_by_dealer, down_payment, term_days, currency_code, customer_photo_path, national_id_front_path, national_id_back_path, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     accountId, customerName, nationalId, phoneNumber, device.id as string,
     locals.dealer.id, planId, totalLoanAmount, dp, dailyRate, nextPaymentDue,
-    'ACTIVE', 0, dp, termDays, 'GHS', Math.floor(now / 1000), Math.floor(now / 1000)
+    'ACTIVE', 0, dp, termDays, 'GHS', customerPhotoPath, nationalIdFrontPath, nationalIdBackPath, Math.floor(now / 1000), Math.floor(now / 1000)
   ).run();
 
   await db.prepare("UPDATE devices SET status = 'sold' WHERE id = ?").bind(device.id as string).run();
@@ -140,6 +179,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: Number(row!.next_payment_due),
     status,
+    customerPhotoPath: row!.customer_photo_path as string | null,
+    nationalIdFrontPath: row!.national_id_front_path as string | null,
+    nationalIdBackPath: row!.national_id_back_path as string | null,
     ...releaseFields(row as Record<string, unknown>)
   };
 
