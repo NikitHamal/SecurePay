@@ -67,7 +67,9 @@ class ProvisioningActivity : ComponentActivity() {
         // Launch MainActivity no matter what happened above. This MUST succeed or
         // Android's setup wizard can report a provisioning failure to the user.
         runCatching {
-            startActivity(ProvisioningFinalizer.launchIntent(this))
+            startActivity(Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            })
         }.onFailure {
             Log.e(TAG, "Failed to launch MainActivity after provisioning", it)
         }
