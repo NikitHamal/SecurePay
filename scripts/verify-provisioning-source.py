@@ -59,8 +59,8 @@ for activity_name in (".admin.GetProvisioningModeActivity", ".admin.PolicyCompli
     end = manifest_text.find("</activity>", idx)
     activity_blocks.append(manifest_text[idx:end])
 for block in activity_blocks:
-    if "android.permission.BIND_DEVICE_ADMIN" in block:
-        print("Provisioning handoff activities must not require BIND_DEVICE_ADMIN", file=sys.stderr)
+    if "android.permission.BIND_DEVICE_ADMIN" not in block:
+        print("Provisioning handoff activities must require BIND_DEVICE_ADMIN", file=sys.stderr)
         raise SystemExit(1)
     if "android:noHistory" in block:
         print("Provisioning handoff activities must not use noHistory", file=sys.stderr)
