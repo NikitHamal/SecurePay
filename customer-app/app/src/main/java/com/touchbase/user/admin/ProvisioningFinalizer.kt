@@ -48,19 +48,13 @@ object ProvisioningFinalizer {
             }.onFailure {
                 SecureLog.w(TAG, "recordStage DEVICE_OWNER_CONFIRMED failed: ${it.message}")
             }
-            // Defer applying restrictions and profile name until the Setup Wizard completes.
-            // Executing heavy DPM calls during the compliance handoff makes Samsung Knox/Setup Wizard abort.
-            if (stage != "ADMIN_POLICY_COMPLIANCE") {
-                runCatching {
-                    DevicePolicyController(appContext).applyBaseLoanSecurity(
-                        ProvisioningExtrasStore.frpAccountIds(appContext)
-                    )
-                }.onFailure {
-                    SecureLog.w(TAG, "Initial Device Owner policy application failed: ${it.message}")
-                }
-                runCatching { dpm.setProfileName(admin, "TB User") }
-                    .onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
-            }
+            // Defer ALL DPM policy application past the provisioning handoff. Setup
+            // Wizard / Samsung Knox can abort provisioning if the DPC makes DPM calls
+            // during ANY callback (GET_PROVISIONING_MODE, ADMIN_POLICY_COMPLIANCE, or
+            // PROVISIONING_SUCCESSFUL). MainActivity.enforceCachedLockState applies
+            // base loan security on first launch after provisioning completes.
+            runCatching { dpm.setProfileName(admin, "TB User") }
+                .onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
         } else {
             runCatching {
                 ProvisioningExtrasStore.recordStage(

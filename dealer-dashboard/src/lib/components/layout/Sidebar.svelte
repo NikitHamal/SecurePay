@@ -21,7 +21,8 @@
       label: 'Operations',
       items: [
         { label: 'Overview', href: '/', icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
-        { label: 'Customers', href: '/customers', icon: 'M16 14a4 4 0 10-8 0M12 7a3 3 0 100 6 3 3 0 000-6zM4 20a8 8 0 0116 0' }
+        { label: 'Customers', href: '/customers', icon: 'M16 14a4 4 0 10-8 0M12 7a3 3 0 100 6 3 3 0 000-6zM4 20a8 8 0 0116 0' },
+        { label: 'Device Logs', href: '/logs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
       ]
     },
     {
