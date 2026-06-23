@@ -25,9 +25,7 @@ class GetProvisioningModeActivity : Activity() {
             val allowedModes = allowedProvisioningModes(intent)
 
             if (allowedModes.isNotEmpty() && fullyManaged !in allowedModes) {
-                SecureLog.e(TAG, "Setup Wizard did not offer fully-managed Device Owner mode: $allowedModes")
-                ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE_DO_NOT_ALLOWED")
-                return@runCatching RESULT_CANCELED to Intent()
+                SecureLog.w(TAG, "Setup Wizard did not offer fully-managed Device Owner mode: $allowedModes. Proceeding anyway.")
             }
 
             ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE_DEVICE_OWNER_SELECTED")

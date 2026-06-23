@@ -50,9 +50,8 @@ if 'android:enabled="@bool/provisioning_mode_handlers_enabled"' not in manifest_
 # activity handoff must remain callable by OEM Setup Wizard / ManagedProvisioning
 # variants during QR enrollment.
 activity_blocks = []
-for activity_name in (".admin.GetProvisioningModeActivity", ".admin.PolicyComplianceActivity"):
-    marker = f'android:name="{activity_name}"'
-    idx = manifest_text.find(marker)
+for activity_name in ("admin.GetProvisioningModeActivity", "admin.PolicyComplianceActivity"):
+    idx = manifest_text.find(activity_name)
     if idx == -1:
         print(f"Missing activity {activity_name}", file=sys.stderr)
         raise SystemExit(1)
