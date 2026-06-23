@@ -1,27 +1,30 @@
 # SecurePay production provisioning fix notes
 
-## What changed
+## What changed in this pass
 
-This patch makes Android Enterprise QR provisioning finalize through the Android 12+ `ADMIN_POLICY_COMPLIANCE` path instead of relying on `PROVISIONING_SUCCESSFUL` alone.
+This patch hardens the Android Enterprise QR provisioning path for Samsung/Android 16 by keeping the QR payload minimal and making the Android 12+ DPC handoff deterministic.
 
 Key app-side changes:
 
-- Added `ProvisioningFinalizer.kt` as one shared, crash-resistant finalization path.
-- `PolicyComplianceActivity` now verifies Device Owner state and applies base loan security locally during Setup Wizard compliance.
-- `GetProvisioningModeActivity` now explicitly returns fully managed Device Owner mode and preserves QR admin extras.
-- `ProvisioningActivity` and `SecurePayDeviceAdminReceiver` now use the same finalizer as fallbacks.
-- Provisioning components are direct-boot aware.
-- Removed `BIND_DEVICE_ADMIN` from the `PROVISIONING_SUCCESSFUL` activity for compatibility with the Android Enterprise/TestDPC pattern.
-- Added R8/ProGuard keeps for the provisioning reflection entry points.
-- Bumped TB User to versionCode 5 / versionName 1.1.1.
-- Hardened the app's uncaught-exception handler so background-thread errors during early DPC launch do not kill provisioning.
+- `GetProvisioningModeActivity` is now a minimal, no-UI Device Owner selector. It returns `PROVISIONING_MODE_FULLY_MANAGED_DEVICE` only when that mode is allowed by Setup Wizard, preserves admin extras, and no longer returns optional education-skip extras.
+- `PolicyComplianceActivity` now runs the shared `ProvisioningFinalizer` during the Android 12+ `ADMIN_POLICY_COMPLIANCE` handoff, confirms Device Owner/Admin state, applies base loan security when Device Owner is active, then returns `RESULT_OK` without UI/network work.
+- Android 12+ provisioning mode handlers are API-gated with `android:enabled="@bool/provisioning_mode_handlers_enabled"` using `values-v31=true` and base `values=false`.
+- TB User version bumped to `versionCode 7` / `versionName 1.1.3` so the APK and QR metadata cannot be confused with earlier failing builds.
+- Provisioning source audit script updated for the minimal Samsung QR contract.
+
+## Dashboard-side changes
+
+- QR payload version bumped to `5`.
+- The initial QR payload now includes only the Samsung/Android Enterprise essentials: Device Admin component, HTTPS APK URL, APK package SHA-256 checksum, `LEAVE_ALL_SYSTEM_APPS_ENABLED`, optional Wi-Fi fields, and `ADMIN_EXTRAS_BUNDLE`.
+- Removed redundant `PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM` from the QR payload. The published manifest may still store it for CI identity checks, but QR enrollment only needs the package checksum; avoiding two checksum gates reduces Samsung Setup Wizard failure risk when any manifest value is stale.
+- Removed `PROVISIONING_DEVICE_ADMIN_MINIMUM_VERSION_CODE` from the QR payload to avoid optional Samsung parser/installed-version edge cases during factory-reset enrollment.
 
 ## Required production rollout order
 
 1. Push this apps source.
-2. Run the GitHub APK workflow and confirm it publishes the new TB User APK to R2.
-3. Deploy the patched dealer dashboard source.
-4. Generate a brand-new QR code after both APK and dashboard are updated.
+2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 7` / `versionName 1.1.3`.
+3. Deploy the patched dashboard source.
+4. Generate a brand-new QR code after both APK and dashboard are updated. Do not reuse old QR screenshots.
 5. Factory-reset the Samsung test phone and scan the new QR from Setup Wizard.
 6. Before testing lock/uninstall/factory-reset restrictions, verify Device Owner:
 
@@ -31,8 +34,4 @@ Key app-side changes:
 
 Expected output must indicate `true`.
 
-If Device Owner is not true, the phone is not in the valid MDM/financing state and all Device-Owner-only controls must be considered untested.
-
-## Important limitation
-
-No Android app can honestly promise to be impossible to bypass. This project should be positioned as Android Enterprise Device Owner protection for consented financed/company-owned devices, not as spyware or covert anti-user control.
+If Device Owner is not true, the phone is not in the valid financing state; Device-Owner-only controls such as factory-reset block, uninstall restrictions, FRP, and lock task are not validly testable.
