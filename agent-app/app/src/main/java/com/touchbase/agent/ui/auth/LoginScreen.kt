@@ -85,10 +85,11 @@ fun LoginScreen(
     val view = LocalView.current
 
     if (!isPreview) {
+        val backgroundColor = MaterialTheme.colorScheme.background.toArgb()
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = MaterialTheme.colorScheme.background.toArgb()
-            window.navigationBarColor = MaterialTheme.colorScheme.background.toArgb()
+            window.statusBarColor = backgroundColor
+            window.navigationBarColor = backgroundColor
         }
     }
 
