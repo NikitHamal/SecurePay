@@ -3,57 +3,36 @@ package com.touchbase.user.admin
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
 import com.touchbase.user.util.SecureLog
 
 /**
  * Android 12+ admin-integrated provisioning entry point.
  *
- * Setup Wizard calls this activity after the DPC APK is downloaded, before the
- * device owner is finalized. Keep this activity tiny, synchronous and local:
- * returning the wrong mode or crashing here produces Samsung's generic
- * "Something went wrong. Contact your IT team" screen.
+ * Setup Wizard calls this after the DPC APK is downloaded, before ownership is
+ * finalized. Keep it tiny, synchronous and local: returning an unsupported mode
+ * or crashing here produces Samsung's generic "Something went wrong" screen.
  */
 class GetProvisioningModeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val fullyManaged = DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
         val result = runCatching {
-            val fullyManaged = DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
-
-            // Try to extract adminExtras but don't fail if we can't
-            val adminExtras = runCatching {
-                ProvisioningExtrasStore.adminExtras(intent)
-            }.onFailure {
-                SecureLog.e(TAG, "Failed to get adminExtras", it)
-            }.getOrNull()
-
-            // Try to persist but don't fail if we can't
-            runCatching {
-                ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE")
-                if (adminExtras != null) {
-                    ProvisioningExtrasStore.persist(this, adminExtras)
-                }
-            }.onFailure {
-                SecureLog.e(TAG, "Failed to persist provisioning stage or extras", it)
-            }
-
+            val adminExtras = readAndPersistExtras()
             val allowedModes = allowedProvisioningModes(intent)
+
             if (allowedModes.isNotEmpty() && fullyManaged !in allowedModes) {
-                SecureLog.w(TAG, "Fully managed mode was not offered by Setup Wizard: $allowedModes. Proceeding anyway.")
+                SecureLog.e(TAG, "Setup Wizard did not offer fully-managed Device Owner mode: $allowedModes")
+                ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE_DO_NOT_ALLOWED")
+                return@runCatching RESULT_CANCELED to Intent()
             }
 
+            ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE_DEVICE_OWNER_SELECTED")
             val data = Intent().apply {
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, fullyManaged)
-
-                // This extra is explicitly allowed as a result of
-                // ACTION_GET_PROVISIONING_MODE for fully-managed provisioning.
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true)
-                }
-
                 // Preserve QR one-time values for ADMIN_POLICY_COMPLIANCE. Android
                 // merges this bundle with the original admin extras.
                 if (adminExtras != null) {
@@ -64,20 +43,40 @@ class GetProvisioningModeActivity : Activity() {
         }.onFailure {
             SecureLog.e(TAG, "Critical failure during provisioning mode selection", it)
         }.getOrElse {
-            // Even in the absolute worst-case crash scenario, return RESULT_OK and fully-managed
-            // to allow the Setup Wizard to succeed in making us Device Owner.
+            // Last-resort fail-open to the only production-supported mode. This
+            // path avoids a DPC process crash; Setup Wizard will still validate
+            // whether fully-managed mode is allowed for the current enrollment.
             val data = Intent().apply {
-                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true)
-                }
+                putExtra(
+                    DevicePolicyManager.EXTRA_PROVISIONING_MODE,
+                    DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
+                )
             }
             RESULT_OK to data
         }
 
         val (code, data) = result
-        if (data == null) setResult(code) else setResult(code, data)
+        setResult(code, data)
         finish()
+    }
+
+    private fun readAndPersistExtras(): PersistableBundle? {
+        val adminExtras = runCatching {
+            ProvisioningExtrasStore.adminExtras(intent)
+        }.onFailure {
+            SecureLog.e(TAG, "Failed to get adminExtras", it)
+        }.getOrNull()
+
+        runCatching {
+            ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE")
+            if (adminExtras != null) {
+                ProvisioningExtrasStore.persist(this, adminExtras)
+            }
+        }.onFailure {
+            SecureLog.e(TAG, "Failed to persist provisioning stage or extras", it)
+        }
+
+        return adminExtras
     }
 
     private fun allowedProvisioningModes(source: Intent?): Set<Int> {
@@ -91,7 +90,7 @@ class GetProvisioningModeActivity : Activity() {
         if (!fromArrayList.isNullOrEmpty()) return fromArrayList.toSet()
 
         // Some OEM builds have historically delivered framework extras with a
-        // different concrete type. Be tolerant instead of cancelling provisioning.
+        // different concrete type. Be tolerant instead of crashing provisioning.
         return runCatching {
             val raw = source.extras?.get(DevicePolicyManager.EXTRA_PROVISIONING_ALLOWED_PROVISIONING_MODES)
             when (raw) {

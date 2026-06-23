@@ -38,6 +38,7 @@
         <!-- Android 12+ mandatory DPC provisioning entry points. -->
         <activity
             android:name=".admin.GetProvisioningModeActivity"
+            android:enabled="@bool/provisioning_mode_handlers_enabled"
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"
@@ -50,6 +51,7 @@
 
         <activity
             android:name=".admin.PolicyComplianceActivity"
+            android:enabled="@bool/provisioning_mode_handlers_enabled"
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"

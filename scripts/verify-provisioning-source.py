@@ -76,8 +76,11 @@ if server:
     if "PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME" in server_text:
         print("QR payload still uses deprecated PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME", file=sys.stderr)
         raise SystemExit(1)
-    if "PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM" not in server_text:
-        print("QR payload should include signing-certificate checksum when available", file=sys.stderr)
+    if "PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM" not in server_text:
+        print("QR payload must include the exact APK package checksum", file=sys.stderr)
+        raise SystemExit(1)
+    if "PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM" in server_text:
+        print("Initial QR payload should not include redundant signing-certificate checksum", file=sys.stderr)
         raise SystemExit(1)
     forbidden_initial_qr_extras = [
         "PROVISIONING_SHOULD_LAUNCH_RESULT_INTENT",
