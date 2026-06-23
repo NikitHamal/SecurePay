@@ -38,9 +38,9 @@ The fixed customer app keeps minimal, synchronous handlers for both actions and 
 
 ## Release invariants
 
-1. The package must remain `com.touchbase.user`.
+1. The package must remain `com.touchbase.securepay.client`.
 2. The device-admin component must remain:
-   `com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver`.
+   `com.touchbase.securepay.client/com.touchbase.user.admin.SecurePayDeviceAdminReceiver`.
 3. Every production update must use the same release keystore. Losing or changing that key breaks managed-device upgrades.
 4. Never place an old APK in the dashboard or generate QR payloads from a mutable `latest.apk` URL.
 5. The customer APK must be published first; the dashboard reads R2 `latest.json` and pins each QR to the exact immutable APK SHA-256.
@@ -95,7 +95,7 @@ After CI produces the signed customer APK and Android build-tools are installed:
 
 ```bash
 scripts/verify-provisioning-apk.sh path/to/customer-release.apk \
-  com.touchbase.user \
+  com.touchbase.securepay.client \
   com.touchbase.user.admin.SecurePayDeviceAdminReceiver \
   EXPECTED_CERT_SHA256_HEX
 ```

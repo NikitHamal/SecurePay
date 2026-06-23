@@ -20,8 +20,8 @@ BADGING="$($AAPT dump badging "$APK" | head -n 1)"
 PACKAGE="$(sed -n "s/.*name='\([^']*\)'.*/\1/p" <<<"$BADGING")"
 VERSION_CODE="$(sed -n "s/.*versionCode='\([^']*\)'.*/\1/p" <<<"$BADGING")"
 VERSION_NAME="$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" <<<"$BADGING")"
-[[ "$PACKAGE" == "com.touchbase.user" ]] || {
-  echo "FAIL: expected package com.touchbase.user, got $PACKAGE" >&2; exit 1;
+[[ "$PACKAGE" == "com.touchbase.securepay.client" ]] || {
+  echo "FAIL: expected package com.touchbase.securepay.client, got $PACKAGE" >&2; exit 1;
 }
 
 XML="$($AAPT dump xmltree "$APK" AndroidManifest.xml)"

@@ -160,7 +160,7 @@ jobs:
           fi
 
           if [ "${{ inputs.module }}" = "customer-app" ]; then
-            [ "$PACKAGE_NAME" = "com.touchbase.user" ] || {
+            [ "$PACKAGE_NAME" = "com.touchbase.securepay.client" ] || {
               echo "::error::Customer APK package mismatch: $PACKAGE_NAME"; exit 1;
             }
             MANIFEST="$($AAPT dump xmltree "$APK" AndroidManifest.xml)"

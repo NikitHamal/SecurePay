@@ -86,7 +86,7 @@ export function releaseFields(row: Record<string, unknown>): {
   };
 }
 
-const DEVICE_ADMIN_COMPONENT = 'com.touchbase.user/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
+const DEVICE_ADMIN_COMPONENT = 'com.touchbase.securepay.client/com.touchbase.user.admin.SecurePayDeviceAdminReceiver';
 
 export interface ApkMeta {
   url: string;
