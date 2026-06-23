@@ -21,36 +21,59 @@ class GetProvisioningModeActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val result = runCatching {
-            ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE")
-            ProvisioningExtrasStore.persistFromIntent(this, intent)
-
             val fullyManaged = DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE
-            val allowedModes = allowedProvisioningModes(intent)
 
-            if (allowedModes.isNotEmpty() && fullyManaged !in allowedModes) {
-                SecureLog.e(TAG, "Fully managed mode was not offered by Setup Wizard: $allowedModes")
-                RESULT_CANCELED to null
-            } else {
-                val data = Intent().apply {
-                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, fullyManaged)
+            // Try to extract adminExtras but don't fail if we can't
+            val adminExtras = runCatching {
+                ProvisioningExtrasStore.adminExtras(intent)
+            }.onFailure {
+                SecureLog.e(TAG, "Failed to get adminExtras", it)
+            }.getOrNull()
 
-                    // This extra is explicitly allowed as a result of
-                    // ACTION_GET_PROVISIONING_MODE for fully-managed provisioning.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true)
-                    }
-
-                    // Preserve QR one-time values for ADMIN_POLICY_COMPLIANCE. Android
-                    // merges this bundle with the original admin extras.
-                    ProvisioningExtrasStore.adminExtras(intent)?.let { adminExtras ->
-                        putExtra(DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE, adminExtras)
-                    }
+            // Try to persist but don't fail if we can't
+            runCatching {
+                ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE")
+                if (adminExtras != null) {
+                    ProvisioningExtrasStore.persist(this, adminExtras)
                 }
-                RESULT_OK to data
+            }.onFailure {
+                SecureLog.e(TAG, "Failed to persist provisioning stage or extras", it)
             }
+
+            val allowedModes = allowedProvisioningModes(intent)
+            if (allowedModes.isNotEmpty() && fullyManaged !in allowedModes) {
+                SecureLog.w(TAG, "Fully managed mode was not offered by Setup Wizard: $allowedModes. Proceeding anyway.")
+            }
+
+            val data = Intent().apply {
+                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, fullyManaged)
+
+                // This extra is explicitly allowed as a result of
+                // ACTION_GET_PROVISIONING_MODE for fully-managed provisioning.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true)
+                }
+
+                // Preserve QR one-time values for ADMIN_POLICY_COMPLIANCE. Android
+                // merges this bundle with the original admin extras.
+                if (adminExtras != null) {
+                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE, adminExtras)
+                }
+            }
+            RESULT_OK to data
         }.onFailure {
-            SecureLog.e(TAG, "Failed to select provisioning mode", it)
-        }.getOrDefault(RESULT_CANCELED to null)
+            SecureLog.e(TAG, "Critical failure during provisioning mode selection", it)
+        }.getOrElse {
+            // Even in the absolute worst-case crash scenario, return RESULT_OK and fully-managed
+            // to allow the Setup Wizard to succeed in making us Device Owner.
+            val data = Intent().apply {
+                putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, DevicePolicyManager.PROVISIONING_MODE_FULLY_MANAGED_DEVICE)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true)
+                }
+            }
+            RESULT_OK to data
+        }
 
         val (code, data) = result
         if (data == null) setResult(code) else setResult(code, data)

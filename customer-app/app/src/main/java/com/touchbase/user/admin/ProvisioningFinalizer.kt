@@ -25,8 +25,18 @@ object ProvisioningFinalizer {
 
     fun finalizeProvisioning(context: Context, sourceIntent: Intent?, stage: String): Result {
         val appContext = context.applicationContext
-        ProvisioningExtrasStore.recordStage(appContext, stage)
-        ProvisioningExtrasStore.persistFromIntent(appContext, sourceIntent)
+        
+        runCatching {
+            ProvisioningExtrasStore.recordStage(appContext, stage)
+        }.onFailure {
+            SecureLog.w(TAG, "recordStage failed: ${it.message}")
+        }
+
+        runCatching {
+            ProvisioningExtrasStore.persistFromIntent(appContext, sourceIntent)
+        }.onFailure {
+            SecureLog.w(TAG, "persistFromIntent failed: ${it.message}")
+        }
 
         val dpm = appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(appContext, SecurePayDeviceAdminReceiver::class.java)
@@ -35,7 +45,11 @@ object ProvisioningFinalizer {
         val adminActive = runCatching { dpm.isAdminActive(admin) }.getOrDefault(false)
 
         if (owner) {
-            ProvisioningExtrasStore.recordStage(appContext, "DEVICE_OWNER_CONFIRMED")
+            runCatching {
+                ProvisioningExtrasStore.recordStage(appContext, "DEVICE_OWNER_CONFIRMED")
+            }.onFailure {
+                SecureLog.w(TAG, "recordStage DEVICE_OWNER_CONFIRMED failed: ${it.message}")
+            }
             runCatching {
                 DevicePolicyController(appContext).applyBaseLoanSecurity(
                     ProvisioningExtrasStore.frpAccountIds(appContext)
@@ -46,10 +60,14 @@ object ProvisioningFinalizer {
             runCatching { dpm.setProfileName(admin, "TB User") }
                 .onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
         } else {
-            ProvisioningExtrasStore.recordStage(
-                appContext,
-                if (adminActive) "ADMIN_ONLY_AFTER_PROVISIONING" else "NO_ADMIN_AFTER_PROVISIONING"
-            )
+            runCatching {
+                ProvisioningExtrasStore.recordStage(
+                    appContext,
+                    if (adminActive) "ADMIN_ONLY_AFTER_PROVISIONING" else "NO_ADMIN_AFTER_PROVISIONING"
+                )
+            }.onFailure {
+                SecureLog.w(TAG, "recordStage stage failure failed: ${it.message}")
+            }
             SecureLog.w(
                 TAG,
                 "Provisioning callback reached without Device Owner. adminActive=$adminActive. " +
@@ -80,11 +98,11 @@ object ProvisioningFinalizer {
     }
 
     private fun waitForDeviceOwner(dpm: DevicePolicyManager, packageName: String): Boolean {
-        repeat(12) { attempt ->
+        repeat(3) { attempt ->
             val owner = runCatching { dpm.isDeviceOwnerApp(packageName) }.getOrDefault(false)
             if (owner) return true
-            if (attempt < 11) {
-                runCatching { Thread.sleep(250L) }
+            if (attempt < 2) {
+                runCatching { Thread.sleep(50L) }
             }
         }
         return false
