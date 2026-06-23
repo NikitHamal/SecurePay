@@ -33,11 +33,6 @@ class GetProvisioningModeActivity : Activity() {
             ProvisioningExtrasStore.recordStage(this, "GET_PROVISIONING_MODE_DEVICE_OWNER_SELECTED")
             val data = Intent().apply {
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_MODE, fullyManaged)
-                // Preserve QR one-time values for ADMIN_POLICY_COMPLIANCE. Android
-                // merges this bundle with the original admin extras.
-                if (adminExtras != null) {
-                    putExtra(DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE, adminExtras)
-                }
             }
             RESULT_OK to data
         }.onFailure {

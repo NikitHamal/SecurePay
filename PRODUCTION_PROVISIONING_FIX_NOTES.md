@@ -6,10 +6,10 @@ This patch hardens the Android Enterprise QR provisioning path for Samsung/Andro
 
 Key app-side changes:
 
-- `GetProvisioningModeActivity` is now a minimal, no-UI Device Owner selector. It returns `PROVISIONING_MODE_FULLY_MANAGED_DEVICE` only when that mode is allowed by Setup Wizard, preserves admin extras, and no longer returns optional education-skip extras.
-- `PolicyComplianceActivity` now runs the shared `ProvisioningFinalizer` during the Android 12+ `ADMIN_POLICY_COMPLIANCE` handoff, confirms Device Owner/Admin state, applies base loan security when Device Owner is active, then returns `RESULT_OK` without UI/network work.
+- `GetProvisioningModeActivity` is now a minimal, no-UI Device Owner selector. It returns `PROVISIONING_MODE_FULLY_MANAGED_DEVICE` only, no longer echoing back the redundant `EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE` which causes Samsung Setup Wizard/Knox to abort on Android 12+.
+- `PolicyComplianceActivity` runs the `ProvisioningFinalizer` without performing heavy DPM operations. Heavy DPM restrictions (disabling factory reset, safe boot, etc.) are deferred away from the compliance handoff to prevent Knox from aborting setup.
 - Android 12+ provisioning mode handlers are API-gated with `android:enabled="@bool/provisioning_mode_handlers_enabled"` using `values-v31=true` and base `values=false`.
-- TB User version bumped to `versionCode 7` / `versionName 1.1.3` so the APK and QR metadata cannot be confused with earlier failing builds.
+- TB User version bumped to `versionCode 8` / `versionName 1.1.4` so the APK and QR metadata cannot be confused with earlier builds.
 - Provisioning source audit script updated for the minimal Samsung QR contract.
 
 ## Dashboard-side changes
@@ -22,7 +22,7 @@ Key app-side changes:
 ## Required production rollout order
 
 1. Push this apps source.
-2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 7` / `versionName 1.1.3`.
+2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 8` / `versionName 1.1.4`.
 3. Deploy the patched dashboard source.
 4. Generate a brand-new QR code after both APK and dashboard are updated. Do not reuse old QR screenshots.
 5. Factory-reset the Samsung test phone and scan the new QR from Setup Wizard.
