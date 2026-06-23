@@ -55,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.touchbase.agent.R
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
+import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.StepIndicator
 import com.touchbase.agent.ui.enrollment.steps.KycStep
@@ -97,7 +98,7 @@ fun EnrollmentWizardScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             window.navigationBarColor = backgroundColor.toArgb()
-            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.isLight()
         }
     }
 

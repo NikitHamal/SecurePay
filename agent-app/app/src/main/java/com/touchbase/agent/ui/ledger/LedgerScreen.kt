@@ -70,6 +70,7 @@ import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.SecurePayBottomNavBar
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
+import com.touchbase.agent.ui.theme.isLight
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -121,7 +122,7 @@ fun LedgerScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = backgroundColor.toArgb()
             window.navigationBarColor = backgroundColor.toArgb()
-            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.isLight()
         }
     }
 
