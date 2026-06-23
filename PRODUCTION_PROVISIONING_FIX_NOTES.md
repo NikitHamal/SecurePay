@@ -10,7 +10,7 @@ Key app-side changes:
 - `PolicyComplianceActivity` runs the `ProvisioningFinalizer` without performing heavy DPM operations. Heavy DPM restrictions (disabling factory reset, safe boot, etc.) are deferred away from the compliance handoff to prevent Knox from aborting setup.
 - Android 12+ provisioning mode handlers are API-gated with `android:enabled="@bool/provisioning_mode_handlers_enabled"` using `values-v31=true` and base `values=false`.
 - Both provisioning activities now declare the standard `android:permission="android.permission.BIND_DEVICE_ADMIN"` to prevent Google Play Protect from blocking the app as a security vulnerability.
-- TB User version bumped to `versionCode 9` / `versionName 1.1.5` so the APK and QR metadata cannot be confused with earlier builds.
+- TB User version bumped to `versionCode 10` / `versionName 1.1.6` so the APK and QR metadata cannot be confused with earlier builds.
 - Provisioning source audit script updated for the minimal Samsung QR contract.
 
 ## Dashboard-side changes
@@ -23,14 +23,14 @@ Key app-side changes:
 ## Required production rollout order
 
 1. Push this apps source.
-2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 9` / `versionName 1.1.5`.
+2. Run the GitHub APK workflow and confirm R2 `latest.json` points to TB User `versionCode 10` / `versionName 1.1.6`.
 3. Deploy the patched dashboard source.
 4. Generate a brand-new QR code after both APK and dashboard are updated. Do not reuse old QR screenshots.
 5. Factory-reset the Samsung test phone and scan the new QR from Setup Wizard.
 6. Before testing lock/uninstall/factory-reset restrictions, verify Device Owner:
 
 ```bash
-/c/Users/Acer/AppData/Local/Android/Sdk/platform-tools/adb.exe shell dpm is-device-owner com.touchbase.user
+/c/Users/Acer/AppData/Local/Android/Sdk/platform-tools/adb.exe shell dpm is-device-owner com.touchbase.securepay.client
 ```
 
 Expected output must indicate `true`.
