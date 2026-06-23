@@ -14,7 +14,7 @@ This pass keeps the initial QR payload close to Samsung's documented Android Ent
 
 ## Required production rollout order
 
-1. Publish the new TB User APK first so R2 `latest.json` points at versionCode `10` / versionName `1.1.6`.
+1. Publish the new TB User APK first so R2 `latest.json` points at versionCode `11` / versionName `1.1.7`.
 2. Deploy this dashboard.
 3. Generate new QR codes only after deployment.
 4. Do not reuse old QR screenshots; old QR payloads can point to stale APK metadata and old provisioning extras.
