@@ -1,6 +1,7 @@
 package com.touchbase.agent.ui.customers
 
 import android.app.Activity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,6 +99,7 @@ fun CustomerDetailScreen(
             val window = (view.context as Activity).window
             window.statusBarColor = dynamicBgColor.toArgb()
             window.navigationBarColor = dynamicBgColor.toArgb()
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = dynamicBgColor.luminance() > 0.5f
         }
     }
 

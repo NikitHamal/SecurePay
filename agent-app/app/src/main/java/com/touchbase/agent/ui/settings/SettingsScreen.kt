@@ -1,6 +1,7 @@
 package com.touchbase.agent.ui.settings
 
 import android.app.Activity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,6 +62,7 @@ fun SettingsScreen(
         val window = (view.context as Activity).window
         window.statusBarColor = backgroundColor.toArgb()
         window.navigationBarColor = backgroundColor.toArgb()
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.luminance() > 0.5f
     }
 
     Scaffold(

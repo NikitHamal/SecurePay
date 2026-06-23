@@ -79,7 +79,7 @@ fun KycStep(
                         Text("Enter at least 3 characters", color = MaterialTheme.colorScheme.error)
                     }
                 },
-                textStyle = TextStyle(fontSize = 15.sp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -107,7 +107,7 @@ fun KycStep(
                         Text("Enter 6–20 characters", color = MaterialTheme.colorScheme.error)
                     }
                 },
-                textStyle = TextStyle(fontSize = 15.sp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -136,7 +136,7 @@ fun KycStep(
                         Text("Enter a valid phone number", color = MaterialTheme.colorScheme.error)
                     }
                 },
-                textStyle = TextStyle(fontSize = 15.sp),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                 modifier = Modifier.fillMaxWidth().height(70.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -249,7 +249,7 @@ fun KycPhotoSelector(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No Image", style = TextStyle(fontSize = 10.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No Image", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -267,10 +267,10 @@ fun KycPhotoSelector(
                             tint = Color(0xFF10B981),
                             modifier = Modifier.size(14.dp)
                         )
-                        Text("Photo Attached", style = TextStyle(fontSize = 11.sp), color = Color(0xFF10B981))
+                        Text("Photo Attached", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
                     }
                 } else {
-                    Text("Please attach photo", style = TextStyle(fontSize = 11.sp), color = MaterialTheme.colorScheme.error)
+                    Text("Please attach photo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 }
 
                 Row(
@@ -285,13 +285,13 @@ fun KycPhotoSelector(
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     ) {
-                        Text("Camera", fontSize = 11.sp)
+                        Text("Camera", style = MaterialTheme.typography.labelSmall)
                     }
                     FilledTonalButton(
                         onClick = { galleryLauncher.launch("image/*") },
                         modifier = Modifier.height(34.dp)
                     ) {
-                        Text("Gallery", fontSize = 11.sp)
+                        Text("Gallery", style = MaterialTheme.typography.labelSmall)
                     }
                     if (base64 != null) {
                         FilledTonalButton(
@@ -302,7 +302,7 @@ fun KycPhotoSelector(
                                 contentColor = MaterialTheme.colorScheme.onErrorContainer
                             )
                         ) {
-                            Text("Clear", fontSize = 11.sp)
+                            Text("Clear", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
