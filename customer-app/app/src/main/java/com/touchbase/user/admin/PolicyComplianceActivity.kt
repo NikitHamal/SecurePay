@@ -27,14 +27,16 @@ class PolicyComplianceActivity : Activity() {
             ProvisioningExtrasStore.recordStage(this, "ADMIN_POLICY_COMPLIANT")
             ProvisioningFinalizer.buildSetupWizardResult(this)
         }.onFailure {
-            SecureLog.e(TAG, "Compliance finalization failed", it)
-        }.getOrNull()
-
-        if (setupResult == null) {
-            setResult(RESULT_CANCELED)
-        } else {
-            setResult(RESULT_OK, setupResult)
+            SecureLog.e(TAG, "Compliance finalization failed, but will attempt to return OK to avoid setup rollback", it)
+        }.getOrElse {
+            // Fallback: Even if something failed during finalization, return OK with the launch intent
+            // so Setup Wizard doesn't roll back the device owner status.
+            runCatching {
+                ProvisioningFinalizer.buildSetupWizardResult(this)
+            }.getOrDefault(Intent())
         }
+
+        setResult(RESULT_OK, setupResult)
         finish()
     }
 

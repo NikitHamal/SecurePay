@@ -101,14 +101,74 @@ object ProvisioningExtrasStore {
     @Suppress("DEPRECATION")
     fun adminExtras(intent: Intent?): PersistableBundle? {
         intent ?: return null
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(
-                DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
-                PersistableBundle::class.java
-            )
-        } else {
-            intent.getParcelableExtra(DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE)
+        val fromExtras = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(
+                    DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
+                    PersistableBundle::class.java
+                )
+            } else {
+                intent.getParcelableExtra<PersistableBundle>(
+                    DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE
+                )
+            }
+        }.onFailure {
+            SecureLog.w(TAG, "Failed to get PersistableBundle directly from intent: ${it.message}")
+        }.getOrNull()
+
+        if (fromExtras != null) return fromExtras
+
+        // Fallback: If it's stored as a standard Bundle, extract and convert it.
+        // Some Android versions/OEM setup wizards bundle it as a normal Bundle.
+        return runCatching {
+            val bundle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(
+                    DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
+                    android.os.Bundle::class.java
+                )
+            } else {
+                intent.getParcelableExtra<android.os.Bundle>(
+                    DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE
+                )
+            }
+            bundle?.let { convertBundleToPersistableBundle(it) }
+        }.onFailure {
+            SecureLog.e(TAG, "Failed to extract and convert Bundle from intent", it)
+        }.getOrNull()
+    }
+
+    private fun convertBundleToPersistableBundle(bundle: android.os.Bundle): PersistableBundle {
+        val persistableBundle = PersistableBundle()
+        for (key in bundle.keySet()) {
+            runCatching {
+                val value = bundle.get(key)
+                if (value is String) {
+                    persistableBundle.putString(key, value)
+                } else if (value is Int) {
+                    persistableBundle.putInt(key, value)
+                } else if (value is Long) {
+                    persistableBundle.putLong(key, value)
+                } else if (value is Boolean) {
+                    persistableBundle.putBoolean(key, value)
+                } else if (value is Double) {
+                    persistableBundle.putDouble(key, value)
+                } else if (value is IntArray) {
+                    persistableBundle.putIntArray(key, value)
+                } else if (value is LongArray) {
+                    persistableBundle.putLongArray(key, value)
+                } else if (value is DoubleArray) {
+                    persistableBundle.putDoubleArray(key, value)
+                } else if (value is Array<*> && value.isArrayOf<String>()) {
+                    @Suppress("UNCHECKED_CAST")
+                    persistableBundle.putStringArray(key, value as Array<String>)
+                } else if (value is PersistableBundle) {
+                    persistableBundle.putPersistableBundle(key, value)
+                } else if (value is android.os.Bundle) {
+                    persistableBundle.putPersistableBundle(key, convertBundleToPersistableBundle(value))
+                }
+            }
         }
+        return persistableBundle
     }
 
     private fun prefs(context: Context) =
