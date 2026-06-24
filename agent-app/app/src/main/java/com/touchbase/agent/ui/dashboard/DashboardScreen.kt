@@ -464,7 +464,7 @@ fun WidgetsSection(
             WidgetCard(
                 title = "Warning",
                 count = kpi.warningCount,
-                color = Color(0xFFF59E0B),
+                color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -478,13 +478,13 @@ fun WidgetsSection(
             WidgetCard(
                 title = "Paid Off",
                 count = kpi.paidCount,
-                color = Color(0xFF60A5FA),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                 modifier = Modifier.weight(1f)
             )
             WidgetCard(
                 title = "Locked",
                 count = kpi.lockedCount,
-                color = Color(0xFFFDA4AF),
+                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -950,9 +950,9 @@ fun CollectionOverviewCard(
     val formattedAmount = String.format(Locale.US, "%,.2f", currencyValue)
 
     val cardBg = if (isDark) {
-        Brush.horizontalGradient(colors = listOf(Color(0xFF1E1E1E), Color(0xFF2A2A2A)))
+        Brush.horizontalGradient(colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)))
     } else {
-        Brush.horizontalGradient(colors = listOf(Color.White, Color(0xFFEAF5EE)))
+        Brush.horizontalGradient(colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.primaryContainer))
     }
 
     Card(
