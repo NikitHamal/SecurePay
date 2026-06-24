@@ -20,10 +20,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 
   const db = getDb({ platform });
   const row = await db.prepare(`
-    SELECT a.*, d.imei, d.model AS device_model, p.name AS plan_name
+    SELECT a.*, d.imei, d.model AS device_model, COALESCE(p.name, 'Custom') AS plan_name
       FROM accounts a
       JOIN devices d ON d.id = a.device_id
-      JOIN plans p ON p.id = a.plan_id
+      LEFT JOIN plans p ON p.id = a.plan_id
      WHERE a.id = ? AND d.imei = ?
   `).bind(accountId, imei).first();
 

@@ -15,10 +15,10 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
 
   const db = getDb({ platform });
   const account = await db.prepare(`
-    SELECT a.*, d.id AS device_id, d.imei, d.model AS device_model, p.name AS plan_name
+    SELECT a.*, d.id AS device_id, d.imei, d.model AS device_model, COALESCE(p.name, 'Custom') AS plan_name
       FROM accounts a
       JOIN devices d ON a.device_id = d.id
-      JOIN plans p ON a.plan_id = p.id
+      LEFT JOIN plans p ON a.plan_id = p.id
      WHERE a.id = ? AND a.dealer_id = ?
   `).bind(params.id, locals.dealer.id).first();
 
@@ -56,10 +56,10 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   }
 
   const row = await db.prepare(`
-    SELECT a.*, d.imei, d.model AS device_model, p.name AS plan_name
+    SELECT a.*, d.imei, d.model AS device_model, COALESCE(p.name, 'Custom') AS plan_name
       FROM accounts a
       JOIN devices d ON a.device_id = d.id
-      JOIN plans p ON a.plan_id = p.id
+      LEFT JOIN plans p ON a.plan_id = p.id
      WHERE a.id = ? AND a.dealer_id = ?
   `).bind(params.id, locals.dealer.id).first();
 
@@ -77,7 +77,7 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
     phoneNumber: row.phone_number as string,
     imei: row.imei as string,
     deviceModel: row.device_model as string,
-    planName: row.plan_name as string,
+    planName: row.plan_name as string || 'Custom',
     totalLoanAmount: totalLoan,
     amountPaid: amtPaid,
     remainingBalance: Math.max(0, totalLoan - amtPaid),

@@ -61,6 +61,10 @@ class SecurePayRepository(
         try { Result.success(api.createAccount(request)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
+    suspend fun updateAccount(id: String, updates: Map<String, @JvmSuppressWildcards Any>): Result<Account> = withContext(Dispatchers.IO) {
+        try { Result.success(api.updateAccount(id, updates)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
     suspend fun forceLock(id: String): Result<Account> = withContext(Dispatchers.IO) {
         try { Result.success(api.forceLock(id)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }

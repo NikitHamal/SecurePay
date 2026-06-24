@@ -5,7 +5,8 @@ import {
   extendTimer as apiExtendTimer,
   forceRemoteLock as apiForceRemoteLock,
   approveRelease as apiApproveRelease,
-  deleteAccount as apiDeleteAccount
+  deleteAccount as apiDeleteAccount,
+  updateAccount as apiUpdateAccount
 } from '$lib/api/client';
 
 export const customers: Writable<Customer[]> = writable<Customer[]>([]);
@@ -76,6 +77,26 @@ export async function forceRemoteLock(id: string): Promise<void> {
     replaceCustomer(updated);
   } catch (err) {
     error.set(err instanceof Error ? err.message : 'Failed to lock device');
+  } finally {
+    setPending(id, false);
+  }
+}
+
+export async function updateCustomer(id: string, data: {
+  customerName?: string;
+  nationalId?: string;
+  phoneNumber?: string;
+  dailyRate?: number;
+  totalLoanAmount?: number;
+  termDays?: number;
+}): Promise<void> {
+  setPending(id, true);
+  error.set(null);
+  try {
+    const updated = await apiUpdateAccount(id, data);
+    replaceCustomer(updated);
+  } catch (err) {
+    error.set(err instanceof Error ? err.message : 'Failed to update customer');
   } finally {
     setPending(id, false);
   }

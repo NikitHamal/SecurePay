@@ -183,6 +183,9 @@ fun EnrollmentWizardScreen(
                             EnrollmentStep.PLAN -> PlanStep(
                                 state = state,
                                 onSelectPlan = viewModel::selectPlan,
+                                onDailyRateChange = viewModel::updateDailyRate,
+                                onTotalAmountChange = viewModel::updateTotalAmount,
+                                onTermDaysChange = viewModel::updateTermDays,
                                 onDownPaymentChange = viewModel::updateDownPayment
                             )
                         }

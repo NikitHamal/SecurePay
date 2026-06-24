@@ -21,6 +21,7 @@
     <string name="action_grant_camera">Grant camera access</string>
 
     <string name="label_plan">Financing plan</string>
+    <string name="label_plan_custom">Custom</string>
     <string name="label_down_payment">Down payment</string>
     <string name="summary_total_loan">Total loan amount</string>
     <string name="summary_daily_rate">Daily rate</string>

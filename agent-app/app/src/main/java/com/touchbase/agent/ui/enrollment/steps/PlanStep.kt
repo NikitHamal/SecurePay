@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -27,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,7 +44,10 @@ import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 @Composable
 fun PlanStep(
     state: EnrollmentUiState,
-    onSelectPlan: (Plan) -> Unit,
+    onSelectPlan: (Plan?) -> Unit,
+    onDailyRateChange: (String) -> Unit,
+    onTotalAmountChange: (String) -> Unit,
+    onTermDaysChange: (String) -> Unit,
     onDownPaymentChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -51,8 +55,10 @@ fun PlanStep(
     val selectedPlan = state.selectedPlan
 
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.label_plan), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -61,10 +67,9 @@ fun PlanStep(
                 onExpandedChange = { expanded = it }
             ) {
                 OutlinedTextField(
-                    value = selectedPlan?.name ?: "",
+                    value = selectedPlan?.name ?: stringResource(R.string.label_plan_custom),
                     onValueChange = {},
                     readOnly = true,
-                    placeholder = { Text("Select financing plan", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     },
@@ -88,6 +93,15 @@ fun PlanStep(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(R.string.label_plan_custom), fontWeight = if (selectedPlan == null) FontWeight.Bold else FontWeight.Normal)
+                        },
+                        onClick = {
+                            onSelectPlan(null)
+                            expanded = false
+                        }
+                    )
                     state.availablePlans.forEach { plan ->
                         DropdownMenuItem(
                             text = {
@@ -111,26 +125,16 @@ fun PlanStep(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.label_down_payment), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.summary_daily_rate), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
-                value = state.downPaymentInput,
-                onValueChange = onDownPaymentChange,
-                placeholder = { Text("Enter down payment", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                value = state.dailyRateInput,
+                onValueChange = onDailyRateChange,
+                placeholder = { Text("0.00", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                 singleLine = true,
-                enabled = selectedPlan != null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                isError = state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid,
-                supportingText = {
-                    if (selectedPlan != null) {
-                        if (state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid) {
-                            Text("Must be between ${formatAmount(selectedPlan.minDownPayment)} and ${formatAmount(selectedPlan.totalAmount)}", color = MaterialTheme.colorScheme.error)
-                        } else {
-                            Text("Min: ${formatAmount(selectedPlan.minDownPayment)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                },
+                isError = state.dailyRateInput.isNotEmpty() && !state.isDailyRateValid,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                modifier = Modifier.fillMaxWidth().height(70.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
                     unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -138,23 +142,117 @@ fun PlanStep(
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledBorderColor = Color.Transparent
+                    cursorColor = MaterialTheme.colorScheme.primary
                 ),
                 shape = RoundedCornerShape(360.dp)
             )
         }
 
-        if (selectedPlan != null) {
-            SummaryCard(plan = selectedPlan)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.summary_total_loan), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                value = state.totalAmountInput,
+                onValueChange = onTotalAmountChange,
+                placeholder = { Text("0.00", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                isError = state.totalAmountInput.isNotEmpty() && !state.isTotalAmountValid,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(360.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(stringResource(R.string.summary_term), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value = state.termDaysInput,
+                    onValueChange = onTermDaysChange,
+                    placeholder = { Text("0", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = state.termDaysInput.isNotEmpty() && !state.isTermDaysValid,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(360.dp)
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(stringResource(R.string.label_down_payment), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value = state.downPaymentInput,
+                    onValueChange = onDownPaymentChange,
+                    placeholder = { Text("0.00", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(360.dp)
+                )
+            }
+        }
+
+        if (selectedPlan != null || (state.dailyRateInput.isNotBlank() || state.totalAmountInput.isNotBlank())) {
+            SummaryCard(
+                planName = selectedPlan?.name ?: stringResource(R.string.label_plan_custom),
+                totalAmount = state.totalAmountInput.toDoubleOrNull()?.let { (it * 100).toInt() }
+                    ?: selectedPlan?.totalAmount ?: 0,
+                dailyRate = state.dailyRateInput.toDoubleOrNull()?.let { (it * 100).toInt() }
+                    ?: selectedPlan?.dailyRate ?: 0,
+                termDays = state.termDaysInput.toIntOrNull()
+                    ?: selectedPlan?.termDays ?: 0
+            )
         }
     }
 }
 
 @Composable
-private fun SummaryCard(plan: Plan, modifier: Modifier = Modifier) {
+private fun SummaryCard(
+    planName: String,
+    totalAmount: Int,
+    dailyRate: Int,
+    termDays: Int,
+    modifier: Modifier = Modifier
+) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -168,22 +266,22 @@ private fun SummaryCard(plan: Plan, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = plan.name,
+                text = planName,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             SummaryRow(
                 label = stringResource(R.string.summary_total_loan),
-                value = formatAmount(plan.totalAmount)
+                value = formatAmount(totalAmount)
             )
             SummaryRow(
                 label = stringResource(R.string.summary_daily_rate),
-                value = formatAmount(plan.dailyRate)
+                value = formatAmount(dailyRate)
             )
             SummaryRow(
                 label = stringResource(R.string.summary_term),
-                value = "${plan.termDays} days"
+                value = "${termDays} days"
             )
         }
     }
@@ -217,8 +315,17 @@ fun PlanStepPreview() {
     )
     SecurePayAgentTheme {
         PlanStep(
-            state = EnrollmentUiState(availablePlans = previewPlans, selectedPlan = previewPlans[0], downPaymentInput = "2000"),
+            state = EnrollmentUiState(
+                availablePlans = previewPlans,
+                dailyRateInput = "50",
+                totalAmountInput = "15000",
+                termDaysInput = "300",
+                downPaymentInput = "2000"
+            ),
             onSelectPlan = {},
+            onDailyRateChange = {},
+            onTotalAmountChange = {},
+            onTermDaysChange = {},
             onDownPaymentChange = {}
         )
     }

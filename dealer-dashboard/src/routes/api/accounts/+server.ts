@@ -14,10 +14,10 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 
   const db = getDb({ platform });
   const result = await db.prepare(`
-    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
-    JOIN plans p ON a.plan_id = p.id
+    LEFT JOIN plans p ON a.plan_id = p.id
     WHERE a.dealer_id = ?
     ORDER BY a.created_at DESC
   `).bind(dealerId).all();
@@ -70,15 +70,22 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     nationalId, 
     phoneNumber, 
     imei, 
-    planId, 
+    planId,
+    dailyRate: customDailyRate,
+    totalAmount: customTotalAmount,
+    termDays: customTermDays,
     downPayment,
     customerPhoto,
     nationalIdFront,
     nationalIdBack
   } = body;
 
-  if (!customerName || !nationalId || !phoneNumber || !imei || !planId) {
-    return errorResponse('Missing required fields: customerName, nationalId, phoneNumber, imei, planId', 400);
+  if (!customerName || !nationalId || !phoneNumber || !imei) {
+    return errorResponse('Missing required fields: customerName, nationalId, phoneNumber, imei', 400);
+  }
+
+  if (!planId && !customDailyRate) {
+    return errorResponse('Either planId or dailyRate must be provided', 400);
   }
 
   const db = getDb({ platform });
@@ -93,16 +100,18 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('Device is already sold', 409);
   }
 
-  const plan = await db.prepare('SELECT * FROM plans WHERE id = ?').bind(planId).first();
-
-  if (!plan) {
-    return errorResponse('Plan not found', 404);
+  let plan = null;
+  if (planId) {
+    plan = await db.prepare('SELECT * FROM plans WHERE id = ?').bind(planId).first();
+    if (!plan) {
+      return errorResponse('Plan not found', 404);
+    }
   }
 
-  const dp = Number(downPayment) || Number(plan.min_down_payment);
-  const totalLoanAmount = Number(plan.total_amount);
-  const dailyRate = Number(plan.daily_rate);
-  const termDays = Number(plan.term_days);
+  const dp = Number(downPayment) || (plan ? Number(plan.min_down_payment) : 0);
+  const totalLoanAmount = Number(customTotalAmount) || (plan ? Number(plan.total_amount) : 0);
+  const dailyRate = Number(customDailyRate) || (plan ? Number(plan.daily_rate) : 0);
+  const termDays = Number(customTermDays) || (plan ? Number(plan.term_days) : 0);
   const now = Date.now();
   const nextPaymentDue = now + 24 * 60 * 60 * 1000;
 
@@ -139,7 +148,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     accountId, customerName, nationalId, phoneNumber, device.id as string,
-    locals.dealer.id, planId, totalLoanAmount, dp, dailyRate, nextPaymentDue,
+    locals.dealer.id, planId || null, totalLoanAmount, dp, dailyRate, nextPaymentDue,
     'ACTIVE', 0, dp, termDays, 'GHS', customerPhotoPath, nationalIdFrontPath, nationalIdBackPath, Math.floor(now / 1000), Math.floor(now / 1000)
   ).run();
 
@@ -152,10 +161,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   const row = await db.prepare(`
-    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
-    JOIN plans p ON a.plan_id = p.id
+    LEFT JOIN plans p ON a.plan_id = p.id
     WHERE a.id = ?
   `).bind(accountId).first();
 
@@ -172,7 +181,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     phoneNumber: row!.phone_number as string,
     imei: row!.imei as string,
     deviceModel: row!.device_model as string,
-    planName: row!.plan_name as string,
+    planName: row!.plan_name as string || 'Custom',
     totalLoanAmount: totalLoan,
     amountPaid: amtPaid,
     remainingBalance: Math.max(0, totalLoan - amtPaid),
