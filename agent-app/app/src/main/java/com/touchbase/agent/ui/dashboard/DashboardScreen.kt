@@ -453,7 +453,6 @@ fun OutstandingSection(
 }
 
 @Composable
-@Composable
 fun WidgetsSection(
     kpi: KpiSummary,
     modifier: Modifier = Modifier
