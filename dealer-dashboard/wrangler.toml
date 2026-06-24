@@ -11,3 +11,7 @@ database_id = "4f1f0a49-ecc3-479d-adb4-b82cd2a4d296"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "securepay-apks"
+
+[vars]
+FCM_SERVICE_ACCOUNT_EMAIL = "firebase-adminsdk-fbsvc@spay-fintech.iam.gserviceaccount.com"
+FCM_PROJECT_ID = "spay-fintech"

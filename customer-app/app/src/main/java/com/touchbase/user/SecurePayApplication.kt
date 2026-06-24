@@ -1,8 +1,12 @@
 package com.touchbase.user
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Looper
 import android.util.Log
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.SecurePayApi
@@ -67,6 +71,40 @@ class SecurePayApplication : Application() {
             }
         }
 
+        // Initialize Firebase for FCM push notifications. This runs without
+        // google-services.json — config values come from BuildConfig.
+        runCatching {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                val projectId = BuildConfig.FCM_PROJECT_ID
+                if (projectId.isNotBlank()) {
+                    val options = FirebaseOptions.Builder()
+                        .setProjectId(projectId)
+                        .setApiKey(BuildConfig.FCM_API_KEY)
+                        .setApplicationId("1:${BuildConfig.FCM_SENDER_ID}:android:2d9fc26c70e61185a72dd6")
+                        .setGcmSenderId(BuildConfig.FCM_SENDER_ID)
+                        .build()
+                    FirebaseApp.initializeApp(this, options)
+                    SecureLog.i(TAG, "Firebase initialized for project $projectId")
+                }
+            }
+        }.onFailure { SecureLog.w(TAG, "Firebase initialization skipped", it) }
+
+        // Create notification channel for FCM data-message fallback
+        runCatching {
+            val channel = NotificationChannel(
+                FCM_CHANNEL_ID,
+                "SecurePay notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Device lock and payment notifications"
+                setShowBadge(true)
+                enableLights(true)
+                enableVibration(true)
+            }
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(channel)
+        }.onFailure { SecureLog.w(TAG, "Notification channel creation failed", it) }
+
         runCatching {
             if (tokenManager.isRegistered) {
                 HeartbeatWorker.schedule(this)
@@ -77,5 +115,6 @@ class SecurePayApplication : Application() {
 
     companion object {
         private const val TAG = "SecurePayApp"
+        const val FCM_CHANNEL_ID = "securepay_fcm"
     }
 }

@@ -42,6 +42,9 @@ interface SecurePayApi {
     @POST("device/release-complete")
     suspend fun releaseComplete(@Body body: Map<String, @JvmSuppressWildcards String>): ReleaseCompleteResponse
 
+    @POST("device/fcm-token")
+    suspend fun uploadFcmToken(@Body body: Map<String, @JvmSuppressWildcards String>): retrofit2.Response<Unit>
+
     @GET("device/app-update")
     suspend fun appUpdate(
         @Query("currentVersionCode") currentVersionCode: Int,

@@ -3,7 +3,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { verifyToken } from '$lib/auth';
 import { verifyHmacSignature, getHmacSecret } from '$lib/hmac';
 
-const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update'];
+const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update', '/api/device/fcm-token'];
 const GLOBAL_DEVICE_PATHS = ['/api/device/check', '/api/device/activate', '/api/device/app-update'];
 
 function jsonError(message: string, status: number): Response {

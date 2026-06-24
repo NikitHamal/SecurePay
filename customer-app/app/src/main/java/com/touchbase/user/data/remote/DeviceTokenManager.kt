@@ -93,9 +93,18 @@ class DeviceTokenManager private constructor(
         _accountId = null
         _imei = null
         _apiSecret = null
+        _fcmToken = null
     }
 
     val isRegistered: Boolean get() = !_accountId.isNullOrEmpty()
+
+    private var _fcmToken: String? = prefs.getString(KEY_FCM_TOKEN, null)
+    val fcmToken: String? get() = _fcmToken
+
+    fun saveFcmToken(token: String) {
+        prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
+        _fcmToken = token
+    }
 
     companion object {
         private const val TAG = "DeviceTokenManager"
@@ -110,6 +119,7 @@ class DeviceTokenManager private constructor(
         private const val KEY_SECURITY_POLICY_VERSION = "security_policy_version"
         private const val KEY_FRP_ENABLED = "security_frp_enabled"
         private const val KEY_FRP_ACCOUNT_IDS = "security_frp_account_ids"
+        private const val KEY_FCM_TOKEN = "fcm_token"
 
         // Set by openPrefs() during the (synchronous) primary constructor call.
         @Volatile private var prefsEncryptedOk: Boolean = false

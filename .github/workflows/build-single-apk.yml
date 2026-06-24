@@ -32,6 +32,12 @@ on:
         required: false
       R2_PUBLIC_URL:
         required: false
+      FCM_PROJECT_ID:
+        required: false
+      FCM_API_KEY:
+        required: false
+      FCM_SENDER_ID:
+        required: false
 
 jobs:
   build:
@@ -100,6 +106,9 @@ jobs:
         env:
           HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
           SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
+          FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+          FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
+          FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       - name: Sign release APK
