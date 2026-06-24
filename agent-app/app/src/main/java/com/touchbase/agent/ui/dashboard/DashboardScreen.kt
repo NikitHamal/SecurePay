@@ -453,107 +453,216 @@ fun OutstandingSection(
 }
 
 @Composable
+@Composable
 fun WidgetsSection(
     kpi: KpiSummary,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
-        Text(
-            text = "Your Widgets",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            WidgetCard(
-                title = "Active",
-                count = kpi.activeCount,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-            WidgetCard(
-                title = "Warning",
-                count = kpi.warningCount,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            WidgetCard(
-                title = "Paid Off",
-                count = kpi.paidCount,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                modifier = Modifier.weight(1f)
-            )
-            WidgetCard(
-                title = "Locked",
-                count = kpi.lockedCount,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.weight(1f)
-            )
+    val total = kpi.totalAccounts
+    val formattedTotal = String.format(Locale.US, "%,d", total)
+    
+    // Format outstanding balance to a nice formatted string (e.g. GH₵ 8.4M or GH₵ 450K)
+    val totalValueStr = remember(kpi.totalOutstanding) {
+        val amount = kpi.totalOutstanding / 100.0
+        when {
+            amount >= 1_000_000 -> "GH₵ ${String.format(Locale.US, "%.1fM", amount / 1_000_000.0)} total value"
+            amount >= 1_000 -> "GH₵ ${String.format(Locale.US, "%.1fK", amount / 1_000.0)} total value"
+            else -> "GH₵ ${String.format(Locale.US, "%.0f", amount)} total value"
         }
     }
-}
-
-@Composable
-fun WidgetCard(
-    title: String,
-    count: Int,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    var startAnimation by remember { mutableStateOf(false) }
-    LaunchedEffect(count) {
-        startAnimation = true
-    }
-
-    val animatedCount by animateIntAsState(
-        targetValue = if (startAnimation) count else 0,
-        animationSpec = tween(durationMillis = 1000),
-        label = "countAnimation"
-    )
 
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Left Column: Values & Legend
+            Column(
+                modifier = Modifier.weight(1.1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Total Loans",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = formattedTotal,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = totalValueStr,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Legend
+                LegendItem(label = "Active", count = kpi.activeCount, color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(6.dp))
+                LegendItem(label = "Overdue", count = kpi.warningCount, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(6.dp))
+                LegendItem(label = "Locked", count = kpi.lockedCount, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(6.dp))
+                LegendItem(label = "Paid Off", count = kpi.paidCount, color = MaterialTheme.colorScheme.secondary)
+            }
+
+            // Right Column: Concentric Progress Rings
+            Box(
+                modifier = Modifier.weight(0.9f),
+                contentAlignment = Alignment.Center
+            ) {
+                ConcentricRingsChart(
+                    active = kpi.activeCount,
+                    overdue = kpi.warningCount,
+                    locked = kpi.lockedCount,
+                    paidOff = kpi.paidCount,
+                    total = total
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendItem(
+    label: String,
+    count: Int,
+    color: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(color = color, shape = CircleShape)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = animatedCount.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
+        }
+        Text(
+            text = String.format(Locale.US, "%,d", count),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun ConcentricRingsChart(
+    active: Int,
+    overdue: Int,
+    locked: Int,
+    paidOff: Int,
+    total: Int
+) {
+    val activeColor = MaterialTheme.colorScheme.primary
+    val overdueColor = MaterialTheme.colorScheme.error
+    val lockedColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+    val paidOffColor = MaterialTheme.colorScheme.secondary
+
+    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+
+    Box(
+        modifier = Modifier.size(140.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
+            val strokeWidthPx = 8.dp.toPx()
+            val spacingPx = 11.dp.toPx()
+
+            // Outer ring: Active
+            val r1 = (size.width / 2) - strokeWidthPx
+            val p1 = if (total > 0) active.toFloat() / total else 0f
+            drawCircle(color = trackColor, radius = r1, center = center, style = Stroke(width = strokeWidthPx))
+            drawArc(
+                color = activeColor,
+                startAngle = -90f,
+                sweepAngle = p1 * 360f,
+                useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(center.x - r1, center.y - r1),
+                size = androidx.compose.ui.geometry.Size(r1 * 2, r1 * 2),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+
+            // Second ring: Paid Off
+            val r2 = r1 - spacingPx
+            val p2 = if (total > 0) paidOff.toFloat() / total else 0f
+            drawCircle(color = trackColor, radius = r2, center = center, style = Stroke(width = strokeWidthPx))
+            drawArc(
+                color = paidOffColor,
+                startAngle = -90f,
+                sweepAngle = p2 * 360f,
+                useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(center.x - r2, center.y - r2),
+                size = androidx.compose.ui.geometry.Size(r2 * 2, r2 * 2),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+
+            // Third ring: Locked
+            val r3 = r2 - spacingPx
+            val p3 = if (total > 0) locked.toFloat() / total else 0f
+            drawCircle(color = trackColor, radius = r3, center = center, style = Stroke(width = strokeWidthPx))
+            drawArc(
+                color = lockedColor,
+                startAngle = -90f,
+                sweepAngle = p3 * 360f,
+                useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(center.x - r3, center.y - r3),
+                size = androidx.compose.ui.geometry.Size(r3 * 2, r3 * 2),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+
+            // Innermost ring: Overdue
+            val r4 = r3 - spacingPx
+            val p4 = if (total > 0) overdue.toFloat() / total else 0f
+            drawCircle(color = trackColor, radius = r4, center = center, style = Stroke(width = strokeWidthPx))
+            drawArc(
+                color = overdueColor,
+                startAngle = -90f,
+                sweepAngle = p4 * 360f,
+                useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(center.x - r4, center.y - r4),
+                size = androidx.compose.ui.geometry.Size(r4 * 2, r4 * 2),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
             )
         }
+
+        // Center text: total count
+        val totalFormatted = String.format(Locale.US, "%,d", total)
+        Text(
+            text = totalFormatted,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -999,7 +1108,7 @@ fun CollectionOverviewCard(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Text(
-                        text = "GHC",
+                        text = "GH₵",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp
