@@ -9,7 +9,13 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
   }
 
   const db = getDb({ platform });
-  const result = await db.prepare('SELECT * FROM devices WHERE dealer_id = ? ORDER BY created_at DESC').bind(locals.dealer.id).all();
+  const result = await db.prepare(`
+    SELECT d.*, a.customer_name, a.created_at as sold_at
+    FROM devices d
+    LEFT JOIN accounts a ON d.id = a.device_id
+    WHERE d.dealer_id = ?
+    ORDER BY d.created_at DESC
+  `).bind(locals.dealer.id).all();
 
   const devices = result.results.map((row) => ({
     id: row.id as string,
@@ -17,7 +23,9 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
     model: row.model as string,
     dealerId: row.dealer_id as string,
     status: row.status as string,
-    createdAt: Number(row.created_at) * 1000
+    createdAt: Number(row.created_at) * 1000,
+    customerName: row.customer_name as string | null,
+    soldAt: row.sold_at ? Number(row.sold_at) * 1000 : null
   }));
 
   return json(devices);

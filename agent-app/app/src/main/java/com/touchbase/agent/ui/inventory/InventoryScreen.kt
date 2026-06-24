@@ -57,6 +57,18 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.foundation.layout.width
+import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.Locale
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import android.app.Activity
@@ -221,48 +233,137 @@ fun InventoryScreen(
 
 @Composable
 private fun DeviceCard(device: Device, modifier: Modifier = Modifier) {
+    val dateStr = remember(device.soldAt, device.createdAt) {
+        val epoch = if (device.soldAt != null && device.soldAt > 0L) device.soldAt else device.createdAt
+        runCatching {
+            DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.ENGLISH)
+                .withZone(ZoneOffset.UTC)
+                .format(Instant.ofEpochMilli(epoch))
+        }.getOrDefault("")
+    }
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = modifier.fillMaxWidth()
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = device.model,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "# ${device.imei}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DeviceStatusBadge(status = device.status)
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (device.status == "sold" || device.customerName != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = device.customerName ?: "Unknown Customer",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Inbox,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Available in Stock",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
                 Text(
-                    text = device.model,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "IMEI: ${device.imei}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = dateStr,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            DeviceStatusBadge(status = device.status)
         }
     }
 }
 
 @Composable
 private fun DeviceStatusBadge(status: String) {
-    val (label, color) = when (status) {
-        "in_stock" -> "In Stock" to MaterialTheme.colorScheme.primary
-        "sold" -> "Sold" to MaterialTheme.colorScheme.tertiary
-        "recalled" -> "Recalled" to MaterialTheme.colorScheme.error
-        else -> status to MaterialTheme.colorScheme.onSurfaceVariant
+    val (label, color, icon) = when (status) {
+        "in_stock" -> Triple("In Stock", MaterialTheme.colorScheme.primary, Icons.Filled.CheckCircle)
+        "sold" -> Triple("Sold", MaterialTheme.colorScheme.primary, Icons.Filled.CheckCircle)
+        "recalled" -> Triple("Recalled", MaterialTheme.colorScheme.error, Icons.Filled.Warning)
+        else -> Triple(status, MaterialTheme.colorScheme.onSurfaceVariant, Icons.Filled.Warning)
     }
-    Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f))) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-        )
+    Card(
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

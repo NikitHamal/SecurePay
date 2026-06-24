@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getR2 } from '$lib/api/server';
 import type { Customer, Status } from '$lib/types';
 
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
@@ -42,6 +42,9 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
     status,
+    customerPhotoPath: row.customer_photo_path as string | null,
+    nationalIdFrontPath: row.national_id_front_path as string | null,
+    nationalIdBackPath: row.national_id_back_path as string | null,
     ...releaseFields(row as Record<string, unknown>)
   };
 
@@ -54,7 +57,19 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   }
 
   const body = await request.json();
-  const { customerName, nationalId, phoneNumber, dailyRate, totalLoanAmount, termDays, nextPaymentDue, amountPaid } = body;
+  const {
+    customerName,
+    nationalId,
+    phoneNumber,
+    dailyRate,
+    totalLoanAmount,
+    termDays,
+    nextPaymentDue,
+    amountPaid,
+    customerPhoto,
+    nationalIdFront,
+    nationalIdBack
+  } = body;
 
   const updates: string[] = [];
   const args: (string | number)[] = [];
@@ -67,6 +82,46 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (termDays !== undefined) { updates.push('term_days = ?'); args.push(termDays); }
   if (nextPaymentDue !== undefined) { updates.push('next_payment_due = ?'); args.push(nextPaymentDue); }
   if (amountPaid !== undefined) { updates.push('amount_paid = ?'); args.push(amountPaid); }
+
+  // Helper to decode Base64 and upload to R2
+  const uploadBase64ToR2 = async (base64Data: string | undefined | null, key: string): Promise<string | null> => {
+    if (!base64Data) return null;
+    try {
+      const r2 = getR2({ platform });
+      const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+      const binaryString = atob(cleanBase64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      await r2.put(key, bytes, {
+        httpMetadata: { contentType: 'image/jpeg' }
+      });
+      return key;
+    } catch (err) {
+      console.error('Error uploading R2 image:', err);
+      return null;
+    }
+  };
+
+  const accountId = params.id;
+
+  if (customerPhoto !== undefined) {
+    const customerPhotoPath = customerPhoto ? await uploadBase64ToR2(customerPhoto, `kyc/customer_${accountId}_photo.jpg`) : null;
+    updates.push('customer_photo_path = ?');
+    args.push(customerPhotoPath || '');
+  }
+  if (nationalIdFront !== undefined) {
+    const nationalIdFrontPath = nationalIdFront ? await uploadBase64ToR2(nationalIdFront, `kyc/customer_${accountId}_id_front.jpg`) : null;
+    updates.push('national_id_front_path = ?');
+    args.push(nationalIdFrontPath || '');
+  }
+  if (nationalIdBack !== undefined) {
+    const nationalIdBackPath = nationalIdBack ? await uploadBase64ToR2(nationalIdBack, `kyc/customer_${accountId}_id_back.jpg`) : null;
+    updates.push('national_id_back_path = ?');
+    args.push(nationalIdBackPath || '');
+  }
 
   if (updates.length === 0) {
     return errorResponse('No fields to update', 400);
@@ -109,6 +164,9 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status,
+    customerPhotoPath: row!.customer_photo_path as string | null,
+    nationalIdFrontPath: row!.national_id_front_path as string | null,
+    nationalIdBackPath: row!.national_id_back_path as string | null,
     ...releaseFields(row as Record<string, unknown>)
   };
 

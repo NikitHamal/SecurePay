@@ -620,7 +620,7 @@ private fun PaymentBottomSheet(
             Text("Record Payment", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Amount (GHC)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Amount (GH₵)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { input ->

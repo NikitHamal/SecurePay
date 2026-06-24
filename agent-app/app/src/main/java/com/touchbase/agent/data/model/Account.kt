@@ -25,7 +25,7 @@ data class Account(
     val lockedByDealer: Int = 0,
     val downPayment: Int = 0,
     val termDays: Int = 0,
-    val currencyCode: String = "GHC",
+    val currencyCode: String = "GH₵",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
     val releaseApproved: Boolean = false,
