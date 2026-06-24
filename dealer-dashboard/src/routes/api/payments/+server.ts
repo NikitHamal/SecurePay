@@ -5,6 +5,8 @@ import { parsePaymentMethod, paymentMethodStorageValue } from '$lib/payment-meth
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
@@ -45,11 +47,13 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const currentDue = Number(account.next_payment_due);
   const now = Date.now();
   const nowSec = Math.floor(now / 1000);
-  const daysExtended = Math.floor(amount / dailyRate);
   const base = Math.max(currentDue, now);
+  // Precise millisecond extension: every cent pays for (DAY_MS / dailyRate) ms.
+  // Sub-day precision guaranteed — 5 GHS on 20 GHS/day = 6 hours exactly.
+  const msExtended = Math.floor((amount / dailyRate) * DAY_MS);
   const newDue = paidOff
     ? releaseHorizon(now)
-    : (daysExtended > 0 ? base + daysExtended * 24 * 60 * 60 * 1000 : currentDue);
+    : base + msExtended;
 
   const paymentId = uuidv4();
   await db.batch([
@@ -78,10 +82,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   ]);
 
   const row = await db.prepare(`
-    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
-    JOIN plans p ON a.plan_id = p.id
+    LEFT JOIN plans p ON a.plan_id = p.id
     WHERE a.id = ?
   `).bind(accountId).first();
 

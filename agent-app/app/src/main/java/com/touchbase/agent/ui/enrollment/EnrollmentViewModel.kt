@@ -121,19 +121,67 @@ class EnrollmentViewModel(
         it.copy(draft = it.draft.copy(deviceModel = value))
     }
 
-    fun selectPlan(plan: Plan) = _uiState.update { state ->
-        state.copy(
-            selectedPlan = plan,
-            downPaymentInput = state.downPaymentInput.ifBlank {
-                val minCents = plan.minDownPayment
-                (minCents / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
-            },
-            draft = state.draft.copy(
-                planName = plan.name,
-                totalLoanAmount = plan.totalAmount,
-                dailyRate = plan.dailyRate,
-                termDays = plan.termDays
+    fun selectPlan(plan: Plan?) = _uiState.update { state ->
+        if (plan == null) {
+            state.copy(
+                selectedPlan = null,
+                dailyRateInput = "",
+                totalAmountInput = "",
+                termDaysInput = "",
+                downPaymentInput = "",
+                draft = state.draft.copy(
+                    planName = "",
+                    totalLoanAmount = 0,
+                    dailyRate = 0,
+                    termDays = 0,
+                    downPayment = 0
+                )
             )
+        } else {
+            val planDaily = (plan.dailyRate / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
+            val planTotal = (plan.totalAmount / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
+            state.copy(
+                selectedPlan = plan,
+                dailyRateInput = state.dailyRateInput.ifBlank { planDaily },
+                totalAmountInput = state.totalAmountInput.ifBlank { planTotal },
+                termDaysInput = state.termDaysInput.ifBlank { plan.termDays.toString() },
+                downPaymentInput = state.downPaymentInput.ifBlank {
+                    val minCents = plan.minDownPayment
+                    (minCents / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
+                },
+                draft = state.draft.copy(
+                    planName = plan.name,
+                    totalLoanAmount = plan.totalAmount,
+                    dailyRate = plan.dailyRate,
+                    termDays = plan.termDays
+                )
+            )
+        }
+    }
+
+    fun updateDailyRate(value: String) = _uiState.update { state ->
+        val sanitized = value.filter { it.isDigit() || it == '.' }
+        val parsed = sanitized.toDoubleOrNull() ?: 0.0
+        state.copy(
+            dailyRateInput = sanitized,
+            draft = state.draft.copy(dailyRate = (parsed * 100).toInt())
+        )
+    }
+
+    fun updateTotalAmount(value: String) = _uiState.update { state ->
+        val sanitized = value.filter { it.isDigit() || it == '.' }
+        val parsed = sanitized.toDoubleOrNull() ?: 0.0
+        state.copy(
+            totalAmountInput = sanitized,
+            draft = state.draft.copy(totalLoanAmount = (parsed * 100).toInt())
+        )
+    }
+
+    fun updateTermDays(value: String) = _uiState.update { state ->
+        val sanitized = value.filter { it.isDigit() }
+        state.copy(
+            termDaysInput = sanitized,
+            draft = state.draft.copy(termDays = sanitized.toIntOrNull() ?: 0)
         )
     }
 
@@ -162,7 +210,6 @@ class EnrollmentViewModel(
         val state = _uiState.value
         if (!state.isKycStepValid || !state.isDeviceStepValid || !state.isPlanStepValid) return
         if (state.submission is SubmissionState.Submitting) return
-        val plan = state.selectedPlan ?: return
 
         _uiState.update { it.copy(submission = SubmissionState.Submitting) }
 
@@ -171,12 +218,16 @@ class EnrollmentViewModel(
                 _uiState.update { it.copy(submission = SubmissionState.Success("LOCAL_PREVIEW_ENROLLMENT_ID")) }
                 return@launch
             }
+            val plan = state.selectedPlan
             val request = CreateAccountRequest(
                 customerName = state.draft.customerName,
                 nationalId = state.draft.nationalId,
                 phoneNumber = state.draft.phoneNumber,
                 imei = state.draft.imei,
-                planId = plan.id,
+                planId = plan?.id,
+                dailyRate = if (state.draft.dailyRate > 0) state.draft.dailyRate else null,
+                totalAmount = if (state.draft.totalLoanAmount > 0) state.draft.totalLoanAmount else null,
+                termDays = if (state.draft.termDays > 0) state.draft.termDays else null,
                 downPayment = if (state.draft.downPayment > 0) state.draft.downPayment else null,
                 customerPhoto = state.draft.customerPhotoBase64,
                 nationalIdFront = state.draft.nationalIdFrontBase64,

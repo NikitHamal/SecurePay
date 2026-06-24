@@ -53,6 +53,9 @@ data class EnrollmentUiState(
     val availableDevices: List<Device> = emptyList(),
     val deviceLookupStatus: DeviceLookupStatus = DeviceLookupStatus.Idle,
     val selectedPlan: Plan? = null,
+    val dailyRateInput: String = "",
+    val totalAmountInput: String = "",
+    val termDaysInput: String = "",
     val downPaymentInput: String = "",
     val submission: SubmissionState = SubmissionState.Idle
 ) {
@@ -64,17 +67,30 @@ data class EnrollmentUiState(
     val isPhoneValid: Boolean get() = draft.phoneNumber.filter { it.isDigit() }.length in 9..15
     val isImeiValid: Boolean get() = draft.imei.length == IMEI_LENGTH && draft.imei.all { it.isDigit() }
     val isDeviceModelValid: Boolean get() = draft.deviceModel.isNotBlank()
-    val isPlanValid: Boolean get() = selectedPlan != null
 
+    private val dailyRateCents: Int get() = (dailyRateInput.toDoubleOrNull() ?: 0.0).let { (it * 100).toInt() }
+    private val totalAmountCents: Int get() = (totalAmountInput.toDoubleOrNull() ?: 0.0).let { (it * 100).toInt() }
+    private val termDaysValue: Int get() = termDaysInput.toIntOrNull() ?: 0
     private val downPaymentValue: Double? get() = downPaymentInput.toDoubleOrNull()
+    private val downPaymentCents: Int get() = (downPaymentValue ?: 0.0).let { (it * 100).toInt() }
+
+    val isPlanSelected: Boolean get() = selectedPlan != null
+    val isCustomPlan: Boolean get() = !isPlanSelected
+
+    val isDailyRateValid: Boolean
+        get() = if (isPlanSelected) true else dailyRateCents > 0
+    val isTotalAmountValid: Boolean
+        get() = if (isPlanSelected) true else totalAmountCents > 0
+    val isTermDaysValid: Boolean
+        get() = if (isPlanSelected) true else termDaysValue > 0
     val isDownPaymentValid: Boolean
         get() {
             val value = downPaymentValue ?: return false
-            val plan = selectedPlan ?: return false
-            val minCents = plan.minDownPayment
-            val maxCents = plan.totalAmount
             val valueCents = (value * 100).toInt()
-            return valueCents in minCents..maxCents
+            val effectiveTotal = if (totalAmountCents > 0) totalAmountCents
+                else selectedPlan?.totalAmount ?: 0
+            val effectiveMin = selectedPlan?.minDownPayment ?: 0
+            return valueCents in effectiveMin..maxOf(effectiveTotal, 1)
         }
 
     val isKycStepValid: Boolean get() = isNameValid && isNationalIdValid && isPhoneValid &&
@@ -83,7 +99,11 @@ data class EnrollmentUiState(
         get() = isImeiValid &&
             isDeviceModelValid &&
             deviceLookupStatus !is DeviceLookupStatus.AlreadySold
-    val isPlanStepValid: Boolean get() = isPlanValid && isDownPaymentValid
+    val isPlanStepValid: Boolean
+        get() = when {
+            isPlanSelected -> downPaymentInput.isNotEmpty() && isDownPaymentValid
+            else -> isDailyRateValid && isTotalAmountValid && isTermDaysValid && downPaymentInput.isNotEmpty() && isDownPaymentValid
+        }
 
     val isCurrentStepValid: Boolean
         get() = when (currentStep) {

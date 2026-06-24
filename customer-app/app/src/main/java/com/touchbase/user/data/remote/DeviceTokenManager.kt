@@ -74,8 +74,12 @@ class DeviceTokenManager private constructor(
         get() = cachedSecurityPolicy.frpAccountIds
 
     fun saveServerTimeOffset(offsetMillis: Long) {
+        val now = System.currentTimeMillis()
+        val trustedNow = now + offsetMillis
         prefs.edit()
             .putLong(KEY_SERVER_TIME_OFFSET, offsetMillis)
+            .putLong(KEY_LAST_TRUSTED_TIME, trustedNow)
+            .putLong(KEY_LAST_WALL_CLOCK, now)
             .apply()
     }
 
@@ -84,8 +88,31 @@ class DeviceTokenManager private constructor(
     val cachedReleaseApproved: Boolean get() = prefs.getBoolean(KEY_CACHED_RELEASE_APPROVED, false)
     val serverTimeOffset: Long get() = prefs.getLong(KEY_SERVER_TIME_OFFSET, 0L)
 
+    /**
+     * Returns a server-trusted monotonic time that survives clock tampering.
+     *
+     * After each server sync we save both:
+     *   - lastTrustedTime = server's absolute time at that moment
+     *   - lastWallClock   = System.currentTimeMillis() at that moment
+     *
+     * On subsequent calls we compute:
+     *   elapsed = System.currentTimeMillis() - lastWallClock  (bounded ≥ 0)
+     *   trusted = lastTrustedTime + elapsed
+     *
+     * If the user rolls the clock backward, `elapsed` stays ≥ 0 so `trusted`
+     * never regresses. If they jump forward, it's absorbed into `elapsed`.
+     * A fresh server sync resets both anchors.
+     */
     fun getTrustedTimeMillis(): Long {
-        return System.currentTimeMillis() + serverTimeOffset
+        val lastTrusted = prefs.getLong(KEY_LAST_TRUSTED_TIME, 0L)
+        val lastWall = prefs.getLong(KEY_LAST_WALL_CLOCK, 0L)
+        if (lastTrusted <= 0L || lastWall <= 0L) {
+            // No anchor yet — fall back to simple offset
+            return System.currentTimeMillis() + serverTimeOffset
+        }
+        val now = System.currentTimeMillis()
+        val wallElapsed = maxOf(now - lastWall, 0L)
+        return lastTrusted + wallElapsed
     }
 
     fun clear() {
@@ -116,6 +143,8 @@ class DeviceTokenManager private constructor(
         private const val KEY_CACHED_LOCKED_BY_DEALER = "cached_locked_by_dealer"
         private const val KEY_CACHED_RELEASE_APPROVED = "cached_release_approved"
         private const val KEY_SERVER_TIME_OFFSET = "server_time_offset_millis"
+        private const val KEY_LAST_TRUSTED_TIME = "last_trusted_time_millis"
+        private const val KEY_LAST_WALL_CLOCK = "last_wall_clock_millis"
         private const val KEY_SECURITY_POLICY_VERSION = "security_policy_version"
         private const val KEY_FRP_ENABLED = "security_frp_enabled"
         private const val KEY_FRP_ACCOUNT_IDS = "security_frp_account_ids"

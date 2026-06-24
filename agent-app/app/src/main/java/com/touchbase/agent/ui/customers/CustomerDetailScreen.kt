@@ -3,6 +3,7 @@ package com.touchbase.agent.ui.customers
 import android.app.Activity
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,12 +18,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
@@ -61,18 +64,16 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.data.model.Account
 import com.touchbase.agent.data.model.AccountStatus
 import com.touchbase.agent.data.model.formatAmount
-import androidx.compose.foundation.isSystemInDarkTheme
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import kotlinx.coroutines.launch
-
-// Removed static top-level colors to support dynamic theme colors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +89,14 @@ fun CustomerDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var actionInProgress by remember { mutableStateOf(false) }
     var showPaymentSheet by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+    var editName by remember { mutableStateOf("") }
+    var editNationalId by remember { mutableStateOf("") }
+    var editPhone by remember { mutableStateOf("") }
+    var editDailyRate by remember { mutableStateOf("") }
+    var editTotalLoan by remember { mutableStateOf("") }
+    var editTermDays by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
@@ -114,9 +123,57 @@ fun CustomerDetailScreen(
             }
             isLoading = false
             result.fold(
-                onSuccess = { account = it },
+                onSuccess = {
+                    account = it
+                    editName = it.customerName
+                    editNationalId = it.nationalId
+                    editPhone = it.phoneNumber
+                    editDailyRate = it.dailyRate.toString()
+                    editTotalLoan = it.totalLoanAmount.toString()
+                    editTermDays = it.termDays.toString()
+                },
                 onFailure = { error = it.message }
             )
+        }
+    }
+
+    fun startEditing() {
+        account?.let { acc ->
+            editName = acc.customerName
+            editNationalId = acc.nationalId
+            editPhone = acc.phoneNumber
+            editDailyRate = acc.dailyRate.toString()
+            editTotalLoan = acc.totalLoanAmount.toString()
+            editTermDays = acc.termDays.toString()
+            isEditing = true
+        }
+    }
+
+    fun cancelEditing() {
+        isEditing = false
+    }
+
+    fun saveEditing() {
+        val acc = account ?: return
+        isSaving = true
+        scope.launch {
+            val updates = mutableMapOf<String, Any>()
+            if (editName.trim() != acc.customerName) updates["customerName"] = editName.trim()
+            if (editNationalId.trim() != acc.nationalId) updates["nationalId"] = editNationalId.trim()
+            if (editPhone.trim() != acc.phoneNumber) updates["phoneNumber"] = editPhone.trim()
+            val newDaily = editDailyRate.toIntOrNull() ?: acc.dailyRate
+            if (newDaily != acc.dailyRate) updates["dailyRate"] = newDaily
+            val newTotal = editTotalLoan.toIntOrNull() ?: acc.totalLoanAmount
+            if (newTotal != acc.totalLoanAmount) updates["totalLoanAmount"] = newTotal
+            val newTerm = editTermDays.toIntOrNull() ?: acc.termDays
+            if (newTerm != acc.termDays) updates["termDays"] = newTerm
+
+            if (updates.isNotEmpty()) {
+                repository?.updateAccount(acc.id, updates)
+            }
+            isSaving = false
+            isEditing = false
+            loadAccount()
         }
     }
 
@@ -131,6 +188,13 @@ fun CustomerDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
+                    }
+                },
+                actions = {
+                    if (account != null && !isEditing) {
+                        IconButton(onClick = { startEditing() }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -174,6 +238,52 @@ fun CustomerDetailScreen(
 
             StatusBanner(status = acc.status, releaseApproved = acc.releaseApproved)
 
+            if (isEditing) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Edit Customer", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        EditField(label = "Name", value = editName, onValueChange = { editName = it })
+                        EditField(label = "National ID", value = editNationalId, onValueChange = { editNationalId = it })
+                        EditField(label = "Phone", value = editPhone, onValueChange = { editPhone = it })
+                        EditField(label = "Daily Rate (cents)", value = editDailyRate, onValueChange = { editDailyRate = it }, isNumber = true)
+                        EditField(label = "Total Loan (cents)", value = editTotalLoan, onValueChange = { editTotalLoan = it }, isNumber = true)
+                        EditField(label = "Term (days)", value = editTermDays, onValueChange = { editTermDays = it }, isNumber = true)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { saveEditing() },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                enabled = !isSaving && editName.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                shape = RoundedCornerShape(360.dp)
+                            ) {
+                                if (isSaving) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                else Text("Save")
+                            }
+                            OutlinedButton(
+                                onClick = { cancelEditing() },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(360.dp)
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+                    }
+                }
+            }
+
             InfoCard(title = "Customer Information") {
                 InfoRow(icon = Icons.Filled.Person, label = "Name", value = acc.customerName)
                 InfoRow(icon = Icons.Filled.Phone, label = "Phone", value = acc.phoneNumber)
@@ -204,7 +314,7 @@ fun CustomerDetailScreen(
                 Button(
                     onClick = { showPaymentSheet = true },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    enabled = !actionInProgress,
+                    enabled = !actionInProgress && !isEditing,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
@@ -227,7 +337,7 @@ fun CustomerDetailScreen(
                             }
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
-                        enabled = !actionInProgress,
+                        enabled = !actionInProgress && !isEditing,
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
                         ),
@@ -248,7 +358,7 @@ fun CustomerDetailScreen(
                             }
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
-                        enabled = !actionInProgress,
+                        enabled = !actionInProgress && !isEditing,
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         ),
@@ -266,6 +376,7 @@ fun CustomerDetailScreen(
             OutlinedButton(
                 onClick = { onProvisionDevice(acc.imei) },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
+                enabled = !isEditing,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(360.dp)
             ) {
@@ -273,7 +384,6 @@ fun CustomerDetailScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Re-provision / Generate QR")
             }
-
 
             OutlinedButton(
                 onClick = {
@@ -285,7 +395,7 @@ fun CustomerDetailScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                enabled = !actionInProgress && !acc.releaseApproved,
+                enabled = !actionInProgress && !acc.releaseApproved && !isEditing,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(360.dp)
             ) {
@@ -307,6 +417,35 @@ fun CustomerDetailScreen(
                 showPaymentSheet = false
                 loadAccount()
             }
+        )
+    }
+}
+
+@Composable
+private fun EditField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    isNumber: Boolean = false
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            keyboardOptions = if (isNumber) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                focusedContainerColor = MaterialTheme.colorScheme.background,
+                unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = MaterialTheme.colorScheme.primary
+            ),
+            shape = RoundedCornerShape(360.dp)
         )
     }
 }

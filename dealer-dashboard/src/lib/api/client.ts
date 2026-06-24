@@ -89,7 +89,10 @@ export async function createAccount(data: {
   nationalId: string;
   phoneNumber: string;
   imei: string;
-  planId: string;
+  planId?: string;
+  dailyRate?: number;
+  totalAmount?: number;
+  termDays?: number;
   downPayment?: number;
 }): Promise<Customer> {
   return request<Customer>('/accounts', {
@@ -101,7 +104,21 @@ export async function createAccount(data: {
 export async function extendTimer(id: string, hours: number): Promise<Customer> {
   return request<Customer>(`/accounts/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ nextPaymentDue: Date.now() + hours * 60 * 60 * 1000 })
+    body: JSON.stringify({ nextPaymentDue: Date.now() + hours * 24 * 60 * 60 * 1000 })
+  });
+}
+
+export async function updateAccount(id: string, data: {
+  customerName?: string;
+  nationalId?: string;
+  phoneNumber?: string;
+  dailyRate?: number;
+  totalLoanAmount?: number;
+  termDays?: number;
+}): Promise<Customer> {
+  return request<Customer>(`/accounts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
   });
 }
 

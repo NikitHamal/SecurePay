@@ -10,10 +10,10 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
 
   const db = getDb({ platform });
   const row = await db.prepare(`
-    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
-    JOIN plans p ON a.plan_id = p.id
+    LEFT JOIN plans p ON a.plan_id = p.id
     WHERE a.id = ? AND a.dealer_id = ?
   `).bind(params.id, locals.dealer.id).first();
 
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     phoneNumber: row.phone_number as string,
     imei: row.imei as string,
     deviceModel: row.device_model as string,
-    planName: row.plan_name as string,
+    planName: row.plan_name as string || 'Custom',
     totalLoanAmount,
     amountPaid,
     remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
@@ -54,19 +54,19 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   }
 
   const body = await request.json();
-  const { nextPaymentDue, amountPaid } = body;
+  const { customerName, nationalId, phoneNumber, dailyRate, totalLoanAmount, termDays, nextPaymentDue, amountPaid } = body;
 
   const updates: string[] = [];
   const args: (string | number)[] = [];
 
-  if (nextPaymentDue !== undefined) {
-    updates.push('next_payment_due = ?');
-    args.push(nextPaymentDue);
-  }
-  if (amountPaid !== undefined) {
-    updates.push('amount_paid = ?');
-    args.push(amountPaid);
-  }
+  if (customerName !== undefined) { updates.push('customer_name = ?'); args.push(customerName); }
+  if (nationalId !== undefined) { updates.push('national_id = ?'); args.push(nationalId); }
+  if (phoneNumber !== undefined) { updates.push('phone_number = ?'); args.push(phoneNumber); }
+  if (dailyRate !== undefined) { updates.push('daily_rate = ?'); args.push(dailyRate); }
+  if (totalLoanAmount !== undefined) { updates.push('total_loan_amount = ?'); args.push(totalLoanAmount); }
+  if (termDays !== undefined) { updates.push('term_days = ?'); args.push(termDays); }
+  if (nextPaymentDue !== undefined) { updates.push('next_payment_due = ?'); args.push(nextPaymentDue); }
+  if (amountPaid !== undefined) { updates.push('amount_paid = ?'); args.push(amountPaid); }
 
   if (updates.length === 0) {
     return errorResponse('No fields to update', 400);
@@ -81,10 +81,10 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   await db.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ? AND dealer_id = ?`).bind(...args).run();
 
   const row = await db.prepare(`
-    SELECT a.*, d.imei, d.model as device_model, p.name as plan_name
+    SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
-    JOIN plans p ON a.plan_id = p.id
+    LEFT JOIN plans p ON a.plan_id = p.id
     WHERE a.id = ? AND a.dealer_id = ?
   `).bind(params.id, locals.dealer.id).first();
 
@@ -102,7 +102,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     phoneNumber: row!.phone_number as string,
     imei: row!.imei as string,
     deviceModel: row!.device_model as string,
-    planName: row!.plan_name as string,
+    planName: row!.plan_name as string || 'Custom',
     totalLoanAmount: totalLoan,
     amountPaid: amtPaid,
     remainingBalance: Math.max(0, totalLoan - amtPaid),

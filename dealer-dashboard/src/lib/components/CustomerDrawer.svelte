@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Customer } from '$lib/types';
-  import { approveRelease, customers, deleteCustomer, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
+  import { approveRelease, customers, deleteCustomer, extendTimer, forceRemoteLock, pending, updateCustomer } from '$lib/stores/customers';
   import { formatCountdown, formatCurrency, formatDate, formatPhone, formatRelative } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
@@ -9,12 +9,54 @@
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
 
+  let editing = false;
+  let saving = false;
+  let editName = '';
+  let editNationalId = '';
+  let editPhone = '';
+  let editDailyRate = '';
+  let editTotalLoan = '';
+  let editTermDays = '';
+
   $: customer = customerId ? $customers.find((c) => c.id === customerId) ?? null : null;
   $: ratio = customer && customer.totalLoanAmount > 0
     ? (customer.amountPaid / customer.totalLoanAmount) * 100
     : 0;
   $: ringColor = ratio > 80 ? '#10B981' : ratio > 50 ? '#F59E0B' : '#EF4444';
   $: isPending = customer ? $pending.has(customer.id) : false;
+
+  function startEditing() {
+    if (!customer) return;
+    editName = customer.customerName;
+    editNationalId = customer.nationalId;
+    editPhone = customer.phoneNumber;
+    editDailyRate = String(customer.dailyRate);
+    editTotalLoan = String(customer.totalLoanAmount);
+    editTermDays = String(customer.termDays);
+    editing = true;
+  }
+
+  function cancelEditing() {
+    editing = false;
+  }
+
+  async function saveEditing() {
+    if (!customer) return;
+    saving = true;
+    try {
+      await updateCustomer(customer.id, {
+        customerName: editName.trim(),
+        nationalId: editNationalId.trim(),
+        phoneNumber: editPhone.trim(),
+        dailyRate: Number(editDailyRate),
+        totalLoanAmount: Number(editTotalLoan),
+        termDays: Number(editTermDays),
+      });
+      editing = false;
+    } finally {
+      saving = false;
+    }
+  }
 
   async function extend(): Promise<void> {
     if (customer) await extendTimer(customer.id, 24);
@@ -40,7 +82,10 @@
   }
 
   function handleKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') onClose();
+    if (e.key === 'Escape') {
+      if (editing) { cancelEditing(); }
+      else { onClose(); }
+    }
   }
 </script>
 
@@ -56,7 +101,7 @@
       class="absolute inset-0 h-full w-full cursor-default border-0 p-0"
       style="background: var(--overlay-bg); backdrop-filter: blur(4px);"
       aria-label="Close customer details"
-      on:click={onClose}
+      on:click={editing ? cancelEditing : onClose}
     ></button>
     <div
       role="dialog"
@@ -81,7 +126,7 @@
         <button
           type="button"
           class="btn-ghost h-8 w-8 !p-0"
-          on:click={onClose}
+          on:click={editing ? cancelEditing : onClose}
           aria-label="Close drawer"
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -141,24 +186,79 @@
         </div>
 
         <div class="card mt-4 p-5">
-          <p class="section-title">Device · Plan</p>
-          <div class="mt-3 grid grid-cols-1 gap-3 text-sm">
-            <div class="flex items-center justify-between">
-              <span class="text-ink-secondary">Device</span>
-              <span class="text-ink-primary font-medium">{customer.deviceModel}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-ink-secondary">IMEI</span>
-              <span class="font-mono text-2xs text-ink-muted">{customer.imei}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-ink-secondary">Plan</span>
-              <span class="text-ink-primary font-medium">{customer.planName}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-ink-secondary">National ID</span>
-              <span class="font-mono text-2xs text-ink-muted">{customer.nationalId}</span>
-            </div>
+          <div class="flex items-center justify-between mb-3">
+            <p class="section-title">Device · Plan</p>
+            <button
+              type="button"
+              class="btn-ghost text-2xs !px-2 !py-1"
+              on:click={editing ? cancelEditing : startEditing}
+            >
+              {editing ? 'Cancel' : 'Edit customer'}
+            </button>
+          </div>
+          <div class="grid grid-cols-1 gap-3 text-sm">
+            {#if editing}
+              <div>
+                <label class="text-2xs text-ink-muted block mb-1">Customer name</label>
+                <input type="text" class="input w-full" bind:value={editName} />
+              </div>
+              <div>
+                <label class="text-2xs text-ink-muted block mb-1">National ID</label>
+                <input type="text" class="input w-full" bind:value={editNationalId} />
+              </div>
+              <div>
+                <label class="text-2xs text-ink-muted block mb-1">Phone number</label>
+                <input type="text" class="input w-full" bind:value={editPhone} />
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="text-2xs text-ink-muted block mb-1">Daily rate (cents)</label>
+                  <input type="number" class="input w-full" bind:value={editDailyRate} />
+                </div>
+                <div>
+                  <label class="text-2xs text-ink-muted block mb-1">Total loan (cents)</label>
+                  <input type="number" class="input w-full" bind:value={editTotalLoan} />
+                </div>
+                <div>
+                  <label class="text-2xs text-ink-muted block mb-1">Term (days)</label>
+                  <input type="number" class="input w-full" bind:value={editTermDays} />
+                </div>
+              </div>
+              <div class="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  class="btn-emerald flex-1"
+                  disabled={saving || !editName.trim()}
+                  on:click={saveEditing}
+                >
+                  {saving ? 'Saving...' : 'Save changes'}
+                </button>
+                <button
+                  type="button"
+                  class="btn-outline"
+                  on:click={cancelEditing}
+                >
+                  Cancel
+                </button>
+              </div>
+            {:else}
+              <div class="flex items-center justify-between">
+                <span class="text-ink-secondary">Device</span>
+                <span class="text-ink-primary font-medium">{customer.deviceModel}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-ink-secondary">IMEI</span>
+                <span class="font-mono text-2xs text-ink-muted">{customer.imei}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-ink-secondary">Plan</span>
+                <span class="text-ink-primary font-medium">{customer.planName}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-ink-secondary">National ID</span>
+                <span class="font-mono text-2xs text-ink-muted">{customer.nationalId}</span>
+              </div>
+            {/if}
           </div>
         </div>
 
@@ -226,7 +326,7 @@
         <button
           type="button"
           class="btn-emerald flex-1"
-          disabled={isPending}
+          disabled={isPending || editing}
           on:click={extend}
         >
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -237,7 +337,7 @@
         <button
           type="button"
           class="btn-crimson flex-1"
-          disabled={customer.status === 'LOCKED' || isPending}
+          disabled={customer.status === 'LOCKED' || isPending || editing}
           on:click={lock}
         >
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -248,7 +348,7 @@
         <button
           type="button"
           class="btn-outline flex-1"
-          disabled={customer.releaseApproved || isPending}
+          disabled={customer.releaseApproved || isPending || editing}
           on:click={releaseAccount}
           title={customer.remainingBalance > 0 ? 'Manual early release for test/settlement only' : 'Approve final app removal'}
         >
@@ -261,7 +361,7 @@
         <button
           type="button"
           class="btn-outline flex-1 text-crimson hover:bg-crimson/10"
-          disabled={isPending}
+          disabled={isPending || editing}
           on:click={removeCustomer}
         >
           Delete

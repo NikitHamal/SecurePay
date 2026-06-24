@@ -29,46 +29,53 @@ class HeartbeatWorker(
             return Result.success()
         }
 
-        return try {
-            val app = applicationContext as? com.touchbase.user.SecurePayApplication
-            val repository = app?.deviceRepository ?: run {
-                val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
-                val api = com.touchbase.user.data.remote.ApiModule.provideApi(signingSecret, accountId)
-                DeviceRepository(api, tokenManager)
-            }
-            repository.heartbeat()
-            SecureLog.i(TAG, "Heartbeat successful")
+        val app = applicationContext as? com.touchbase.user.SecurePayApplication
+        val repository = app?.deviceRepository ?: run {
+            val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
+            val api = com.touchbase.user.data.remote.ApiModule.provideApi(signingSecret, accountId)
+            DeviceRepository(api, tokenManager)
+        }
 
+        // Step 1: Try network heartbeat — may fail when offline
+        var heartbeatSucceeded = false
+        runCatching {
+            repository.heartbeat()
+            heartbeatSucceeded = true
+        }.onFailure {
+            SecureLog.w(TAG, "Heartbeat network call failed, using cached data", it)
+        }
+
+        // Step 2: Always evaluate lock status locally (works offline)
+        val account = repository.account.value
+        val cachedDue = if (account != null) account.nextPaymentDueEpochMillis else tokenManager.cachedNextPaymentDue
+        val lockedByDealer = account?.lockedByDealer ?: tokenManager.cachedLockedByDealer
+        val trustedNow = tokenManager.getTrustedTimeMillis()
+        val status = com.touchbase.user.data.model.DeviceStatus.evaluate(cachedDue, lockedByDealer, trustedNow)
+        if (status == com.touchbase.user.data.model.DeviceStatus.LOCKED) {
+            SecureLog.w(TAG, "Local evaluation: LOCKED — enforcing lock")
+            val intent = Intent(applicationContext, com.touchbase.user.ui.lock.LockTaskActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            runCatching { applicationContext.startActivity(intent) }
+        }
+
+        // Step 3: Post-sync tasks (only when server reached)
+        if (heartbeatSucceeded) {
             runCatching { syncFcmTokenIfNeeded(tokenManager) }
 
-            val account = repository.account.value
-            val frpIds = account?.securityPolicy?.frpAccountIds ?: tokenManager.cachedFrpAccountIds
+            val frpIds = account?.securityPolicy?.frpAccountIds
+                ?: tokenManager.cachedFrpAccountIds
             runCatching { com.touchbase.user.admin.DevicePolicyController(applicationContext).applyBaseLoanSecurity(frpIds) }
 
-            if (account?.releaseApproved == true || tokenManager.cachedReleaseApproved) {
+            if ((account?.releaseApproved == true || tokenManager.cachedReleaseApproved) &&
+                status != com.touchbase.user.data.model.DeviceStatus.LOCKED) {
                 SecureLog.i(TAG, "Release approved — removing device management")
                 runCatching { repository.reportReleaseComplete() }
                 runCatching { com.touchbase.user.admin.DevicePolicyController(applicationContext).releaseManagementForPaidLoan() }
-                return Result.success()
             }
-
-            val cachedDue = if (account != null) account.nextPaymentDueEpochMillis else tokenManager.cachedNextPaymentDue
-            val lockedByDealer = account?.lockedByDealer ?: tokenManager.cachedLockedByDealer
-            val trustedNow = tokenManager.getTrustedTimeMillis()
-            val status = com.touchbase.user.data.model.DeviceStatus.evaluate(cachedDue, lockedByDealer, trustedNow)
-            if (status == com.touchbase.user.data.model.DeviceStatus.LOCKED) {
-                SecureLog.w(TAG, "Post-heartbeat status LOCKED — ensuring lock enforced")
-                val intent = Intent(applicationContext, com.touchbase.user.ui.lock.LockTaskActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                runCatching { applicationContext.startActivity(intent) }
-            }
-
-            Result.success()
-        } catch (e: Exception) {
-            SecureLog.e(TAG, "Heartbeat failed, will retry", e)
-            Result.retry()
         }
+
+        return Result.success()
     }
 
     private suspend fun syncFcmTokenIfNeeded(tokenManager: DeviceTokenManager) {
@@ -99,13 +106,7 @@ class HeartbeatWorker(
             val request = PeriodicWorkRequestBuilder<HeartbeatWorker>(
                 15, TimeUnit.MINUTES,
                 5, TimeUnit.MINUTES
-            )
-                .setConstraints(
-                    androidx.work.Constraints.Builder()
-                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                        .build()
-                )
-                .build()
+            ).build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
