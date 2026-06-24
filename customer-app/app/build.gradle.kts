@@ -26,6 +26,9 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.66:5173/api/\"")
             buildConfigField("String", "HMAC_SECRET", "\"dev-hmac-secret-change-in-release\"")
             buildConfigField("String", "SIGNING_CERT_HASH", "\"\"")
+            buildConfigField("String", "FCM_PROJECT_ID", "\"spay-fintech\"")
+            buildConfigField("String", "FCM_API_KEY", "\"AIzaSyARxW2ltAOVQGbjL-qx6TC0HODLoNrtF2w\"")
+            buildConfigField("String", "FCM_SENDER_ID", "\"1055815727331\"")
         }
         release {
             isMinifyEnabled = true
@@ -33,6 +36,9 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"https://securepay-dashboard.pages.dev/api/\"")
             buildConfigField("String", "HMAC_SECRET", "\"${System.getenv("HMAC_SECRET") ?: ""}\"")
             buildConfigField("String", "SIGNING_CERT_HASH", "\"${System.getenv("SIGNING_CERT_HASH") ?: ""}\"")
+            buildConfigField("String", "FCM_PROJECT_ID", "\"${System.getenv("FCM_PROJECT_ID") ?: ""}\"")
+            buildConfigField("String", "FCM_API_KEY", "\"${System.getenv("FCM_API_KEY") ?: ""}\"")
+            buildConfigField("String", "FCM_SENDER_ID", "\"${System.getenv("FCM_SENDER_ID") ?: ""}\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -95,6 +101,9 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    implementation("com.google.firebase:firebase-messaging:24.0.0")
+    implementation("com.google.firebase:firebase-common:21.0.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

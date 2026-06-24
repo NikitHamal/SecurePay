@@ -8,8 +8,10 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.repository.DeviceRepository
+import com.touchbase.user.BuildConfig
 import java.util.concurrent.TimeUnit
 
 class HeartbeatWorker(
@@ -36,6 +38,8 @@ class HeartbeatWorker(
             }
             repository.heartbeat()
             SecureLog.i(TAG, "Heartbeat successful")
+
+            runCatching { syncFcmTokenIfNeeded(tokenManager) }
 
             val account = repository.account.value
             val frpIds = account?.securityPolicy?.frpAccountIds ?: tokenManager.cachedFrpAccountIds
@@ -64,6 +68,26 @@ class HeartbeatWorker(
         } catch (e: Exception) {
             SecureLog.e(TAG, "Heartbeat failed, will retry", e)
             Result.retry()
+        }
+    }
+
+    private suspend fun syncFcmTokenIfNeeded(tokenManager: DeviceTokenManager) {
+        val fcmToken = FcmService.getToken() ?: tokenManager.fcmToken ?: return
+        if (fcmToken == tokenManager.fcmToken) return
+        val accountId = tokenManager.accountId ?: return
+        val imei = tokenManager.imei ?: return
+        val signingSecret = tokenManager.apiSecret ?: BuildConfig.HMAC_SECRET
+        val api = ApiModule.provideApi(signingSecret, accountId)
+        val response = api.uploadFcmToken(
+            mapOf(
+                "accountId" to accountId,
+                "imei" to imei,
+                "fcmToken" to fcmToken
+            )
+        )
+        if (response.isSuccessful) {
+            tokenManager.saveFcmToken(fcmToken)
+            SecureLog.i(TAG, "FCM token synced to server")
         }
     }
 

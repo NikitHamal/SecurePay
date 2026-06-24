@@ -14,6 +14,7 @@
 -keep class com.touchbase.user.admin.ProvisioningFinalizer { *; }
 -keep class com.touchbase.user.admin.SecurePayDeviceAdminReceiver { *; }
 -keep class com.touchbase.user.worker.BootReceiver { *; }
+-keep class com.touchbase.user.worker.FcmService { *; }
 -keep class com.touchbase.user.ui.lock.LockTaskActivity { *; }
 
 # Keep ALL Activities, Receivers, Services, Application classes referenced in
@@ -23,6 +24,7 @@
 -keep public class * extends android.app.Application
 -keep public class * extends android.app.admin.DeviceAdminReceiver
 -keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.app.Service
 
 # --- Enums used in reactive state mapping ---
 -keepclassmembers enum * {
@@ -87,6 +89,12 @@
 -keep class com.google.errorprone.annotations.** { *; }
 -keep class com.google.crypto.tink.** { *; }
 -keepclassmembers class com.google.crypto.tink.** { *; }
+
+# --- Firebase / FCM (standalone without google-services plugin) ---
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
 
 # --- Jetpack Compose runtime (defensive: lambda/class merging can break it) ---
 -dontwarn androidx.compose.**

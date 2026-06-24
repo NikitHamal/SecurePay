@@ -91,6 +91,9 @@ jobs:
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+      FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+      FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
+      FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
 
   build-agent:
     name: Build agent-app
