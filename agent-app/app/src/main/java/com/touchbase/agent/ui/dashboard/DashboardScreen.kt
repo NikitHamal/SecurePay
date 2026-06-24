@@ -84,7 +84,6 @@ import androidx.compose.ui.graphics.toArgb
 import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.platform.LocalContext
@@ -258,8 +257,7 @@ fun DashboardScreen(
                     DateSelectorCard(
                         currentOutstanding = kpi.totalOutstanding,
                         selectedIndex = selectedIndex,
-                        onDateSelected = { selectedIndex = it },
-                        onNavigateToLedger = onNavigateToLedger
+                        onDateSelected = { selectedIndex = it }
                     )
 
                     CollectionOverviewCard(
@@ -564,7 +562,6 @@ fun DateSelectorCard(
     currentOutstanding: Int,
     selectedIndex: Int,
     onDateSelected: (Int) -> Unit,
-    onNavigateToLedger: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
@@ -591,37 +588,7 @@ fun DateSelectorCard(
         Column(
             modifier = Modifier.padding(14.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Sales Overview",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Row(
-                    modifier = Modifier.clickable { onNavigateToLedger() },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "View Ledger",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "View Ledger",
-                        tint = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primary else Color(0xFF004B30),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -641,7 +608,7 @@ fun DateSelectorCard(
                     ) {
                         Text(
                             text = item.first,
-                            color = if (selected) Color(0xFF991B1B) else Color(0xFF8E8E93),
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                         )
@@ -652,13 +619,13 @@ fun DateSelectorCard(
                             modifier = Modifier
                                 .size(40.dp)
                                 .background(
-                                    color = if (selected) Color(0xFF991B1B) else Color.Transparent,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                     shape = CircleShape
                                 )
                                 .then(
                                     if (selected) Modifier else Modifier.border(
                                         width = 1.dp,
-                                        color = Color(0xFFE5E5EA),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
                                         shape = CircleShape
                                     )
                                 ),
@@ -669,7 +636,7 @@ fun DateSelectorCard(
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = if (selected)
-                                    Color.White
+                                    MaterialTheme.colorScheme.onPrimary
                                 else
                                     MaterialTheme.colorScheme.onBackground
                             )
