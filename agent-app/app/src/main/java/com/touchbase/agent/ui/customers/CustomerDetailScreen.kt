@@ -73,6 +73,7 @@ import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
+import com.touchbase.agent.ui.enrollment.steps.KycPhotoSelector
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,6 +98,9 @@ fun CustomerDetailScreen(
     var editDailyRate by remember { mutableStateOf("") }
     var editTotalLoan by remember { mutableStateOf("") }
     var editTermDays by remember { mutableStateOf("") }
+    var editCustomerPhoto by remember { mutableStateOf<String?>(null) }
+    var editNationalIdFront by remember { mutableStateOf<String?>(null) }
+    var editNationalIdBack by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
@@ -149,8 +153,11 @@ fun CustomerDetailScreen(
         }
     }
 
-    fun cancelEditing() {
+     fun cancelEditing() {
         isEditing = false
+        editCustomerPhoto = null
+        editNationalIdFront = null
+        editNationalIdBack = null
     }
 
     fun saveEditing() {
@@ -168,9 +175,16 @@ fun CustomerDetailScreen(
             val newTerm = editTermDays.toIntOrNull() ?: acc.termDays
             if (newTerm != acc.termDays) updates["termDays"] = newTerm
 
+            if (editCustomerPhoto != null) updates["customerPhoto"] = editCustomerPhoto!!
+            if (editNationalIdFront != null) updates["nationalIdFront"] = editNationalIdFront!!
+            if (editNationalIdBack != null) updates["nationalIdBack"] = editNationalIdBack!!
+
             if (updates.isNotEmpty()) {
                 repository?.updateAccount(acc.id, updates)
             }
+            editCustomerPhoto = null
+            editNationalIdFront = null
+            editNationalIdBack = null
             isSaving = false
             isEditing = false
             loadAccount()
@@ -254,7 +268,45 @@ fun CustomerDetailScreen(
                         EditField(label = "Total Loan (cents)", value = editTotalLoan, onValueChange = { editTotalLoan = it }, isNumber = true)
                         EditField(label = "Term (days)", value = editTermDays, onValueChange = { editTermDays = it }, isNumber = true)
 
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("KYC Verification Photos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (acc.customerPhotoPath != null && editCustomerPhoto == null) {
+                            Text("✓ Selfie Photo is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        KycPhotoSelector(
+                            label = "Customer Photo (Selfie)",
+                            base64 = editCustomerPhoto,
+                            onPhotoSelected = { editCustomerPhoto = it }
+                        )
+
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        if (acc.nationalIdFrontPath != null && editNationalIdFront == null) {
+                            Text("✓ National ID Front is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        KycPhotoSelector(
+                            label = "National ID Front Photo",
+                            base64 = editNationalIdFront,
+                            onPhotoSelected = { editNationalIdFront = it }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        if (acc.nationalIdBackPath != null && editNationalIdBack == null) {
+                            Text("✓ National ID Back is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        KycPhotoSelector(
+                            label = "National ID Back Photo",
+                            base64 = editNationalIdBack,
+                            onPhotoSelected = { editNationalIdBack = it }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -323,7 +375,7 @@ fun CustomerDetailScreen(
                 ) {
                     Icon(Icons.Filled.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Record Payment")
+                    Text("Record")
                 }
 
                 if (acc.status == AccountStatus.LOCKED) {
@@ -568,7 +620,7 @@ private fun PaymentBottomSheet(
             Text("Record Payment", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Amount (GHS)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Amount (GHC)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { input ->
