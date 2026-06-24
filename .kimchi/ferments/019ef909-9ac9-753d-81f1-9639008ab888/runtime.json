@@ -5,13 +5,15 @@
   "lastBlockHashes": {},
   "stepCompleteAttempts": {
     "phase-1:step-1": 1,
-    "phase-1:step-2": 1
+    "phase-1:step-2": 1,
+    "phase-1:step-3": 1
   },
   "phaseStartRefs": {
     "phase-1": "7cd61e9fb3ccf2c76351680d9f647c739623a3de"
   },
   "stepStartRefs": {
     "phase-1:step-1": "7cd61e9fb3ccf2c76351680d9f647c739623a3de",
-    "phase-1:step-2": "7cd61e9fb3ccf2c76351680d9f647c739623a3de"
+    "phase-1:step-2": "7cd61e9fb3ccf2c76351680d9f647c739623a3de",
+    "phase-1:step-3": "2574550f2a48f86610fbff6d0c5ca0cdc0934e1a"
   }
 }

@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
@@ -169,7 +171,27 @@ fun DashboardScreen(
                             tint = Color(0xFF10B981),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("TB Agent", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                        Column {
+                            Text(
+                                text = "TB Agent",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            val greeting = remember {
+                                val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                                when (hour) {
+                                    in 0..11 -> "Good Morning"
+                                    in 12..16 -> "Good Afternoon"
+                                    else -> "Good Evening"
+                                }
+                            }
+                            Text(
+                                text = greeting,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -230,7 +252,7 @@ fun DashboardScreen(
             ) {
                 kpis?.let { kpi ->
                     val today = remember { LocalDate.now(ZoneOffset.UTC) }
-                    var selectedIndex by remember { mutableStateOf(today.dayOfMonth - 1) }
+                    var selectedIndex by remember { mutableStateOf(today.dayOfWeek.value - 1) }
 
                     val context = LocalContext.current
                     DateSelectorCard(
@@ -513,9 +535,10 @@ fun WidgetCard(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp)
@@ -545,22 +568,13 @@ fun DateSelectorCard(
     modifier: Modifier = Modifier
 ) {
     val today = remember { LocalDate.now(ZoneOffset.UTC) }
+    val monday = remember { today.minusDays((today.dayOfWeek.value - 1).toLong()) }
     val days = remember {
-        val firstDayOfMonth = today.withDayOfMonth(1)
-        (0 until today.lengthOfMonth()).map { i ->
-            val date = firstDayOfMonth.plusDays(i.toLong())
-            date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH) to
+        (0 until 7).map { i ->
+            val date = monday.plusDays(i.toLong())
+            date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH).uppercase() to
                     date.dayOfMonth.toString()
         }
-    }
-
-    val scrollState = rememberScrollState()
-
-    LaunchedEffect(Unit) {
-        val itemWidthPx = 160
-        val centerOffset = 500
-        val scrollPosition = (selectedIndex * itemWidthPx) - centerOffset
-        scrollState.animateScrollTo(scrollPosition.coerceAtLeast(0))
     }
 
     Card(
@@ -569,9 +583,10 @@ fun DateSelectorCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp)
@@ -606,15 +621,12 @@ fun DateSelectorCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(
-                        state = scrollState
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 days.forEachIndexed { index, item ->
                     val selected = index == selectedIndex
@@ -622,44 +634,42 @@ fun DateSelectorCard(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .background(
-                                color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                shape = RoundedCornerShape(360.dp)
-                            )
                             .clickable {
                                 onDateSelected(index)
                             }
-                            .padding(
-                                horizontal = 4.dp,
-                                vertical = 8.dp
-                            )
+                            .padding(vertical = 4.dp)
                     ) {
                         Text(
                             text = item.first,
-                            color = if (selected)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall
+                            color = if (selected) Color(0xFF991B1B) else Color(0xFF8E8E93),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(40.dp)
                                 .background(
-                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else Color.Transparent,
+                                    color = if (selected) Color(0xFF991B1B) else Color.Transparent,
                                     shape = CircleShape
+                                )
+                                .then(
+                                    if (selected) Modifier else Modifier.border(
+                                        width = 1.dp,
+                                        color = Color(0xFFE5E5EA),
+                                        shape = CircleShape
+                                    )
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = item.second,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = if (selected)
-                                    MaterialTheme.colorScheme.primary
+                                    Color.White
                                 else
                                     MaterialTheme.colorScheme.onBackground
                             )
@@ -958,14 +968,11 @@ fun CollectionOverviewCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(24.dp),
-                clip = false
-            ),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Box(
             modifier = Modifier
