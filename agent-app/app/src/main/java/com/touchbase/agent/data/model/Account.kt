@@ -25,12 +25,15 @@ data class Account(
     val lockedByDealer: Int = 0,
     val downPayment: Int = 0,
     val termDays: Int = 0,
-    val currencyCode: String = "GHS",
+    val currencyCode: String = "GHC",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
     val releaseApproved: Boolean = false,
     val releaseApprovedAt: Long? = null,
-    val releasedAt: Long? = null
+    val releasedAt: Long? = null,
+    val customerPhotoPath: String? = null,
+    val nationalIdFrontPath: String? = null,
+    val nationalIdBackPath: String? = null
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED
