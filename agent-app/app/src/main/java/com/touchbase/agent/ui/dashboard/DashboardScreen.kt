@@ -999,7 +999,7 @@ fun CollectionOverviewCard(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Text(
-                        text = "KES",
+                        text = "GHS",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp
