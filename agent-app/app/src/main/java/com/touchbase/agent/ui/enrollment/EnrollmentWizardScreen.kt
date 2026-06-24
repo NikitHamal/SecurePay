@@ -192,6 +192,7 @@ fun EnrollmentWizardScreen(
                 WizardControls(
                     state = state,
                     onBack = viewModel::prevStep,
+                    onCancel = onCancel,
                     onNext = viewModel::nextStep,
                     onSubmit = viewModel::submit,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -205,6 +206,7 @@ fun EnrollmentWizardScreen(
 private fun WizardControls(
     state: EnrollmentUiState,
     onBack: () -> Unit,
+    onCancel: () -> Unit,
     onNext: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
@@ -214,8 +216,8 @@ private fun WizardControls(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedButton(
-            onClick = onBack,
-            enabled = !state.isFirstStep && !state.isSubmitting,
+            onClick = if (state.isFirstStep) onCancel else onBack,
+            enabled = !state.isSubmitting,
             modifier = Modifier.weight(1f).height(52.dp)
         ) {
             Text(stringResource(R.string.action_back), color = MaterialTheme.colorScheme.onBackground)
