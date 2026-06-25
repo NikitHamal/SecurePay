@@ -27,13 +27,13 @@ object ProvisioningFinalizer {
         runCatching {
             ProvisioningExtrasStore.recordStage(appContext, stage)
         }.onFailure {
-            SecureLog.w(TAG, "recordStage failed: ${it.message}")
+            SecureLog.provisioningError(TAG, "recordStage failed", it)
         }
 
         runCatching {
             ProvisioningExtrasStore.persistFromIntent(appContext, sourceIntent)
         }.onFailure {
-            SecureLog.w(TAG, "persistFromIntent failed: ${it.message}")
+            SecureLog.provisioningError(TAG, "persistFromIntent failed", it)
         }
 
         val dpm = appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager

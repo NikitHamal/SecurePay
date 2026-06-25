@@ -65,7 +65,7 @@ class SecurePayApplication : Application() {
         // real UI faults are visible during development and crash reporting.
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            SecureLog.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
+            SecureLog.provisioningError(TAG, "Uncaught exception on thread ${thread.name}", throwable)
             if (thread == Looper.getMainLooper().thread) {
                 previous?.uncaughtException(thread, throwable)
             }
