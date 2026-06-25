@@ -1,13 +1,15 @@
 package com.touchbase.agent.ui.provisioning
 
-import androidx.compose.foundation.Canvas
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
@@ -23,37 +25,70 @@ fun QrCode(
     lightColor: Color = Color.White,
     modifier: Modifier = Modifier
 ) {
-    val matrix = remember(content) { encodeQr(content) }
+    val density = LocalDensity.current
+    val targetPx = with(density) { size.roundToPx() }
+    val imageBitmap = remember(content, targetPx, darkColor, lightColor) {
+        renderQrBitmap(content, targetPx, darkColor, lightColor)
+    }
 
-    Canvas(
+    Image(
+        bitmap = imageBitmap,
+        contentDescription = "Provisioning QR code",
         modifier = modifier
             .size(size)
             .background(lightColor)
-    ) {
-        if (matrix == null) return@Canvas
-        val dim = matrix.width
-        val cellSize = size.toPx() / dim.toFloat()
-        for (y in 0 until dim) {
-            for (x in 0 until dim) {
-                if (matrix.get(x, y)) {
-                    drawRect(
-                        color = darkColor,
-                        topLeft = Offset(x.toFloat() * cellSize, y.toFloat() * cellSize),
-                        size = androidx.compose.ui.geometry.Size(cellSize, cellSize)
-                    )
-                }
-            }
-        }
-    }
+    )
 }
 
-private fun encodeQr(content: String): com.google.zxing.common.BitMatrix? {
-    return runCatching {
-        val hints = mapOf(
-            EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
-            EncodeHintType.MARGIN to 4,
-            EncodeHintType.CHARACTER_SET to "UTF-8"
+private fun renderQrBitmap(
+    content: String,
+    targetPx: Int,
+    darkColor: Color,
+    lightColor: Color
+): android.graphics.Bitmap {
+    val safePx = targetPx.coerceAtLeast(64)
+
+    val matrix = runCatching {
+        QRCodeWriter().encode(
+            content,
+            BarcodeFormat.QR_CODE,
+            safePx,
+            safePx,
+            mapOf(
+                EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+                EncodeHintType.MARGIN to 1,
+                EncodeHintType.CHARACTER_SET to "UTF-8"
+            )
         )
-        QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 512, 512, hints)
     }.getOrNull()
+
+    val width = matrix?.width ?: safePx
+    val height = matrix?.height ?: safePx
+
+    val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val darkArgb = darkColor.toArgb()
+    val lightArgb = lightColor.toArgb()
+
+    val pixels = IntArray(width * height)
+    if (matrix != null) {
+        for (y in 0 until height) {
+            val rowOffset = y * width
+            for (x in 0 until width) {
+                pixels[rowOffset + x] = if (matrix.get(x, y)) darkArgb else lightArgb
+            }
+        }
+    } else {
+        for (i in pixels.indices) pixels[i] = lightArgb
+    }
+
+    bmp.setPixels(pixels, 0, width, 0, 0, width, height)
+    return bmp
+}
+
+private fun Color.toArgb(): Int {
+    val a = (alpha * 255f).toInt().coerceIn(0, 255)
+    val r = (red * 255f).toInt().coerceIn(0, 255)
+    val g = (green * 255f).toInt().coerceIn(0, 255)
+    val b = (blue * 255f).toInt().coerceIn(0, 255)
+    return (a shl 24) or (r shl 16) or (g shl 8) or b
 }
