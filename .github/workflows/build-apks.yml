@@ -31,12 +31,13 @@ jobs:
     outputs:
       customer: ${{ steps.merge.outputs.customer }}
       agent: ${{ steps.merge.outputs.agent }}
-      workflow: ${{ steps.filter.outputs.workflow }}
+      workflow: ${{ steps.merge.outputs.workflow }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Filter paths
+        if: github.event_name != 'workflow_dispatch'
         id: filter
         uses: dorny/paths-filter@v3
         with:
@@ -66,9 +67,11 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "customer=${{ steps.dispatch.outputs.customer }}" >> "$GITHUB_OUTPUT"
             echo "agent=${{ steps.dispatch.outputs.agent }}" >> "$GITHUB_OUTPUT"
+            echo "workflow=false" >> "$GITHUB_OUTPUT"
           else
             echo "customer=${{ steps.filter.outputs.customer }}" >> "$GITHUB_OUTPUT"
             echo "agent=${{ steps.filter.outputs.agent }}" >> "$GITHUB_OUTPUT"
+            echo "workflow=${{ steps.filter.outputs.workflow }}" >> "$GITHUB_OUTPUT"
           fi
 
   build-customer:
