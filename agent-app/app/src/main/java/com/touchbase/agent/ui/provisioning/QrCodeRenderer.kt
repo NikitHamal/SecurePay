@@ -28,7 +28,7 @@ fun QrCode(
     val density = LocalDensity.current
     val targetPx = with(density) { size.roundToPx() }
     val imageBitmap = remember(content, targetPx, darkColor, lightColor) {
-        renderQrBitmap(content, targetPx, darkColor, lightColor)
+        renderQrBitmap(content, targetPx, darkColor, lightColor).asImageBitmap()
     }
 
     Image(
