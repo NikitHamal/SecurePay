@@ -38,9 +38,10 @@
         </activity>
 
         <!-- Android 12+ mandatory DPC provisioning entry points. -->
+        <!-- Samsung Android 14–16 requires these to be unconditionally enabled.
+             Using a boolean resource has caused "Something went wrong" on A-series devices. -->
         <activity
             android:name="com.touchbase.user.admin.GetProvisioningModeActivity"
-            android:enabled="@bool/provisioning_mode_handlers_enabled"
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"
@@ -54,7 +55,6 @@
 
         <activity
             android:name="com.touchbase.user.admin.PolicyComplianceActivity"
-            android:enabled="@bool/provisioning_mode_handlers_enabled"
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"

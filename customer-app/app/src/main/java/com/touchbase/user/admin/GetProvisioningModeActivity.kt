@@ -56,6 +56,9 @@ class GetProvisioningModeActivity : Activity() {
             return allowedModes.first()
         }
 
+        // Always prefer FULLY_MANAGED_DEVICE.
+        // Previously we had a Samsung/Xiaomi fallback to managed profile which
+        // caused the "Something went wrong" error on Samsung A07 (Android 16).
         SecureLog.i(TAG, "No allowed provisioning modes from Setup Wizard; defaulting to fully-managed.")
         return fullyManaged
     }
