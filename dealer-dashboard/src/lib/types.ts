@@ -25,6 +25,7 @@ export interface Customer {
   customerPhotoPath?: string | null;
   nationalIdFrontPath?: string | null;
   nationalIdBackPath?: string | null;
+  termDays: number;
 }
 
 
