@@ -33,7 +33,7 @@ class GetProvisioningModeActivity : Activity() {
                 RESULT_CANCELED to Intent()
             }
         }.onFailure {
-            SecureLog.e(TAG, "Critical failure during provisioning mode selection", it)
+            SecureLog.provisioningError(TAG, "Critical failure during provisioning mode selection", it)
         }.getOrElse {
             RESULT_CANCELED to Intent()
         }

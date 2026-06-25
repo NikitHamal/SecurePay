@@ -24,7 +24,7 @@ class PolicyComplianceActivity : Activity() {
                 stage = "ADMIN_POLICY_COMPLIANCE"
             )
         }.onFailure {
-            SecureLog.e(TAG, "Provisioning finalizer failed during compliance", it)
+            SecureLog.provisioningError(TAG, "Provisioning finalizer failed during compliance", it)
             runCatching { ProvisioningExtrasStore.recordStage(this, "ADMIN_POLICY_COMPLIANCE_FINALIZER_FAILED") }
         }.getOrNull()
 

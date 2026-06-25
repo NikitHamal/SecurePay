@@ -40,7 +40,7 @@ class ProvisioningActivity : Activity() {
                 sourceIntent = intent,
                 stage = "PROVISIONING_SUCCESSFUL"
             )
-        }.onFailure { SecureLog.e(TAG, "Provisioning finalizer failed", it) }
+        }.onFailure { SecureLog.provisioningError(TAG, "Provisioning finalizer failed", it) }
 
         runCatching {
             startActivity(MainActivity.newLaunchIntent(this))
