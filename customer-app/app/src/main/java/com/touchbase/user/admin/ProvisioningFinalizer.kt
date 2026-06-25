@@ -53,8 +53,6 @@ object ProvisioningFinalizer {
             // during ANY callback (GET_PROVISIONING_MODE, ADMIN_POLICY_COMPLIANCE, or
             // PROVISIONING_SUCCESSFUL). MainActivity.enforceCachedLockState applies
             // base loan security on first launch after provisioning completes.
-            runCatching { dpm.setProfileName(admin, "TB User") }
-                .onFailure { SecureLog.w(TAG, "setProfileName failed: ${it.message}") }
         } else {
             runCatching {
                 ProvisioningExtrasStore.recordStage(
