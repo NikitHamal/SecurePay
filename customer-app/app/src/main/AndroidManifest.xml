@@ -93,8 +93,8 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:theme="@style/Theme.TBUser" />
 
-        <!-- Samsung Knox is extremely picky about the DeviceAdminReceiver.
-             Making it as explicit and directBootAware as possible. -->
+        <!-- Samsung Knox (especially Android 15/16) is extremely strict.
+             This is the most explicit declaration possible. -->
         <receiver
             android:name="com.touchbase.user.admin.SecurePayDeviceAdminReceiver"
             android:description="@string/device_admin_description"
@@ -110,6 +110,7 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
                 <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
                 <action android:name="android.app.action.PROVISIONING_SUCCESSFUL" />
+                <action android:name="android.app.action.PROVISION_MANAGED_DEVICE" />
             </intent-filter>
         </receiver>
 
