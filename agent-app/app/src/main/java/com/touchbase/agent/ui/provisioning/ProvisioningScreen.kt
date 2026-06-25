@@ -1,6 +1,5 @@
 package com.touchbase.agent.ui.provisioning
 
-import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,15 +47,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.touchbase.agent.ui.theme.Amber
-import com.touchbase.agent.ui.theme.DeepCharcoal
-import com.touchbase.agent.ui.theme.EmeraldGreen
-import com.touchbase.agent.ui.theme.ElevatedSurface
-import com.touchbase.agent.ui.theme.OnDarkSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,17 +70,30 @@ fun ProvisioningScreen(
     }
 
     Scaffold(
-        containerColor = DeepCharcoal,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Provision Device", color = Color.White) },
+                title = {
+                    Text(
+                        "Provision Device",
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DeepCharcoal)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         }
     ) { innerPadding ->
@@ -104,26 +114,35 @@ fun ProvisioningScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QrFormSection(
     state: ProvisioningUiState,
     viewModel: ProvisioningViewModel
 ) {
+    val imeiColors = themedOutlinedFieldColors()
+    val wifiColors = themedOutlinedFieldColors()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = ElevatedSurface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             Text(
                 "Generate a provisioning QR",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 "This installs TB User on the customer's phone as a Device Owner and binds it to their account. Saved Wi-Fi is stored encrypted on this agent device only.",
-                color = OnDarkSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
 
@@ -131,16 +150,33 @@ private fun QrFormSection(
                 value = state.imei,
                 onValueChange = viewModel::updateImei,
                 label = { Text("IMEI (15 digits)") },
+                placeholder = {
+                    Text(
+                        "Enter 15-digit IMEI",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                },
                 singleLine = true,
-                isError = state.imei.length != 15 && state.imei.isNotEmpty(),
+                isError = state.imei.isNotEmpty() && state.imei.length != 15,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = imeiColors
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Wifi, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Filled.Wifi,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(Modifier.width(8.dp))
-                Text("Shop Wi-Fi (recommended)", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Shop Wi-Fi (recommended)",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleSmall
+                )
             }
 
             OutlinedTextField(
@@ -149,7 +185,8 @@ private fun QrFormSection(
                 label = { Text("Wi-Fi network name") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = wifiColors
             )
 
             OutlinedTextField(
@@ -158,7 +195,8 @@ private fun QrFormSection(
                 label = { Text("Wi-Fi password") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = wifiColors
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -167,7 +205,11 @@ private fun QrFormSection(
                     onCheckedChange = viewModel::updateRememberWifi
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Remember this Wi-Fi", color = OnDarkSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Remember this Wi-Fi",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
 
             Button(
@@ -177,14 +219,30 @@ private fun QrFormSection(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+                )
             ) {
                 if (state.isGenerating) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.Black)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 } else {
-                    Icon(Icons.Filled.QrCode2, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Filled.QrCode2,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text("Generate QR", fontWeight = FontWeight.SemiBold, color = Color.Black)
+                    Text(
+                        "Generate QR",
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -211,12 +269,12 @@ private fun QrDisplaySection(
             Spacer(Modifier.height(20.dp))
             Text(
                 "Activation Code",
-                color = DeepCharcoal,
+                color = Color(0xFF111827),
                 style = MaterialTheme.typography.labelLarge
             )
             Text(
                 text = state.activationCode.chunked(1).joinToString(" "),
-                color = DeepCharcoal,
+                color = Color(0xFF111827),
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -228,13 +286,18 @@ private fun QrDisplaySection(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = ElevatedSurface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Text(
                 "On the customer's phone:",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -244,7 +307,10 @@ private fun QrDisplaySection(
             StepRow("4", "When TB User opens, enter the code above.")
             Text(
                 state.securityText,
-                color = if (state.securityText.startsWith("EFRP enabled")) EmeraldGreen else Amber,
+                color = if (state.securityText.startsWith("EFRP enabled"))
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -260,12 +326,12 @@ private fun QrDisplaySection(
         Icon(
             imageVector = if (activated) Icons.Filled.CheckCircle else Icons.Filled.QrCode2,
             contentDescription = null,
-            tint = if (activated) EmeraldGreen else Amber,
+            tint = if (activated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
             modifier = Modifier.size(20.dp)
         )
         Text(
             state.statusText,
-            color = if (activated) EmeraldGreen else Color.White,
+            color = if (activated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
             style = MaterialTheme.typography.bodyMedium
         )
     }
@@ -279,9 +345,14 @@ private fun QrDisplaySection(
             .fillMaxWidth()
             .height(52.dp),
         shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+        )
     ) {
-        Text("Done", fontWeight = FontWeight.SemiBold, color = Color.Black)
+        Text("Done", fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -289,13 +360,40 @@ private fun QrDisplaySection(
 private fun StepRow(number: String, text: String) {
     Row(verticalAlignment = Alignment.Top) {
         Box(
-            modifier = Modifier
-                .size(22.dp),
+            modifier = Modifier.size(22.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(number, color = EmeraldGreen, fontWeight = FontWeight.Bold)
+            Text(
+                number,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
         }
         Spacer(Modifier.width(8.dp))
-        Text(text, color = OnDarkSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
+        Text(
+            text,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Start
+        )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun themedOutlinedFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    focusedLabelColor = MaterialTheme.colorScheme.primary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+    cursorColor = MaterialTheme.colorScheme.primary,
+    errorBorderColor = MaterialTheme.colorScheme.error,
+    errorLabelColor = MaterialTheme.colorScheme.error,
+    errorTextColor = MaterialTheme.colorScheme.onBackground
+)

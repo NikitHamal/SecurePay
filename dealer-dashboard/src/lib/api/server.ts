@@ -146,8 +146,32 @@ export function generateToken(byteLength = 16): string {
 }
 
 export function generateActivationCode(): string {
-  const n = crypto.getRandomValues(new Uint32Array(1))[0];
-  return (n % 1000000).toString().padStart(6, '0');
+  const CODE_DIGITS = 6;
+  const RANGE = 1_000_000;
+  const MAX_VALID = 0x100000000 - (0x100000000 % RANGE);
+  const bytes = new Uint8Array(4);
+  let n = MAX_VALID;
+  while (n >= MAX_VALID) {
+    crypto.getRandomValues(bytes);
+    const view = new DataView(bytes.buffer);
+    n = view.getUint32(0, false);
+  }
+  return (n % RANGE).toString().padStart(CODE_DIGITS, '0');
+}
+
+export async function findUnusedActivationCode(
+  db: D1Database,
+  generate: () => string,
+  maxRetries = 50
+): Promise<string> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const code = generate();
+    const existing = await db.prepare(
+      'SELECT 1 FROM provisioning_tokens WHERE activation_code = ? LIMIT 1'
+    ).bind(code).first();
+    if (!existing) return code;
+  }
+  throw new Error('Unable to allocate a unique activation code after retries');
 }
 
 export async function readApkMeta(event: { platform?: App.Platform | null }): Promise<ApkMeta> {

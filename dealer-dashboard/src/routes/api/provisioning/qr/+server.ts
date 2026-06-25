@@ -5,13 +5,13 @@ import {
   errorResponse,
   generateToken,
   generateActivationCode,
+  findUnusedActivationCode,
   buildQrPayload,
   readApkMeta,
   getDealerSecurityPolicy
 } from '$lib/api/server';
 
 const TOKEN_TTL_SEC = 24 * 60 * 60;
-const MAX_CODE_RETRIES = 10;
 
 function isValidWpaPassword(password: string): boolean {
   return (password.length >= 8 && password.length <= 63) || /^[0-9a-fA-F]{64}$/.test(password);
@@ -81,40 +81,31 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   let tokenId = '';
   let activationCode = '';
-  let inserted = false;
 
-  for (let attempt = 0; attempt < MAX_CODE_RETRIES; attempt++) {
+  try {
+    activationCode = await findUnusedActivationCode(db, generateActivationCode);
     tokenId = generateToken(32);
-    activationCode = generateActivationCode();
 
-    try {
-      const result = await db.prepare(
-        `INSERT INTO provisioning_tokens
-          (id, account_id, device_id, dealer_id, activation_code, status, wifi_ssid, wifi_password, created_at, expires_at)
-         VALUES (?, ?, ?, ?, ?, 'pending', ?, NULL, ?, ?)`
-      ).bind(
-        tokenId,
-        account.id as string,
-        device.id as string,
-        locals.dealer.id,
-        activationCode,
-        wifiSsid || null,
-        nowSec,
-        expiresAt
-      ).run();
+    const insert = await db.prepare(
+      `INSERT INTO provisioning_tokens
+        (id, account_id, device_id, dealer_id, activation_code, status, wifi_ssid, wifi_password, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?, NULL, ?, ?)`
+    ).bind(
+      tokenId,
+      account.id as string,
+      device.id as string,
+      locals.dealer.id,
+      activationCode,
+      wifiSsid || null,
+      nowSec,
+      expiresAt
+    ).run();
 
-      if (result.success) {
-        inserted = true;
-        break;
-      }
-    } catch (error) {
-      // A six-digit activation-code collision is possible. Retry with a new token/code;
-      // surface the final failure after the bounded retry loop.
-      console.warn(`Provisioning token insert attempt ${attempt + 1} failed`, error);
+    if (!insert.success) {
+      throw new Error('Provisioning token insert returned success=false');
     }
-  }
-
-  if (!inserted) {
+  } catch (error) {
+    console.error('Failed to provision token', error);
     return errorResponse('Failed to generate a unique activation code. Please try again.', 500);
   }
 
