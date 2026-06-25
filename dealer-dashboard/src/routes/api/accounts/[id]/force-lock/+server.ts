@@ -63,6 +63,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status: 'LOCKED',
+    termDays: Number(row!.term_days),
     ...releaseFields(row as Record<string, unknown>)
   };
 
