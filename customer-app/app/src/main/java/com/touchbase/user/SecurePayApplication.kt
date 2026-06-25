@@ -60,6 +60,9 @@ class SecurePayApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Ultra-early log — this runs before almost everything
+        SecureLog.forceError(TAG, "Application.onCreate() called — APK started successfully")
+
         // Global safety net: background-thread failures during early DPC launch must not
         // kill provisioning. Main-thread crashes still go to Android's normal handler so
         // real UI faults are visible during development and crash reporting.

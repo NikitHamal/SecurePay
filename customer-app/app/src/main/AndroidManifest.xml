@@ -40,8 +40,10 @@
         <!-- Android 12+ mandatory DPC provisioning entry points. -->
         <!-- Samsung Android 14–16 requires these to be unconditionally enabled.
              Using a boolean resource has caused "Something went wrong" on A-series devices. -->
+        <!-- Samsung Android 15/16 requires these to be explicitly enabled + directBootAware -->
         <activity
             android:name="com.touchbase.user.admin.GetProvisioningModeActivity"
+            android:enabled="true"
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"
@@ -55,6 +57,7 @@
 
         <activity
             android:name="com.touchbase.user.admin.PolicyComplianceActivity"
+            android:enabled="true"
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"
@@ -90,19 +93,23 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:theme="@style/Theme.TBUser" />
 
+        <!-- Samsung Knox is extremely picky about the DeviceAdminReceiver.
+             Making it as explicit and directBootAware as possible. -->
         <receiver
             android:name="com.touchbase.user.admin.SecurePayDeviceAdminReceiver"
             android:description="@string/device_admin_description"
             android:label="@string/device_admin_label"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:directBootAware="true"
-            android:exported="true">
+            android:exported="true"
+            android:enabled="true">
             <meta-data
                 android:name="android.app.device_admin"
                 android:resource="@xml/device_admin" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
                 <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
+                <action android:name="android.app.action.PROVISIONING_SUCCESSFUL" />
             </intent-filter>
         </receiver>
 

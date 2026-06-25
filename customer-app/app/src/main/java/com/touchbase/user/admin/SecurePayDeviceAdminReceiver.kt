@@ -8,6 +8,7 @@ import com.touchbase.user.util.SecureLog
 class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
+        SecureLog.forceError(TAG, "DeviceAdminReceiver.onEnabled() called — DPC is being enabled by system")
         ProvisioningExtrasStore.recordStage(context, "DEVICE_ADMIN_ENABLED")
         ProvisioningExtrasStore.persistFromIntent(context, intent)
         SecureLog.i(TAG, "TB User device administration enabled.")
