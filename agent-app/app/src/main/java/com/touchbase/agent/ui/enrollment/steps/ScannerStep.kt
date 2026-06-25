@@ -335,7 +335,10 @@ private fun CameraPreview(
 
         onDispose {
             analyzer.stop()
-            provider.unbindAll()
+            imageAnalysis.clearAnalyzer()
+            try {
+                provider.unbindAll()
+            } catch (_: Exception) {}
             executor.shutdown()
         }
     }
