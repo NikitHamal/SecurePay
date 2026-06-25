@@ -78,7 +78,7 @@ object ProvisioningExtrasStore {
             .orEmpty()
 
     fun securityPolicyVersion(context: Context): Long =
-        prefs(context).getLong(EXTRA_SECURITY_POLICY_VERSION, 0L)
+        prefs(context).getString(EXTRA_SECURITY_POLICY_VERSION, null)?.toLongOrNull() ?: 0L
 
     fun isProvisioningReported(context: Context): Boolean =
         prefs(context).getBoolean(KEY_REPORTED, false)

@@ -258,7 +258,7 @@ export function buildQrPayload({
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM': apk.sha256Base64,
     ...(apk.signatureChecksumBase64 ? { 'android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM': apk.signatureChecksumBase64 } : {}),
     'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
-      schemaVersion: 1,
+      schemaVersion: '1',
       provisioningToken,
       activationCode,
       expectedImei,
@@ -266,7 +266,7 @@ export function buildQrPayload({
       deviceId,
       dealerId,
       frpAccountIdsCsv: securityPolicy?.frpAccountIds?.join(',') ?? '',
-      securityPolicyVersion: securityPolicy?.version ?? 0
+      securityPolicyVersion: String(securityPolicy?.version ?? 0)
     }
   };
   const ssid = wifiSsid?.trim();
