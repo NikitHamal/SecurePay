@@ -56,31 +56,8 @@ class GetProvisioningModeActivity : Activity() {
             return allowedModes.first()
         }
 
-        // Some OEMs (Samsung Knox on budget A-series, Xiaomi, etc.) neither offer
-        // FULLY_MANAGED_DEVICE nor pass the allowed-modes extra. Forcing it causes
-        // "Setting up for work → Something went wrong". Tested OEM list grows over
-        // time; fall back to managed-profile for these devices so provisioning
-        // succeeds and the dealer can complete enrollment.
-        if (isRestrictedOem()) {
-            SecureLog.w(
-                TAG,
-                "No allowed modes from Setup Wizard on ${android.os.Build.MANUFACTURER} " +
-                    "${android.os.Build.MODEL} (${android.os.Build.DEVICE}). " +
-                    "Using managed profile to avoid provisioning failure."
-            )
-            return DevicePolicyManager.PROVISIONING_MODE_MANAGED_PROFILE
-        }
-
         SecureLog.i(TAG, "No allowed provisioning modes from Setup Wizard; defaulting to fully-managed.")
         return fullyManaged
-    }
-
-    private fun isRestrictedOem(): Boolean {
-        val manufacturer = runCatching { android.os.Build.MANUFACTURER.trim().lowercase() }
-            .getOrDefault("")
-        // Samsung Knox on budget / A-series devices frequently does not pass
-        // allowed provisioning modes. Xiaomi HyperOS has analogous issues.
-        return manufacturer.contains("samsung") || manufacturer.contains("xiaomi")
     }
 
     private fun readAndPersistExtras(): PersistableBundle? {
