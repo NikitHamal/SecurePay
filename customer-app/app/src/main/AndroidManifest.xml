@@ -109,8 +109,6 @@
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
                 <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
-                <action android:name="android.app.action.PROVISIONING_SUCCESSFUL" />
-                <action android:name="android.app.action.PROVISION_MANAGED_DEVICE" />
             </intent-filter>
         </receiver>
 

@@ -250,15 +250,22 @@ export function buildQrPayload({
   // Pin provisioning to the exact, versioned APK bytes and component.
   // Keep the QR payload close to Samsung's documented DO QR contract: component,
   // HTTPS APK URL, package SHA-256 checksum, optional Wi-Fi, and admin extras.
-  // Avoid redundant/optional checksum fields in the QR because one stale value can
-  // make Setup Wizard fail with a generic IT-team error after download.
+  //
+  // The following extras are intentionally NOT included because each has been
+  // observed to abort the Samsung Knox Setup Wizard on A-series devices
+  // (Android 14-16) with a generic "Something went wrong" error:
+  //   * PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM
+  //       - Samsung enforces this strictly; a single stale value aborts setup.
+  //   * PROVISIONING_SKIP_ENCRYPTION
+  //       - Ignored on Android 10+ but Samsung Knox rejects the QR if it
+  //         conflicts with the device's encryption policy.
+  //   * PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED
+  //       - Samsung cannot reliably keep system apps enabled during DO
+  //         provisioning and aborts the flow.
   const payload: Record<string, JsonValue> = {
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME': DEVICE_ADMIN_COMPONENT,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION': apk.url,
     'android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM': apk.sha256Base64,
-    ...(apk.signatureChecksumBase64 ? { 'android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM': apk.signatureChecksumBase64 } : {}),
-    'android.app.extra.PROVISIONING_SKIP_ENCRYPTION': true,
-    'android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED': true,
     'android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE': {
       schemaVersion: '1',
       provisioningToken,
