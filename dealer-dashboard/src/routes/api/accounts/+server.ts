@@ -1,164 +1,37 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getR2 } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields } from '$lib/api/server';
+import { sendFcm } from '$lib/api/fcm';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
-export const GET: RequestHandler = async ({ locals, url, platform }) => {
+export const POST: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
-  const dealerId = locals.dealer.id;
-  const statusFilter = url.searchParams.get('status') as Status | null;
-
-  const db = getDb({ platform });
-  const result = await db.prepare(`
-    SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
-    FROM accounts a
-    JOIN devices d ON a.device_id = d.id
-    LEFT JOIN plans p ON a.plan_id = p.id
-    WHERE a.dealer_id = ?
-    ORDER BY a.created_at DESC
-  `).bind(dealerId).all();
-
-  const customers: Customer[] = result.results.map((row) => {
-    const nextPaymentDue = Number(row.next_payment_due);
-    const amountPaid = Number(row.amount_paid);
-    const totalLoanAmount = Number(row.total_loan_amount);
-    const status: Status = releaseApproved(row as Record<string, unknown>)
-      ? 'ACTIVE'
-      : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue));
-
-    return {
-      id: row.id as string,
-      customerName: row.customer_name as string,
-      nationalId: row.national_id as string,
-      phoneNumber: row.phone_number as string,
-      imei: row.imei as string,
-      deviceModel: row.device_model as string,
-      planName: row.plan_name as string,
-      totalLoanAmount,
-      amountPaid,
-      remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
-      dailyRate: Number(row.daily_rate),
-      nextPaymentDueEpochMillis: nextPaymentDue,
-      status,
-      customerPhotoPath: row.customer_photo_path as string | null,
-      nationalIdFrontPath: row.national_id_front_path as string | null,
-      nationalIdBackPath: row.national_id_back_path as string | null,
-      termDays: Number(row.term_days),
-      ...releaseFields(row as Record<string, unknown>)
-    };
-  });
-
-  if (statusFilter) {
-    const filtered = customers.filter((c) => c.status === statusFilter);
-    return json(filtered);
-  }
-
-  return json(customers);
-};
-
-export const POST: RequestHandler = async ({ locals, request, platform }) => {
-  if (!locals.dealer) {
-    return errorResponse('Unauthorized', 401);
-  }
-
-  const body = await request.json();
-  const { 
-    customerName, 
-    nationalId, 
-    phoneNumber, 
-    imei, 
-    planId,
-    dailyRate: customDailyRate,
-    totalAmount: customTotalAmount,
-    termDays: customTermDays,
-    downPayment,
-    customerPhoto,
-    nationalIdFront,
-    nationalIdBack
-  } = body;
-
-  if (!customerName || !nationalId || !phoneNumber || !imei) {
-    return errorResponse('Missing required fields: customerName, nationalId, phoneNumber, imei', 400);
-  }
-
-  if (!planId && !customDailyRate) {
-    return errorResponse('Either planId or dailyRate must be provided', 400);
-  }
-
+  const accountId = params.id;
   const db = getDb({ platform });
 
-  const device = await db.prepare('SELECT id, imei, model, status FROM devices WHERE imei = ? AND dealer_id = ?').bind(imei, locals.dealer.id).first();
+  const acct = await db.prepare('SELECT * FROM accounts WHERE id = ? AND dealer_id = ?').bind(accountId, locals.dealer.id).first();
 
-  if (!device) {
-    return errorResponse('Device not found in your inventory', 404);
+  if (!acct) {
+    return errorResponse('Account not found', 404);
   }
 
-  if (device.status === 'sold') {
-    return errorResponse('Device is already sold', 409);
-  }
-
-  let plan = null;
-  if (planId) {
-    plan = await db.prepare('SELECT * FROM plans WHERE id = ?').bind(planId).first();
-    if (!plan) {
-      return errorResponse('Plan not found', 404);
-    }
-  }
-
-  const dp = Number(downPayment) || (plan ? Number(plan.min_down_payment) : 0);
-  const totalLoanAmount = Number(customTotalAmount) || (plan ? Number(plan.total_amount) : 0);
-  const dailyRate = Number(customDailyRate) || (plan ? Number(plan.daily_rate) : 0);
-  const termDays = Number(customTermDays) || (plan ? Number(plan.term_days) : 0);
   const now = Date.now();
-  const nextPaymentDue = now + 24 * 60 * 60 * 1000;
+  const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const accountId = `ACC-${100000 + Math.floor(Math.random() * 900000)}`;
+  await db.prepare('UPDATE accounts SET locked_by_dealer = 0, next_payment_due = ?, updated_at = ? WHERE id = ?').bind(now + DAY_MS, Math.floor(now / 1000), accountId).run();
 
-  // Helper to decode Base64 and upload to R2
-  const uploadBase64ToR2 = async (base64Data: string | undefined | null, key: string): Promise<string | null> => {
-    if (!base64Data) return null;
-    try {
-      const r2 = getR2({ platform });
-      const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
-      const binaryString = atob(cleanBase64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      await r2.put(key, bytes, {
-        httpMetadata: { contentType: 'image/jpeg' }
-      });
-      return key;
-    } catch (err) {
-      console.error('Error uploading R2 image:', err);
-      return null;
+  await db.prepare("INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, 'unlock', 'dealer', ?)").bind(uuidv4(), accountId, Math.floor(now / 1000)).run();
+
+  const fcmToken = String(acct.fcm_token ?? '').trim();
+  if (fcmToken) {
+    const fcmEnv = platform?.env as { FCM_SERVICE_ACCOUNT_EMAIL?: string; FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string; FCM_PROJECT_ID?: string } | undefined;
+    if (fcmEnv) {
+      sendFcm(fcmToken, { type: 'unlock', accountId }, fcmEnv).catch(() => {});
     }
-  };
-
-  const customerPhotoPath = await uploadBase64ToR2(customerPhoto, `kyc/customer_${accountId}_photo.jpg`);
-  const nationalIdFrontPath = await uploadBase64ToR2(nationalIdFront, `kyc/customer_${accountId}_id_front.jpg`);
-  const nationalIdBackPath = await uploadBase64ToR2(nationalIdBack, `kyc/customer_${accountId}_id_back.jpg`);
-
-  await db.prepare(
-    `INSERT INTO accounts (id, customer_name, national_id, phone_number, device_id, dealer_id, plan_id, total_loan_amount, amount_paid, daily_rate, next_payment_due, status, locked_by_dealer, down_payment, term_days, currency_code, customer_photo_path, national_id_front_path, national_id_back_path, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(
-    accountId, customerName, nationalId, phoneNumber, device.id as string,
-    locals.dealer.id, planId || null, totalLoanAmount, dp, dailyRate, nextPaymentDue,
-    'ACTIVE', 0, dp, termDays, 'GHS', customerPhotoPath, nationalIdFrontPath, nationalIdBackPath, Math.floor(now / 1000), Math.floor(now / 1000)
-  ).run();
-
-  await db.prepare("UPDATE devices SET status = 'sold' WHERE id = ?").bind(device.id as string).run();
-
-  if (dp > 0) {
-    await db.prepare(
-      `INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(uuidv4(), accountId, dp, 'cash', 'Down payment', locals.dealer.id, Math.floor(now / 1000)).run();
   }
 
   const row = await db.prepare(`
@@ -169,11 +42,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     WHERE a.id = ?
   `).bind(accountId).first();
 
+  const nextDue = Number(row!.next_payment_due);
   const amtPaid = Number(row!.amount_paid);
   const totalLoan = Number(row!.total_loan_amount);
-  const status: Status = releaseApproved(row as Record<string, unknown>)
-    ? 'ACTIVE'
-    : computeStatus(Number(row!.next_payment_due));
 
   const customer: Customer = {
     id: row!.id as string,
@@ -187,14 +58,11 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     amountPaid: amtPaid,
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
-    nextPaymentDueEpochMillis: Number(row!.next_payment_due),
-    status,
-    customerPhotoPath: row!.customer_photo_path as string | null,
-    nationalIdFrontPath: row!.national_id_front_path as string | null,
-    nationalIdBackPath: row!.national_id_back_path as string | null,
+    nextPaymentDueEpochMillis: nextDue,
+    status: computeStatus(nextDue),
     termDays: Number(row!.term_days),
     ...releaseFields(row as Record<string, unknown>)
   };
 
-  return json(customer, { status: 201 });
+  return json(customer);
 };
