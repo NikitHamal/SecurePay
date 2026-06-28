@@ -1,43 +1,63 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
+import { v4 as uuidv4 } from 'uuid';
 
-export const DELETE: RequestHandler = async ({ locals, params, platform, url }) => {
+export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
   const db = getDb({ platform });
-  const device = await db.prepare(`
-    SELECT d.id, d.status, a.id AS account_id
+  const result = await db.prepare(`
+    SELECT d.*, a.customer_name, a.created_at as sold_at
     FROM devices d
-    LEFT JOIN accounts a ON a.device_id = d.id
-    WHERE d.id = ? AND d.dealer_id = ?
-  `).bind(params.id, locals.dealer.id).first<{ id: string; status: string; account_id?: string | null }>();
+    LEFT JOIN accounts a ON d.id = a.device_id
+    WHERE d.dealer_id = ?
+    ORDER BY d.created_at DESC
+  `).bind(locals.dealer.id).all();
 
-  if (!device) {
-    return errorResponse('Device not found', 404);
+  const devices = result.results.map((row) => ({
+    id: row.id as string,
+    imei: row.imei as string,
+    model: row.model as string,
+    dealerId: row.dealer_id as string,
+    status: row.status as string,
+    createdAt: Number(row.created_at) * 1000,
+    customerName: row.customer_name as string | null,
+    soldAt: row.sold_at ? Number(row.sold_at) * 1000 : null
+  }));
+
+  return json(devices);
+};
+
+export const POST: RequestHandler = async ({ locals, request, platform }) => {
+  if (!locals.dealer) {
+    return errorResponse('Unauthorized', 401);
   }
 
-  const force = url.searchParams.get('force') === 'true';
-  if (device.account_id && !force) {
-    return errorResponse('Device is assigned to a customer. Delete the customer first, or retry with force=true.', 409);
+  const { imei, model } = await request.json();
+
+  if (!imei || !model) {
+    return errorResponse('IMEI and model are required', 400);
   }
 
-  if (device.account_id) {
-    await db.batch([
-      db.prepare('DELETE FROM provisioning_tokens WHERE account_id = ?').bind(device.account_id),
-      db.prepare('DELETE FROM payments WHERE account_id = ?').bind(device.account_id),
-      db.prepare('DELETE FROM lock_events WHERE account_id = ?').bind(device.account_id),
-      db.prepare('DELETE FROM accounts WHERE id = ? AND dealer_id = ?').bind(device.account_id, locals.dealer.id),
-      db.prepare('DELETE FROM devices WHERE id = ? AND dealer_id = ?').bind(params.id, locals.dealer.id)
-    ]);
-  } else {
-    await db.batch([
-      db.prepare('DELETE FROM provisioning_tokens WHERE device_id = ?').bind(params.id),
-      db.prepare('DELETE FROM devices WHERE id = ? AND dealer_id = ?').bind(params.id, locals.dealer.id)
-    ]);
+  if (imei.length !== 15 || !/^\d{15}$/.test(imei)) {
+    return errorResponse('IMEI must be exactly 15 digits', 400);
   }
 
-  return json({ success: true, id: params.id });
+  const db = getDb({ platform });
+
+  const existing = await db.prepare('SELECT id FROM devices WHERE imei = ?').bind(imei).first();
+
+  if (existing) {
+    return errorResponse('Device with this IMEI already exists', 409);
+  }
+
+  const id = uuidv4();
+  const now = Math.floor(Date.now() / 1000);
+
+  await db.prepare('INSERT INTO devices (id, imei, model, dealer_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, imei, model, locals.dealer.id, 'in_stock', now).run();
+
+  return json({ id, imei, model, dealerId: locals.dealer.id, status: 'in_stock', createdAt: now * 1000 }, { status: 201 });
 };
