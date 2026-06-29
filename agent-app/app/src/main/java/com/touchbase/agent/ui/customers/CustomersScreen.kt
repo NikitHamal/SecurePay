@@ -381,6 +381,7 @@ private fun StatusBadge(status: AccountStatus) {
         AccountStatus.ACTIVE -> Triple("Active", MaterialTheme.colorScheme.primary, Icons.Filled.CheckCircle)
         AccountStatus.WARNING -> Triple("Warning", MaterialTheme.colorScheme.secondary, Icons.Filled.Warning)
         AccountStatus.LOCKED -> Triple("Locked", MaterialTheme.colorScheme.error, Icons.Filled.Lock)
+        AccountStatus.STOLEN -> Triple("Stolen", MaterialTheme.colorScheme.error, Icons.Filled.Lock)
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),

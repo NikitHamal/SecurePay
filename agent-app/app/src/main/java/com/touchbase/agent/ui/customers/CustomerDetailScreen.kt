@@ -556,6 +556,7 @@ private fun StatusBanner(status: AccountStatus, releaseApproved: Boolean = false
         AccountStatus.ACTIVE -> "Active" to Color(0xFF10B981)
         AccountStatus.WARNING -> "Warning — Payment Due Soon" to Color(0xFFF59E0B)
         AccountStatus.LOCKED -> "Locked — Payment Overdue" to Color(0xFFDC2626)
+        AccountStatus.STOLEN -> "Stolen — Device Flagged Stolen" to Color(0xFFDC2626)
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f)),
