@@ -130,3 +130,19 @@ INSERT OR IGNORE INTO plans (id, name, term_days, total_amount, daily_rate, min_
 -- Seed demo dealer (password: "dealer123" — bcrypt hash)
 INSERT OR IGNORE INTO dealers (id, name, email, phone, password) VALUES
   ('dealer-demo-001', 'Demo Dealer', 'dealer@securepay.io', '+233200000001', '$2b$10$PXxK0hfGIKWvEk3C62eJqOHMRHeM1TODgc3QoevbSYS8jTlbulrb.');
+-- Tracking System Updates
+ALTER TABLE accounts ADD COLUMN is_stolen INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS location_logs (
+  id              TEXT PRIMARY KEY,
+  account_id      TEXT NOT NULL REFERENCES accounts(id),
+  latitude        REAL NOT NULL,
+  longitude       REAL NOT NULL,
+  accuracy        REAL,
+  battery_level   INTEGER,
+  timestamp       INTEGER NOT NULL,
+  created_at      INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_loc_account ON location_logs(account_id);
+CREATE INDEX IF NOT EXISTS idx_loc_time ON location_logs(timestamp);

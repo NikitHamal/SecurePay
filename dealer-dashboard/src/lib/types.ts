@@ -3,7 +3,7 @@
  * three apps in the ecosystem (customer-app, agent-app, dealer-dashboard).
  */
 
-export type Status = 'ACTIVE' | 'WARNING' | 'LOCKED';
+export type Status = 'ACTIVE' | 'WARNING' | 'LOCKED' | 'STOLEN';
 
 export interface Customer {
   id: string;
@@ -19,6 +19,7 @@ export interface Customer {
   dailyRate: number;
   nextPaymentDueEpochMillis: number;
   status: Status;
+  isStolen?: boolean;
   releaseApproved?: boolean;
   releaseApprovedAt?: number | null;
   releasedAt?: number | null;

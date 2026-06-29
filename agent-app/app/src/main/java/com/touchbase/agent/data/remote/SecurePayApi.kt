@@ -23,6 +23,9 @@ interface SecurePayApi {
     @PATCH("accounts/{id}")
     suspend fun updateAccount(@Path("id") id: String, @Body updates: Map<String, @JvmSuppressWildcards Any>): Account
 
+    @DELETE("accounts/{id}")
+    suspend fun deleteAccount(@Path("id") id: String): retrofit2.Response<Unit>
+
     @POST("accounts/{id}/force-lock")
     suspend fun forceLock(@Path("id") id: String): Account
 
@@ -49,6 +52,9 @@ interface SecurePayApi {
 
     @POST("devices")
     suspend fun addDevice(@Body request: AddDeviceRequest): Device
+
+    @DELETE("devices/{id}")
+    suspend fun deleteDevice(@Path("id") id: String): retrofit2.Response<Unit>
 
     @GET("plans")
     suspend fun listPlans(): List<Plan>
