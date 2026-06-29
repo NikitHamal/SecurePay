@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
   const totalLoanAmount = Number(row.total_loan_amount);
   const status: Status = releaseApproved(row as Record<string, unknown>)
     ? 'ACTIVE'
-    : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue));
+    : (row.is_stolen === 1 ? 'STOLEN' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue)));
 
   const customer: Customer = {
     id: row.id as string,
@@ -42,12 +42,14 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
     status,
+    isStolen: row.is_stolen === 1,
     customerPhotoPath: row.customer_photo_path as string | null,
     nationalIdFrontPath: row.national_id_front_path as string | null,
     nationalIdBackPath: row.national_id_back_path as string | null,
     termDays: Number(row.term_days),
     ...releaseFields(row as Record<string, unknown>)
   };
+
 
   return json(customer);
 };
@@ -69,7 +71,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     amountPaid,
     customerPhoto,
     nationalIdFront,
-    nationalIdBack
+    nationalIdBack,
+    isStolen
   } = body;
 
   const updates: string[] = [];
@@ -83,6 +86,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (termDays !== undefined) { updates.push('term_days = ?'); args.push(termDays); }
   if (nextPaymentDue !== undefined) { updates.push('next_payment_due = ?'); args.push(nextPaymentDue); }
   if (amountPaid !== undefined) { updates.push('amount_paid = ?'); args.push(amountPaid); }
+  if (isStolen !== undefined) { updates.push('is_stolen = ?'); args.push(isStolen ? 1 : 0); }
 
   // Helper to decode Base64 and upload to R2
   const uploadBase64ToR2 = async (base64Data: string | undefined | null, key: string): Promise<string | null> => {

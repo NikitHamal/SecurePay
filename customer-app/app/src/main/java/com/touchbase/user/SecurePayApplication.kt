@@ -14,6 +14,7 @@ import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.util.SecureLog
 import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.AppUpdateWorker
+import com.touchbase.user.worker.TrackingWorker
 
 class SecurePayApplication : Application() {
 
@@ -112,8 +113,9 @@ class SecurePayApplication : Application() {
             if (tokenManager.isRegistered) {
                 HeartbeatWorker.schedule(this)
                 AppUpdateWorker.schedule(this)
+                TrackingWorker.schedule(this)
             }
-        }.onFailure { SecureLog.e(TAG, "HeartbeatWorker.schedule failed", it) }
+        }.onFailure { SecureLog.e(TAG, "Worker scheduling failed", it) }
     }
 
     companion object {

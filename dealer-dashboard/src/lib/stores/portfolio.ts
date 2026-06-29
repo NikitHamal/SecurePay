@@ -37,9 +37,9 @@ const METHOD_LABELS: Record<string, string> = {
 
 function statusBreakdown(list: Customer[]): PortfolioMetrics['statusBreakdown'] {
   const total = list.length || 1;
-  const counts: Record<Status, number> = { ACTIVE: 0, WARNING: 0, LOCKED: 0 };
+  const counts: Record<Status, number> = { ACTIVE: 0, WARNING: 0, LOCKED: 0, STOLEN: 0 };
   for (const c of list) counts[c.status] += 1;
-  return (['ACTIVE', 'WARNING', 'LOCKED'] as Status[]).map((s) => ({
+  return (['ACTIVE', 'WARNING', 'LOCKED', 'STOLEN'] as Status[]).map((s) => ({
     status: s,
     count: counts[s],
     percent: (counts[s] / total) * 100
@@ -68,16 +68,17 @@ function healthScore(list: Customer[]): number {
   const activeWeight = 1.0;
   const warningWeight = 0.55;
   const lockedWeight = 0.15;
+  const stolenWeight = 0.0;
   const ratios = list.reduce(
     (acc, c) => {
       acc[c.status] += 1;
       return acc;
     },
-    { ACTIVE: 0, WARNING: 0, LOCKED: 0 }
+    { ACTIVE: 0, WARNING: 0, LOCKED: 0, STOLEN: 0 }
   );
   const total = list.length;
   const statusScore =
-    ((ratios.ACTIVE * activeWeight + ratios.WARNING * warningWeight + ratios.LOCKED * lockedWeight) /
+    ((ratios.ACTIVE * activeWeight + ratios.WARNING * warningWeight + ratios.LOCKED * lockedWeight + ratios.STOLEN * stolenWeight) /
       total) *
     100;
   const ratioScore = paidRatio(list);
@@ -168,7 +169,7 @@ export const kpis: Readable<KpiSummary> = derived(customers, ($customers) => {
   for (const c of $customers) {
     if (c.status === 'ACTIVE') activeNodes++;
     else if (c.status === 'WARNING') warningCount++;
-    else lockedCount++;
+    else if (c.status === 'LOCKED' || c.status === 'STOLEN') lockedCount++;
     if (c.amountPaid >= c.totalLoanAmount) paidCount++;
     totalOutstanding += c.remainingBalance;
   }

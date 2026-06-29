@@ -8,18 +8,21 @@
     ACTIVE: 'active',
     WARNING: 'warning',
     LOCKED: 'locked',
+    STOLEN: 'locked',
   };
 
   const dotMap: Record<Status, string> = {
     ACTIVE: 'bg-emerald',
     WARNING: 'bg-amber',
     LOCKED: 'bg-crimson',
+    STOLEN: 'bg-crimson',
   };
 
   const labelMap: Record<Status, string> = {
     ACTIVE: 'Active',
     WARNING: 'Warning',
     LOCKED: 'Locked',
+    STOLEN: 'Stolen',
   };
 </script>
 

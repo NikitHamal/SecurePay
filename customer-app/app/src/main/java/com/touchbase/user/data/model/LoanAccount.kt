@@ -42,7 +42,8 @@ data class AccountBrief(
     val dailyRate: Int = 0,
     val releaseApproved: Boolean = false,
     val releaseApprovedAt: Long? = null,
-    val releasedAt: Long? = null
+    val releasedAt: Long? = null,
+    val isStolen: Boolean = false
 )
 
 @Serializable

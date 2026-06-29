@@ -24,14 +24,16 @@
     { id: 'ALL', label: 'All', accent: 'text-ink-primary' },
     { id: 'ACTIVE', label: 'Active', accent: 'text-emerald' },
     { id: 'WARNING', label: 'Warning', accent: 'text-amber' },
-    { id: 'LOCKED', label: 'Locked', accent: 'text-crimson' }
+    { id: 'LOCKED', label: 'Locked', accent: 'text-crimson' },
+    { id: 'STOLEN', label: 'Stolen', accent: 'text-crimson-secondary' }
   ];
 
   $: counts = {
     ALL: $customers.length,
-    ACTIVE: $kpis.activeNodes,
-    WARNING: $kpis.warningCount,
-    LOCKED: $kpis.lockedCount
+    ACTIVE: $customers.filter(c => c.status === 'ACTIVE').length,
+    WARNING: $customers.filter(c => c.status === 'WARNING').length,
+    LOCKED: $customers.filter(c => c.status === 'LOCKED').length,
+    STOLEN: $customers.filter(c => c.status === 'STOLEN').length
   };
 </script>
 

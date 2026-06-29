@@ -21,6 +21,7 @@ import com.touchbase.user.ui.theme.SecurePayTheme
 import com.touchbase.user.util.BatteryOptimizationHelper
 import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.AppUpdateWorker
+import com.touchbase.user.worker.TrackingWorker
 import com.touchbase.user.worker.NetworkMonitor
 import kotlinx.coroutines.launch
 
@@ -143,6 +144,7 @@ class MainActivity : ComponentActivity() {
 
         runCatching { HeartbeatWorker.schedule(this) }
         runCatching { AppUpdateWorker.schedule(this) }
+        runCatching { TrackingWorker.schedule(this) }
         networkMonitor?.let { runCatching { it.startMonitoring() } }
         runCatching { BatteryOptimizationHelper.requestIfRegistered(this) }
 

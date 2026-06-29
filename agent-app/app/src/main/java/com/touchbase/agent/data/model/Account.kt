@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class AccountStatus {
-    ACTIVE, WARNING, LOCKED
+    ACTIVE, WARNING, LOCKED, STOLEN
 }
 
 @Serializable
@@ -33,7 +33,8 @@ data class Account(
     val releasedAt: Long? = null,
     val customerPhotoPath: String? = null,
     val nationalIdFrontPath: String? = null,
-    val nationalIdBackPath: String? = null
+    val nationalIdBackPath: String? = null,
+    val isStolen: Boolean = false
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED
@@ -44,6 +45,7 @@ fun Account.displayStatus(): String = if (releaseApproved) "Release approved" el
     AccountStatus.ACTIVE -> "Active"
     AccountStatus.WARNING -> "Warning"
     AccountStatus.LOCKED -> "Locked"
+    AccountStatus.STOLEN -> "Stolen"
 }
 
 fun formatAmount(cents: Int): String {

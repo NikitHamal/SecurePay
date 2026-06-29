@@ -208,7 +208,17 @@ fun InventoryScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(devices, key = { it.id }) { device ->
-                DeviceCard(device = device)
+                DeviceCard(
+                    device = device,
+                    onDelete = {
+                        if (repository != null) {
+                            scope.launch {
+                                repository.deleteDevice(device.id)
+                                load()
+                            }
+                        }
+                    }
+                )
             }
         }
     }
@@ -232,7 +242,7 @@ fun InventoryScreen(
 }
 
 @Composable
-private fun DeviceCard(device: Device, modifier: Modifier = Modifier) {
+private fun DeviceCard(device: Device, modifier: Modifier = Modifier, onDelete: (() -> Unit)? = null) {
     val dateStr = remember(device.soldAt, device.createdAt) {
         val epoch = if (device.soldAt != null && device.soldAt > 0L) device.soldAt else device.createdAt
         runCatching {
@@ -272,7 +282,19 @@ private fun DeviceCard(device: Device, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                DeviceStatusBadge(status = device.status)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DeviceStatusBadge(status = device.status)
+                    if (onDelete != null) {
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.filled.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             HorizontalDivider(

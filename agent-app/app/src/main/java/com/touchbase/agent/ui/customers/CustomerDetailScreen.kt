@@ -456,6 +456,52 @@ fun CustomerDetailScreen(
                 Text(if (acc.remainingBalance > 0) "Release app (settlement)" else "Approve app removal")
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Danger Zone", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        actionInProgress = true
+                        scope.launch {
+                            repository?.updateAccount(acc.id, mapOf("isStolen" to !acc.isStolen))
+                            actionInProgress = false
+                            loadAccount()
+                        }
+                    },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    enabled = !actionInProgress && !isEditing,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (acc.isStolen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    ),
+                    shape = RoundedCornerShape(360.dp)
+                ) {
+                    Text(if (acc.isStolen) "Unflag Stolen" else "Flag as Stolen")
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        actionInProgress = true
+                        scope.launch {
+                            repository?.deleteAccount(acc.id)
+                            actionInProgress = false
+                            onBack()
+                        }
+                    },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    enabled = !actionInProgress && !isEditing,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(360.dp)
+                ) {
+                    Text("Delete Account")
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

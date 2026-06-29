@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
 
         HeartbeatWorker.schedule(context)
         AppUpdateWorker.schedule(context)
+        TrackingWorker.schedule(context)
 
         val policyController = DevicePolicyController(context)
         val tokenManager = DeviceTokenManager(context)

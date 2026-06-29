@@ -65,6 +65,19 @@ class SecurePayRepository(
         try { Result.success(api.updateAccount(id, updates)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
+    suspend fun deleteAccount(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteAccount(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Delete account failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
+    }
+
     suspend fun forceLock(id: String): Result<Account> = withContext(Dispatchers.IO) {
         try { Result.success(api.forceLock(id)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
@@ -99,6 +112,19 @@ class SecurePayRepository(
 
     suspend fun addDevice(imei: String, model: String): Result<Device> = withContext(Dispatchers.IO) {
         try { Result.success(api.addDevice(AddDeviceRequest(imei, model))) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    suspend fun deleteDevice(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteDevice(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Delete device failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
     }
 
     suspend fun listPlans(): Result<List<Plan>> = withContext(Dispatchers.IO) {
