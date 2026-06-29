@@ -104,6 +104,7 @@ dependencies {
 
     implementation("com.google.firebase:firebase-messaging:24.0.0")
     implementation("com.google.firebase:firebase-common:21.0.0")
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

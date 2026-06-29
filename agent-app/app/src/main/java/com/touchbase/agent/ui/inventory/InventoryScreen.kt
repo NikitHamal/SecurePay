@@ -287,7 +287,7 @@ private fun DeviceCard(device: Device, modifier: Modifier = Modifier, onDelete: 
                     if (onDelete != null) {
                         IconButton(onClick = onDelete) {
                             Icon(
-                                imageVector = androidx.compose.material.icons.filled.Delete,
+                                imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
                                 contentDescription = "Delete",
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(20.dp)

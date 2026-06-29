@@ -21,6 +21,7 @@ fun StatusChip(
         AccountStatus.ACTIVE -> Color(0xFF10B981)
         AccountStatus.WARNING -> Color(0xFFF59E0B)
         AccountStatus.LOCKED -> Color(0xFFDC2626)
+        AccountStatus.STOLEN -> Color(0xFFDC2626)
     }
 
     Text(
