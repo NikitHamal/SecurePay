@@ -89,6 +89,7 @@ export async function updateCustomer(id: string, data: {
   dailyRate?: number;
   totalLoanAmount?: number;
   termDays?: number;
+  isStolen?: boolean;
 }): Promise<void> {
   setPending(id, true);
   error.set(null);

@@ -153,7 +153,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   const totalLoan = Number(row!.total_loan_amount);
   const status: Status = releaseApproved(row as Record<string, unknown>)
     ? 'ACTIVE'
-    : (row!.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
+    : (row!.is_stolen === 1 ? 'STOLEN' : (row!.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue)));
 
   const customer: Customer = {
     id: row!.id as string,
@@ -169,6 +169,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status,
+    isStolen: row!.is_stolen === 1,
     customerPhotoPath: row!.customer_photo_path as string | null,
     nationalIdFrontPath: row!.national_id_front_path as string | null,
     nationalIdBackPath: row!.national_id_back_path as string | null,

@@ -127,6 +127,7 @@ export async function updateAccount(id: string, data: {
   dailyRate?: number;
   totalLoanAmount?: number;
   termDays?: number;
+  isStolen?: boolean;
 }): Promise<Customer> {
   return request<Customer>(`/accounts/${id}`, {
     method: 'PATCH',

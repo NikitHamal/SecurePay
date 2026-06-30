@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
     const totalLoanAmount = Number(row.total_loan_amount);
     const status: Status = releaseApproved(row as Record<string, unknown>)
       ? 'ACTIVE'
-      : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue));
+      : (row.is_stolen === 1 ? 'STOLEN' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue)));
 
     return {
       id: row.id as string,
@@ -44,6 +44,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
       dailyRate: Number(row.daily_rate),
       nextPaymentDueEpochMillis: nextPaymentDue,
       status,
+      isStolen: row.is_stolen === 1,
       customerPhotoPath: row.customer_photo_path as string | null,
       nationalIdFrontPath: row.national_id_front_path as string | null,
       nationalIdBackPath: row.national_id_back_path as string | null,
