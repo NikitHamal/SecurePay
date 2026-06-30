@@ -76,6 +76,18 @@
     onClose();
   }
 
+  async function toggleStolen(flag: boolean): Promise<void> {
+    if (!customer) return;
+    const action = flag ? 'Flag' : 'Recover';
+    const ok = window.confirm(`${action} device for ${customer.customerName}?`);
+    if (!ok) return;
+    try {
+      await updateCustomer(customer.id, { isStolen: flag });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   function avatarHue(id: string): number {
     const digits = id.replace(/\D/g, '');
     const seed = Number.parseInt(digits || '23', 10);
@@ -160,7 +172,28 @@
           <div>
             <p class="section-title">Status</p>
             <div class="mt-2 flex flex-col gap-2">
-              <StatusBadge status={customer.status} />
+              <div class="flex items-center gap-2">
+                <StatusBadge status={customer.status} />
+                {#if customer.status === 'STOLEN'}
+                  <button
+                    type="button"
+                    class="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-2xs font-semibold uppercase tracking-wide text-emerald hover:bg-emerald-300/20 transition-colors"
+                    disabled={isPending || editing}
+                    on:click={() => toggleStolen(false)}
+                  >
+                    Recovered
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    class="rounded-lg border border-crimson-300/30 bg-crimson-300/10 px-2 py-1 text-2xs font-semibold uppercase tracking-wide text-crimson hover:bg-crimson-300/20 transition-colors"
+                    disabled={isPending || editing}
+                    on:click={() => toggleStolen(true)}
+                  >
+                    Flag Stolen
+                  </button>
+                {/if}
+              </div>
               {#if customer.releaseApproved}
                 <span class="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-2xs font-semibold uppercase tracking-wide text-emerald">Release approved</span>
               {/if}
