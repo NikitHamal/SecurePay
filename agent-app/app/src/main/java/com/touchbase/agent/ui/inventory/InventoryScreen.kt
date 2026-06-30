@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -287,7 +288,7 @@ private fun DeviceCard(device: Device, modifier: Modifier = Modifier, onDelete: 
                     if (onDelete != null) {
                         IconButton(onClick = onDelete) {
                             Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
+                                imageVector = Icons.Filled.Delete,
                                 contentDescription = "Delete",
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(20.dp)
