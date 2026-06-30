@@ -101,7 +101,7 @@ jobs:
         working-directory: ${{ inputs.module }}
         run: gradle wrapper --gradle-version 8.7
 
-      - name: Assemble release APK
+      - name: Assemble release APK & AAB
         working-directory: ${{ inputs.module }}
         env:
           HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
@@ -109,9 +109,9 @@ jobs:
           FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
           FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
           FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
-        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
 
-      - name: Sign release APK
+      - name: Sign release APK & AAB
         id: sign
         env:
           BUILD_TOOLS_VERSION: "34.0.0"
@@ -122,18 +122,32 @@ jobs:
           set -euo pipefail
           APKSIGNER="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
           ZIPALIGN="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/zipalign"
-          IN="${{ inputs.module }}/app/build/outputs/apk/release/app-release-unsigned.apk"
-          ALIGNED="${{ inputs.module }}/app/build/outputs/apk/release/app-release-aligned.apk"
-          OUT="${{ inputs.module }}/app/build/outputs/apk/release/app-release-signed.apk"
-          "$ZIPALIGN" -f -p 4 "$IN" "$ALIGNED"
+          
+          # Sign APK
+          IN_APK="${{ inputs.module }}/app/build/outputs/apk/release/app-release-unsigned.apk"
+          ALIGNED_APK="${{ inputs.module }}/app/build/outputs/apk/release/app-release-aligned.apk"
+          OUT_APK="${{ inputs.module }}/app/build/outputs/apk/release/app-release-signed.apk"
+          "$ZIPALIGN" -f -p 4 "$IN_APK" "$ALIGNED_APK"
           "$APKSIGNER" sign \
             --ks signing/release.jks \
             --ks-key-alias "$ALIAS" \
             --ks-pass "pass:$STORE_PASS" \
             --key-pass "pass:$KEY_PASS" \
-            --out "$OUT" "$ALIGNED"
-          "$APKSIGNER" verify --verbose --print-certs "$OUT"
-          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+            --out "$OUT_APK" "$ALIGNED_APK"
+          "$APKSIGNER" verify --verbose --print-certs "$OUT_APK"
+          
+          # Sign AAB
+          IN_AAB="$(ls ${{ inputs.module }}/app/build/outputs/bundle/release/*.aab)"
+          OUT_AAB="${{ inputs.module }}/app/build/outputs/bundle/release/app-release-signed.aab"
+          cp "$IN_AAB" "$OUT_AAB"
+          jarsigner -keystore signing/release.jks \
+            -storepass "$STORE_PASS" \
+            -keypass "$KEY_PASS" \
+            "$OUT_AAB" "$ALIAS"
+          jarsigner -verify "$OUT_AAB"
+          
+          echo "file=$OUT_APK" >> "$GITHUB_OUTPUT"
+          echo "aab=$OUT_AAB" >> "$GITHUB_OUTPUT"
 
       - name: Inspect signed APK and verify release identity
         id: apk
@@ -200,18 +214,22 @@ jobs:
             echo "short_sha=$SHORT_SHA"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Stage signed APK
+      - name: Stage signed APK & AAB
         run: |
           set -euo pipefail
           mkdir -p staged
           cp "${{ steps.sign.outputs.file }}" \
             "staged/${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}.apk"
+          cp "${{ steps.sign.outputs.aab }}" \
+            "staged/${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}.aab"
 
-      - name: Upload signed APK artifact
+      - name: Upload signed APK and AAB artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}
-          path: staged/${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}.apk
+          path: |
+            staged/${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}.apk
+            staged/${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}.aab
           if-no-files-found: error
           retention-days: 30
 
