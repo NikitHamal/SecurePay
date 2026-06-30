@@ -119,30 +119,3 @@ jobs:
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
 
-  bundle:
-    name: Bundle release APKs
-    needs: [build-customer, build-agent]
-    if: always() && (needs.build-customer.result == 'success' || needs.build-agent.result == 'success')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Resolve short commit SHA
-        id: meta
-        run: echo "sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Download signed APKs
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: SecurePay-*
-          merge-multiple: true
-
-      - name: Package APKs into one asset
-        uses: actions/upload-artifact@v4
-        with:
-          name: SecurePay-Release-APKs-${{ steps.meta.outputs.sha }}
-          path: dist/*.apk
-          if-no-files-found: error
-          retention-days: 30
