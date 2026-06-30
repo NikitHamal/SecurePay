@@ -5,6 +5,7 @@
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
   import { fade } from 'svelte/transition';
+  import { getAccountLocations } from '$lib/api/client';
 
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
@@ -86,6 +87,25 @@
       if (editing) { cancelEditing(); }
       else { onClose(); }
     }
+  }
+
+  let locations: any[] = [];
+  let loadingLocations = false;
+
+  async function loadLocations(id: string) {
+    loadingLocations = true;
+    try {
+      locations = await getAccountLocations(id);
+    } catch (e) {
+      console.error('Failed to load locations', e);
+      locations = [];
+    } finally {
+      loadingLocations = false;
+    }
+  }
+
+  $: if (customerId) {
+    loadLocations(customerId);
   }
 </script>
 
@@ -261,6 +281,63 @@
             {/if}
           </div>
         </div>
+
+        {#if customer.status === 'STOLEN' || locations.length > 0}
+          <div class="card mt-4 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <p class="section-title">Last Known Location</p>
+              {#if loadingLocations}
+                <span class="text-2xs text-ink-muted">Loading...</span>
+              {:else if locations.length > 0}
+                <span class="text-2xs text-emerald font-semibold uppercase tracking-wide">Active</span>
+              {/if}
+            </div>
+            
+            {#if locations.length > 0}
+              {@const latest = locations[0]}
+              <div class="grid grid-cols-1 gap-3 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-ink-secondary">Coordinates</span>
+                  <span class="font-mono text-ink-primary font-medium">
+                    {latest.latitude.toFixed(6)}, {latest.longitude.toFixed(6)}
+                  </span>
+                </div>
+                {#if latest.accuracy !== null}
+                  <div class="flex items-center justify-between">
+                    <span class="text-ink-secondary">Accuracy</span>
+                    <span class="text-ink-primary font-medium">±{latest.accuracy.toFixed(1)}m</span>
+                  </div>
+                {/if}
+                {#if latest.batteryLevel !== null}
+                  <div class="flex items-center justify-between">
+                    <span class="text-ink-secondary">Battery Level</span>
+                    <span class="text-ink-primary font-medium">{latest.batteryLevel}%</span>
+                  </div>
+                {/if}
+                <div class="flex items-center justify-between">
+                  <span class="text-ink-secondary">Updated At</span>
+                  <span class="text-ink-primary font-medium">{formatDate(latest.timestamp * 1000)}</span>
+                </div>
+                
+                <div class="mt-2">
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query={latest.latitude},{latest.longitude}"
+                    target="_blank"
+                    class="btn-primary w-full text-center flex items-center justify-center gap-2"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Open in Google Maps
+                  </a>
+                </div>
+              </div>
+            {:else if !loadingLocations}
+              <p class="text-2xs text-ink-muted">No location logs available yet.</p>
+            {/if}
+          </div>
+        {/if}
 
         {#if customer.customerPhotoPath || customer.nationalIdFrontPath || customer.nationalIdBackPath}
           <div class="card mt-4 p-5">

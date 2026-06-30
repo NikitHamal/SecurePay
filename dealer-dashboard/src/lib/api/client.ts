@@ -84,6 +84,18 @@ export async function getAccount(id: string): Promise<Customer> {
   return request<Customer>(`/accounts/${id}`);
 }
 
+export async function getAccountLocations(id: string): Promise<{
+  id: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  batteryLevel: number | null;
+  timestamp: number;
+}[]> {
+  return request(`/accounts/${id}/location`);
+}
+
+
 export async function createAccount(data: {
   customerName: string;
   nationalId: string;
