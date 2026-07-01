@@ -55,6 +55,8 @@ import com.touchbase.user.data.model.formatCentsAsCurrency
 import com.touchbase.user.ui.DeviceUiState
 import com.touchbase.user.ui.components.StatusBadge
 import com.touchbase.user.ui.components.statusColor
+import com.touchbase.user.ui.components.ButtonText
+
 import com.touchbase.user.ui.theme.Amber
 import com.touchbase.user.ui.theme.CharcoalElevated
 import com.touchbase.user.ui.theme.Crimson
@@ -94,7 +96,7 @@ fun DashboardScreen(
                     ) {
                         Icon(Icons.Filled.Receipt, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text("History", fontWeight = FontWeight.Medium)
+                        ButtonText("History", fontWeight = FontWeight.Medium)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -304,7 +306,7 @@ private fun PaymentTrigger(isProcessing: Boolean, onClick: () -> Unit) {
         } else {
             Icon(Icons.Filled.Bolt, contentDescription = null)
             Spacer(Modifier.size(8.dp))
-            Text("Check for Updates", fontWeight = FontWeight.SemiBold)
+            ButtonText("Check Updates", fontWeight = FontWeight.SemiBold)
         }
     }
 }

@@ -58,6 +58,8 @@ import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.StepIndicator
+import com.touchbase.agent.ui.components.ButtonText
+
 import com.touchbase.agent.ui.enrollment.steps.KycStep
 import com.touchbase.agent.ui.enrollment.steps.PlanStep
 import com.touchbase.agent.ui.enrollment.steps.ScannerStep
@@ -223,7 +225,7 @@ private fun WizardControls(
             enabled = !state.isSubmitting,
             modifier = Modifier.weight(1f).height(52.dp)
         ) {
-            Text(stringResource(R.string.action_back), color = MaterialTheme.colorScheme.onBackground)
+            ButtonText(stringResource(R.string.action_back), color = MaterialTheme.colorScheme.onBackground)
         }
 
         if (state.isLastStep) {
@@ -239,7 +241,7 @@ private fun WizardControls(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-                Text(stringResource(R.string.action_submit))
+                ButtonText(stringResource(R.string.action_submit))
             }
         } else {
             Button(
@@ -247,7 +249,7 @@ private fun WizardControls(
                 enabled = state.isCurrentStepValid,
                 modifier = Modifier.weight(1f).height(52.dp)
             ) {
-                Text(stringResource(R.string.action_next))
+                ButtonText(stringResource(R.string.action_next))
             }
         }
     }
@@ -287,10 +289,10 @@ private fun EnrollmentSuccess(
             enabled = imei.length == 15,
             modifier = Modifier.padding(top = 16.dp)
         ) {
-            Text("Provision this device")
+            ButtonText("Provision this device")
         }
         OutlinedButton(onClick = onDone) {
-            Text("Done")
+            ButtonText("Done")
         }
     }
 }

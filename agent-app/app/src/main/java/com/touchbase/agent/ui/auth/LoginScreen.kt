@@ -1,5 +1,7 @@
 package com.touchbase.agent.ui.auth
 
+
+import com.touchbase.agent.ui.components.ButtonText
 import android.app.Activity
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.Canvas
@@ -325,7 +327,7 @@ fun LoginScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             } else {
-                                Text(
+                                ButtonText(
                                     text = "Sign In",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onPrimary

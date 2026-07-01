@@ -84,6 +84,8 @@ import com.touchbase.agent.R
 import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.SecurePayBottomNavBar
+import com.touchbase.agent.ui.components.ButtonText
+
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import kotlinx.coroutines.launch
@@ -468,7 +470,7 @@ private fun AddDeviceBottomSheet(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
-            ) { Text("Add") }
+            ) { ButtonText("Add") }
         }
     }
 }

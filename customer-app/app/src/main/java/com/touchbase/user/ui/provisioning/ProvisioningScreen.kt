@@ -1,5 +1,7 @@
 package com.touchbase.user.ui.provisioning
 
+
+import com.touchbase.user.ui.components.ButtonText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -282,7 +284,7 @@ private fun ProvisioningActions(
             ) {
                 Icon(Icons.Filled.Security, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Open legacy Device Owner setup", fontWeight = FontWeight.SemiBold)
+                ButtonText("Legacy DO Setup", fontWeight = FontWeight.SemiBold)
             }
             Text(
                 text = "On Android 12+ this button is intentionally unavailable. Use the dealer QR from Setup Wizard instead.",
@@ -321,7 +323,7 @@ private fun ProvisioningActions(
                     strokeWidth = 2.dp
                 )
             } else {
-                Text("Run Security Check", fontWeight = FontWeight.Medium)
+                ButtonText("Run Security Check", fontWeight = FontWeight.Medium)
             }
         }
     }

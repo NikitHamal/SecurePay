@@ -99,6 +99,8 @@ import com.touchbase.agent.data.model.KpiSummary
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.SecurePayBottomNavBar
+import com.touchbase.agent.ui.components.ButtonText
+
 import com.touchbase.agent.ui.theme.Poppins
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
@@ -1140,7 +1142,7 @@ fun CollectionOverviewCard(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Text(
+                            ButtonText(
                                 text = "Sync",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                             )
@@ -1168,7 +1170,7 @@ fun CollectionOverviewCard(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Text(
+                            ButtonText(
                                 text = "Record",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                             )
