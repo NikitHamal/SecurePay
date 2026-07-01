@@ -1,5 +1,7 @@
 package com.touchbase.user.ui.release
 
+
+import com.touchbase.user.ui.components.ButtonText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -101,11 +103,11 @@ fun ReleaseApprovedScreen(
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (managementReleased) "Remove TB User" else "Management removal pending")
+                ButtonText(if (managementReleased) "Remove TB User" else "Management removal pending")
             }
             Spacer(Modifier.height(10.dp))
             OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
-                Text("Refresh release status")
+                ButtonText("Refresh")
             }
         }
     }

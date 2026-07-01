@@ -1,5 +1,7 @@
 package com.touchbase.agent.ui.customers
 
+
+import com.touchbase.agent.ui.components.ButtonText
 import android.app.Activity
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
@@ -322,14 +324,14 @@ fun CustomerDetailScreen(
                                 shape = RoundedCornerShape(360.dp)
                             ) {
                                 if (isSaving) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                else Text("Save")
+                                else ButtonText("Save")
                             }
                             OutlinedButton(
                                 onClick = { cancelEditing() },
                                 modifier = Modifier.weight(1f).height(48.dp),
                                 shape = RoundedCornerShape(360.dp)
                             ) {
-                                Text("Cancel")
+                                ButtonText("Cancel")
                             }
                         }
                     }
@@ -375,7 +377,7 @@ fun CustomerDetailScreen(
                 ) {
                     Icon(Icons.Filled.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Record")
+                    ButtonText("Record")
                 }
 
                 if (acc.status == AccountStatus.LOCKED) {
@@ -397,7 +399,7 @@ fun CustomerDetailScreen(
                     ) {
                         Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unlock")
+                        ButtonText("Unlock")
                     }
                 } else {
                     OutlinedButton(
@@ -418,7 +420,7 @@ fun CustomerDetailScreen(
                     ) {
                         Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Force Lock")
+                        ButtonText("Force Lock")
                     }
                 }
             }
@@ -434,7 +436,7 @@ fun CustomerDetailScreen(
             ) {
                 Icon(Icons.Filled.QrCode2, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Re-provision / Generate QR")
+                ButtonText("Regenerate QR")
             }
 
             OutlinedButton(
@@ -453,7 +455,7 @@ fun CustomerDetailScreen(
             ) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (acc.remainingBalance > 0) "Release app (settlement)" else "Approve app removal")
+                ButtonText(if (acc.remainingBalance > 0) "Approve Release" else "Approve Removal")
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -481,7 +483,7 @@ fun CustomerDetailScreen(
                     ),
                     shape = RoundedCornerShape(360.dp)
                 ) {
-                    Text(if (acc.isStolen) "Unflag Stolen" else "Flag as Stolen")
+                    ButtonText(if (acc.isStolen) "Unflag Stolen" else "Flag as Stolen")
                 }
 
                 OutlinedButton(
@@ -498,7 +500,7 @@ fun CustomerDetailScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     shape = RoundedCornerShape(360.dp)
                 ) {
-                    Text("Delete Account")
+                    ButtonText("Delete")
                 }
             }
 
@@ -696,7 +698,7 @@ private fun PaymentBottomSheet(
                             shape = RoundedCornerShape(360.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text(if (m == "MOBILE_MONEY") "MOBILE MONEY" else m, style = MaterialTheme.typography.labelMedium)
+                            ButtonText(if (m == "MOBILE_MONEY") "MOBILE MONEY" else m, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -752,7 +754,7 @@ private fun PaymentBottomSheet(
                 shape = RoundedCornerShape(360.dp)
             ) {
                 if (isSubmitting) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                else Text("Record Payment")
+                else ButtonText("Record")
             }
         }
     }

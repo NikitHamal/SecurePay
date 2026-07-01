@@ -1,5 +1,7 @@
 package com.touchbase.agent.ui.enrollment.steps
 
+
+import com.touchbase.agent.ui.components.ButtonText
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -142,7 +144,7 @@ fun ScannerStep(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                            Text(stringResource(R.string.action_grant_camera))
+                            ButtonText(stringResource(R.string.action_grant_camera))
                         }
                     }
                 }

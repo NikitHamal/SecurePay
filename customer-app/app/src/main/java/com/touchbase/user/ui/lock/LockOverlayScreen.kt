@@ -1,5 +1,7 @@
 package com.touchbase.user.ui.lock
 
+
+import com.touchbase.user.ui.components.ButtonText
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -132,7 +134,7 @@ fun LockOverlayScreen(
             ) {
                 Icon(Icons.Filled.Phone, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("Emergency Calls", fontWeight = FontWeight.SemiBold)
+                ButtonText("Emergency Calls", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(Modifier.height(14.dp))
@@ -157,7 +159,7 @@ fun LockOverlayScreen(
                 } else {
                     Icon(Icons.Filled.Schedule, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    Text("Sync & Recheck Status", fontWeight = FontWeight.SemiBold)
+                    ButtonText("Sync Now", fontWeight = FontWeight.SemiBold)
                 }
             }
 

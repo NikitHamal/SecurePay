@@ -1,5 +1,7 @@
 package com.touchbase.agent.ui.enrollment.steps
 
+
+import com.touchbase.agent.ui.components.ButtonText
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -285,13 +287,13 @@ fun KycPhotoSelector(
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     ) {
-                        Text("Camera", style = MaterialTheme.typography.labelSmall)
+                        ButtonText("Camera", style = MaterialTheme.typography.labelSmall)
                     }
                     FilledTonalButton(
                         onClick = { galleryLauncher.launch("image/*") },
                         modifier = Modifier.height(34.dp)
                     ) {
-                        Text("Gallery", style = MaterialTheme.typography.labelSmall)
+                        ButtonText("Gallery", style = MaterialTheme.typography.labelSmall)
                     }
                     if (base64 != null) {
                         FilledTonalButton(
@@ -302,7 +304,7 @@ fun KycPhotoSelector(
                                 contentColor = MaterialTheme.colorScheme.onErrorContainer
                             )
                         ) {
-                            Text("Clear", style = MaterialTheme.typography.labelSmall)
+                            ButtonText("Clear", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }

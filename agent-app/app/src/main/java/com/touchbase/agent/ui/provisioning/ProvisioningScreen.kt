@@ -1,5 +1,7 @@
 package com.touchbase.agent.ui.provisioning
 
+
+import com.touchbase.agent.ui.components.ButtonText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -239,7 +241,7 @@ private fun QrFormSection(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(
+                    ButtonText(
                         "Generate QR",
                         fontWeight = FontWeight.SemiBold
                     )
@@ -352,7 +354,7 @@ private fun QrDisplaySection(
             disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
         )
     ) {
-        Text("Done", fontWeight = FontWeight.SemiBold)
+        ButtonText("Done", fontWeight = FontWeight.SemiBold)
     }
 }
 

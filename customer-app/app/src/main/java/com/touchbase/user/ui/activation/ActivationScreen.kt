@@ -1,5 +1,7 @@
 package com.touchbase.user.ui.activation
 
+
+import com.touchbase.user.ui.components.ButtonText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -147,7 +149,7 @@ fun ActivationScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Activate", fontWeight = FontWeight.SemiBold)
+                    ButtonText("Activate", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
