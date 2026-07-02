@@ -90,7 +90,9 @@ data class EnrollmentUiState(
             val effectiveTotal = if (totalAmountCents > 0) totalAmountCents
                 else selectedPlan?.totalAmount ?: 0
             val effectiveMin = selectedPlan?.minDownPayment ?: 0
-            return valueCents in effectiveMin..maxOf(effectiveTotal, 1)
+            val rangeEnd = maxOf(effectiveTotal, 1)
+            if (effectiveMin > rangeEnd) return false
+            return valueCents in effectiveMin..rangeEnd
         }
 
     val isKycStepValid: Boolean get() = isNameValid && isNationalIdValid && isPhoneValid &&
