@@ -196,6 +196,7 @@ export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
   }
 
   await db.batch([
+    db.prepare('DELETE FROM location_logs WHERE account_id = ?').bind(params.id),
     db.prepare('DELETE FROM provisioning_tokens WHERE account_id = ?').bind(params.id),
     db.prepare('DELETE FROM payments WHERE account_id = ?').bind(params.id),
     db.prepare('DELETE FROM lock_events WHERE account_id = ?').bind(params.id),
