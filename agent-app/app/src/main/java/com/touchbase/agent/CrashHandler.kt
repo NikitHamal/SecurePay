@@ -39,7 +39,7 @@ class CrashHandler(private val app: Application) : Thread.UncaughtExceptionHandl
             .putString(KEY_DEVICE, "${Build.MANUFACTURER} ${Build.MODEL}")
             .putInt(KEY_API, Build.VERSION.SDK_INT)
             .putBoolean(KEY_SHOWING_CRASH, false)
-            .apply()
+            .commit()
 
         try {
             val intent = app.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
