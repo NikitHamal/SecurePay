@@ -195,9 +195,13 @@ class EnrollmentViewModel(
     }
 
     fun nextStep() = _uiState.update { state ->
-        if (state.isCurrentStepValid && !state.isLastStep) {
-            state.copy(stepIndex = state.stepIndex + 1)
-        } else {
+        try {
+            if (state.isCurrentStepValid && !state.isLastStep) {
+                state.copy(stepIndex = state.stepIndex + 1)
+            } else {
+                state
+            }
+        } catch (_: Exception) {
             state
         }
     }

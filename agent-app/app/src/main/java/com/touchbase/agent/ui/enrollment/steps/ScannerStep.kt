@@ -45,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -314,7 +315,8 @@ private fun CameraPreview(
     }
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val analyzer = remember { BarcodeAnalyzer(onBarcodeDetected) }
+    val currentCallback = rememberUpdatedState(onBarcodeDetected)
+    val analyzer = remember { BarcodeAnalyzer { currentCallback.value(it) } }
     val executor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(lifecycleOwner) {
@@ -338,10 +340,17 @@ private fun CameraPreview(
         onDispose {
             analyzer.stop()
             imageAnalysis.clearAnalyzer()
+            executor.shutdown()
+            try {
+                if (!executor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
+                    executor.shutdownNow()
+                }
+            } catch (_: InterruptedException) {
+                executor.shutdownNow()
+            }
             try {
                 provider.unbindAll()
             } catch (_: Exception) {}
-            executor.shutdown()
         }
     }
 
