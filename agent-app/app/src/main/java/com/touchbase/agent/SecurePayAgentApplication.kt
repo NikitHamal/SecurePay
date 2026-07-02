@@ -20,6 +20,7 @@ class SecurePayAgentApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Thread.setDefaultUncaughtExceptionHandler(CrashHandler(this))
         securityReport = SecurityChecker.runAllChecks(this)
     }
 }
