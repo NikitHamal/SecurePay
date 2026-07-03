@@ -216,8 +216,14 @@ fun InventoryScreen(
                     onDelete = {
                         if (repository != null) {
                             scope.launch {
-                                repository.deleteDevice(device.id)
-                                load()
+                                val result = repository.deleteDevice(device.id)
+                                result.fold(
+                                    onSuccess = { load() },
+                                    onFailure = {
+                                        error = it.message
+                                        load()
+                                    }
+                                )
                             }
                         }
                     }

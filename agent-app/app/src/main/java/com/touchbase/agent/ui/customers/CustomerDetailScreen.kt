@@ -490,9 +490,12 @@ fun CustomerDetailScreen(
                     onClick = {
                         actionInProgress = true
                         scope.launch {
-                            repository?.deleteAccount(acc.id)
+                            val result = repository?.deleteAccount(acc.id)
                             actionInProgress = false
-                            onBack()
+                            result?.fold(
+                                onSuccess = { onBack() },
+                                onFailure = { error = it.message }
+                            ) ?: onBack()
                         }
                     },
                     modifier = Modifier.weight(1f).height(48.dp),

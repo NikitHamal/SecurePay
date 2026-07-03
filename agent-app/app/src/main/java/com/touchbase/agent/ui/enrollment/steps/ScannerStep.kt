@@ -1,7 +1,5 @@
 package com.touchbase.agent.ui.enrollment.steps
 
-
-import com.touchbase.agent.ui.components.ButtonText
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -12,13 +10,10 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,15 +25,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +56,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.Color
@@ -63,9 +63,8 @@ import androidx.core.content.ContextCompat
 import com.touchbase.agent.R
 import com.touchbase.agent.ui.enrollment.DeviceLookupStatus
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
-import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
-import com.touchbase.agent.ui.enrollment.EnrollmentDraft
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import java.util.concurrent.Executors
 
 @Composable
@@ -75,83 +74,12 @@ fun ScannerStep(
     onDeviceModelChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
-    var hasCameraPermission by remember {
-        mutableStateOf(hasCameraPermission(context))
-    }
-    var scanFlash by remember { mutableStateOf(false) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasCameraPermission = granted
-    }
-
-    val flashColor by animateColorAsState(
-        if (scanFlash) MaterialTheme.colorScheme.primary else Color.Transparent,
-        label = "scanFlash"
-    )
-
-    LaunchedEffect(scanFlash) {
-        if (scanFlash) {
-            kotlinx.coroutines.delay(400)
-            scanFlash = false
-        }
-    }
+    var showScanner by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .then(
-                        if (scanFlash) Modifier.border(3.dp, flashColor, RoundedCornerShape(12.dp))
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (hasCameraPermission) {
-                    CameraPreview(
-                        onBarcodeDetected = { value ->
-                            val digits = value.filter { it.isDigit() }
-                            if (digits.length == 15 && digits.all { it.isDigit() }) {
-                                if (digits != state.draft.imei) {
-                                    onImeiChange(digits)
-                                    scanFlash = true
-                                }
-                            }
-                        }
-                    )
-                } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.camera_permission_rationale),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                            ButtonText(stringResource(R.string.action_grant_camera))
-                        }
-                    }
-                }
-            }
-        }
-
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.label_imei), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
@@ -177,6 +105,20 @@ fun ScannerStep(
                 ),
                 shape = RoundedCornerShape(360.dp)
             )
+        }
+
+        Button(
+            onClick = { showScanner = true },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(360.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Icon(Icons.Filled.QrCode2, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Scan IMEI Barcode", style = MaterialTheme.typography.labelLarge)
         }
 
         DeviceLookupChip(lookupStatus = state.deviceLookupStatus)
@@ -209,6 +151,102 @@ fun ScannerStep(
             )
             if (isModelFromInventory) {
                 Text("Auto-filled from inventory", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+
+    if (showScanner) {
+        ScannerBottomSheet(
+            onScan = { scanned ->
+                onImeiChange(scanned)
+                showScanner = false
+            },
+            onDismiss = { showScanner = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScannerBottomSheet(
+    onScan: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var hasCameraPermission by remember { mutableStateOf(hasCameraPermission(context)) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted -> hasCameraPermission = granted }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp, top = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "Scan Device IMEI",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            if (hasCameraPermission) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(4f / 3f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CameraPreview(
+                        onBarcodeDetected = { value ->
+                            val digits = value.filter { it.isDigit() }
+                            if (digits.length == 15) {
+                                onScan(digits)
+                            }
+                        }
+                    )
+                }
+                Text(
+                    "Point camera at the barcode",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text(
+                        "Camera permission is required to scan IMEI",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Button(
+                        onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                        shape = RoundedCornerShape(360.dp)
+                    ) {
+                        Text("Grant Permission")
+                    }
+                }
+            }
+
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(360.dp)
+            ) {
+                Text("Cancel")
             }
         }
     }
@@ -320,7 +358,11 @@ private fun CameraPreview(
     val executor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(lifecycleOwner) {
-        val provider = cameraProviderFuture.get()
+        val provider = try { cameraProviderFuture.get() } catch (_: Exception) { null }
+        if (provider == null) {
+            onDispose { }
+            return@DisposableEffect
+        }
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
