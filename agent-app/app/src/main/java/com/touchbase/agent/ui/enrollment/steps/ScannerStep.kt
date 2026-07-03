@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.touchbase.agent.R
 import com.touchbase.agent.ui.enrollment.DeviceLookupStatus
+import com.touchbase.agent.ui.enrollment.EnrollmentDraft
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
@@ -359,29 +361,26 @@ private fun CameraPreview(
 
     DisposableEffect(lifecycleOwner) {
         val provider = try { cameraProviderFuture.get() } catch (_: Exception) { null }
-        if (provider == null) {
-            onDispose { }
-            return@DisposableEffect
-        }
-        val preview = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
-        }
-        val imageAnalysis = ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-            .also {
-                it.setAnalyzer(executor, analyzer)
+        if (provider != null) {
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
             }
-        val selector = CameraSelector.DEFAULT_BACK_CAMERA
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also {
+                    it.setAnalyzer(executor, analyzer)
+                }
+            val selector = CameraSelector.DEFAULT_BACK_CAMERA
 
-        try {
-            provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
-        } catch (_: Exception) { }
+            try {
+                provider.unbindAll()
+                provider.bindToLifecycle(lifecycleOwner, selector, preview, imageAnalysis)
+            } catch (_: Exception) { }
+        }
 
         onDispose {
             analyzer.stop()
-            imageAnalysis.clearAnalyzer()
             executor.shutdown()
             try {
                 if (!executor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
@@ -391,7 +390,7 @@ private fun CameraPreview(
                 executor.shutdownNow()
             }
             try {
-                provider.unbindAll()
+                provider?.unbindAll()
             } catch (_: Exception) {}
         }
     }
