@@ -83,10 +83,9 @@ object ProvisioningFinalizer {
     fun buildSetupWizardResult(): Intent = Intent().apply {
         // Defensive: explicitly declare compliance. Not required on stock Android
         // (RESULT_OK implies compliant by default), but some OEM skins may inspect it.
-        putExtra(
-            DevicePolicyManager.EXTRA_PROVISIONING_COMPLIANCE_STATUS,
-            DevicePolicyManager.COMPLIANCE_STATUS_COMPLIANT
-        )
+        // Using string literal because DevicePolicyManager.EXTRA_PROVISIONING_COMPLIANCE_STATUS
+        // is only available at compileSdk 35+; our compileSdk is 34.
+        putExtra("android.app.extra.PROVISIONING_COMPLIANCE_STATUS", 0)
     }
 
     private fun waitForDeviceOwner(dpm: DevicePolicyManager, packageName: String): Boolean {
