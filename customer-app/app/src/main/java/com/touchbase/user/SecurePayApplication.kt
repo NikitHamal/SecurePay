@@ -80,15 +80,18 @@ class SecurePayApplication : Application() {
         runCatching {
             if (FirebaseApp.getApps(this).isEmpty()) {
                 val projectId = BuildConfig.FCM_PROJECT_ID
-                if (projectId.isNotBlank()) {
+                val appId = BuildConfig.FCM_APPLICATION_ID
+                if (projectId.isNotBlank() && appId.isNotBlank()) {
                     val options = FirebaseOptions.Builder()
                         .setProjectId(projectId)
                         .setApiKey(BuildConfig.FCM_API_KEY)
-                        .setApplicationId("1:${BuildConfig.FCM_SENDER_ID}:android:2d9fc26c70e61185a72dd6")
+                        .setApplicationId(appId)
                         .setGcmSenderId(BuildConfig.FCM_SENDER_ID)
                         .build()
                     FirebaseApp.initializeApp(this, options)
                     SecureLog.i(TAG, "Firebase initialized for project $projectId")
+                } else {
+                    SecureLog.w(TAG, "Firebase skipped: FCM_PROJECT_ID or FCM_APPLICATION_ID not configured")
                 }
             }
         }.onFailure { SecureLog.w(TAG, "Firebase initialization skipped", it) }

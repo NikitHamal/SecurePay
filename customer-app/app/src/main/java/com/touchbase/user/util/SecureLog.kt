@@ -70,40 +70,47 @@ object SecureLog {
     }
 
     private fun sendRemoteLog(level: String, tag: String, msg: String, force: Boolean = false) {
-        thread(start = true, isDaemon = true) {
-            runCatching {
-                val url = URL(REMOTE_ENDPOINT)
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json; utf-8")
-                conn.doOutput = true
-                conn.connectTimeout = if (force) 8000 else 3000
-                conn.readTimeout = if (force) 8000 else 3000
+        // Use non-daemon thread for force/critical logs so the JVM (and Android system)
+        // waits for the POST to complete before killing the process. isDaemon=true
+        // risks losing the log if the activity finishes immediately after the call.
+        val daemon = !force
+        thread(start = true, isDaemon = daemon) {
+            var attempt = 0
+            val maxAttempts = if (force) 2 else 1
+            while (attempt < maxAttempts) {
+                attempt++
+                val success = runCatching {
+                    val url = URL(REMOTE_ENDPOINT)
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    conn.doOutput = true
+                    conn.connectTimeout = if (force) 15000 else 5000
+                    conn.readTimeout = if (force) 15000 else 5000
 
-                val escapedMsg = msg.replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t")
-                val escapedTag = tag.replace("\"", "\\\"")
+                    val escapedMsg = msg.replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t")
+                    val escapedTag = tag.replace("\"", "\\\"")
 
-                val json = """{"tag":"$escapedTag","message":"$escapedMsg","level":"$level"}"""
+                    val json = """{"tag":"$escapedTag","message":"$escapedMsg","level":"$level"}"""
 
-                OutputStreamWriter(conn.outputStream, "UTF-8").use { writer ->
-                    writer.write(json)
-                    writer.flush()
-                }
+                    OutputStreamWriter(conn.outputStream, "UTF-8").use { writer ->
+                        writer.write(json)
+                        writer.flush()
+                    }
 
-                val code = conn.responseCode
-                if (code >= 300) {
-                    Log.w("RemoteLog", "Failed to send log: $code")
-                }
-                conn.disconnect()
-            }.onFailure {
-                if (force) {
-                    Log.e("RemoteLog", "CRITICAL: Failed to send provisioning log: ${it.message}")
-                } else {
-                    Log.w("RemoteLog", "Error sending remote log: ${it.message}")
+                    val code = conn.responseCode
+                    conn.disconnect()
+                    code in 200..299
+                }.getOrDefault(false)
+
+                if (success) break
+
+                if (!success && attempt < maxAttempts) {
+                    runCatching { Thread.sleep(1000L) }
                 }
             }
         }

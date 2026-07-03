@@ -17,26 +17,18 @@ class PolicyComplianceActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val finalizerResult = runCatching {
-            ProvisioningFinalizer.finalizeProvisioning(
-                context = this,
-                sourceIntent = intent,
-                stage = "ADMIN_POLICY_COMPLIANCE"
-            )
-        }.onFailure {
-            SecureLog.provisioningError(TAG, "Provisioning finalizer failed during compliance", it)
-            runCatching { ProvisioningExtrasStore.recordStage(this, "ADMIN_POLICY_COMPLIANCE_FINALIZER_FAILED") }
-        }.getOrNull()
-
+        // CRITICAL: Samsung Knox (Android 14–16 / One UI 6–7) strictly forbids ANY
+        // DevicePolicyManager access inside ADMIN_POLICY_COMPLIANCE. A single DPM
+        // read (isDeviceOwnerApp / isAdminActive) aborts the entire flow with
+        // "Something went wrong". We therefore do the absolute minimum here:
+        // record the stage, persist the admin extras, and return RESULT_OK.
+        // All DPM checks and policy application are deferred to
+        // PROVISIONING_SUCCESSFUL or MainActivity.onCreate().
         runCatching {
-            ProvisioningExtrasStore.recordStage(
-                this,
-                when {
-                    finalizerResult?.isDeviceOwner == true -> "ADMIN_POLICY_COMPLIANT_DEVICE_OWNER"
-                    finalizerResult?.isAdminActive == true -> "ADMIN_POLICY_COMPLIANT_ADMIN_ONLY"
-                    else -> "ADMIN_POLICY_COMPLIANT_NO_ADMIN"
-                }
-            )
+            ProvisioningExtrasStore.recordStage(this, "ADMIN_POLICY_COMPLIANCE")
+            ProvisioningExtrasStore.persistFromIntent(this, intent)
+        }.onFailure {
+            SecureLog.provisioningError(TAG, "Stage/extras persistence failed during compliance", it)
         }
 
         // Do not launch UI or perform network work while Setup Wizard is waiting

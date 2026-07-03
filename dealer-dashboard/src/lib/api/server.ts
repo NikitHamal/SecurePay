@@ -280,6 +280,13 @@ export function buildQrPayload({
       securityPolicyVersion: String(securityPolicy?.version ?? 0)
     }
   };
+
+  // Samsung Knox (One UI 6–7, Android 14–16) requires the signing certificate
+  // checksum in the QR payload. Without it, Setup Wizard aborts with
+  // "Something went wrong". The CI publishes this in latest.json.
+  if (apk.signatureChecksumBase64) {
+    payload['android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM'] = apk.signatureChecksumBase64;
+  }
   const ssid = wifiSsid?.trim();
   if (ssid) {
     payload['android.app.extra.PROVISIONING_WIFI_SSID'] = ssid;

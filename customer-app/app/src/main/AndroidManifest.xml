@@ -52,7 +52,8 @@
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"
-            
+            android:resizeableActivity="false"
+            android:launchMode="singleTop"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.app.action.GET_PROVISIONING_MODE" />
@@ -66,7 +67,8 @@
             android:exported="true"
             android:excludeFromRecents="true"
             android:directBootAware="true"
-            
+            android:resizeableActivity="false"
+            android:launchMode="singleTop"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
@@ -114,6 +116,7 @@
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
                 <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
+                <action android:name="android.app.action.PROVISIONING_COMPLETE" />
             </intent-filter>
         </receiver>
 

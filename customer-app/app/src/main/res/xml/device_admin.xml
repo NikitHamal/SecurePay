@@ -5,8 +5,6 @@
         <wipe-data />
         <reset-password />
         <limit-password />
-        <watch-login />
-        <encrypted-storage />
         <disable-camera />
     </uses-policies>
 </device-admin>

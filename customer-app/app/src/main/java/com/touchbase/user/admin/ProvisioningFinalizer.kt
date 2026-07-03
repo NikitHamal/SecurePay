@@ -21,9 +21,9 @@ object ProvisioningFinalizer {
         val isAdminActive: Boolean
     )
 
-    fun finalizeProvisioning(context: Context, sourceIntent: Intent?, stage: String): Result {
+    fun finalizeProvisioning(context: Context, sourceIntent: Intent?, stage: String, allowDpmCalls: Boolean = true): Result {
         val appContext = context.applicationContext
-        
+
         runCatching {
             ProvisioningExtrasStore.recordStage(appContext, stage)
         }.onFailure {
@@ -34,6 +34,14 @@ object ProvisioningFinalizer {
             ProvisioningExtrasStore.persistFromIntent(appContext, sourceIntent)
         }.onFailure {
             SecureLog.provisioningError(TAG, "persistFromIntent failed", it)
+        }
+
+        // Samsung Knox (One UI 6–7, Android 14–16) crashes the entire provisioning
+        // flow if DevicePolicyManager is accessed during ADMIN_POLICY_COMPLIANCE.
+        // Callers from that callback MUST pass allowDpmCalls=false.
+        if (!allowDpmCalls) {
+            SecureLog.i(TAG, "finalizeProvisioning: DPM calls skipped (compliance stage)")
+            return Result(isDeviceOwner = false, isAdminActive = false)
         }
 
         val dpm = appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -72,7 +80,14 @@ object ProvisioningFinalizer {
         return Result(isDeviceOwner = owner, isAdminActive = adminActive)
     }
 
-    fun buildSetupWizardResult(): Intent = Intent()
+    fun buildSetupWizardResult(): Intent = Intent().apply {
+        // Defensive: explicitly declare compliance. Not required on stock Android
+        // (RESULT_OK implies compliant by default), but some OEM skins may inspect it.
+        putExtra(
+            DevicePolicyManager.EXTRA_PROVISIONING_COMPLIANCE_STATUS,
+            DevicePolicyManager.COMPLIANCE_STATUS_COMPLIANT
+        )
+    }
 
     private fun waitForDeviceOwner(dpm: DevicePolicyManager, packageName: String): Boolean {
         repeat(3) { attempt ->

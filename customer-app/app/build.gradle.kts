@@ -29,6 +29,7 @@ android {
             buildConfigField("String", "FCM_PROJECT_ID", "\"spay-fintech\"")
             buildConfigField("String", "FCM_API_KEY", "\"AIzaSyARxW2ltAOVQGbjL-qx6TC0HODLoNrtF2w\"")
             buildConfigField("String", "FCM_SENDER_ID", "\"1055815727331\"")
+            buildConfigField("String", "FCM_APPLICATION_ID", "\"\"")
         }
         release {
             isMinifyEnabled = true
@@ -39,6 +40,7 @@ android {
             buildConfigField("String", "FCM_PROJECT_ID", "\"${System.getenv("FCM_PROJECT_ID") ?: ""}\"")
             buildConfigField("String", "FCM_API_KEY", "\"${System.getenv("FCM_API_KEY") ?: ""}\"")
             buildConfigField("String", "FCM_SENDER_ID", "\"${System.getenv("FCM_SENDER_ID") ?: ""}\"")
+            buildConfigField("String", "FCM_APPLICATION_ID", "\"${System.getenv("FCM_APPLICATION_ID") ?: ""}\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
