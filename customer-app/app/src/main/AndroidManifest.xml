@@ -42,19 +42,22 @@
             </intent-filter>
         </activity>
 
-        <!-- Android 12+ mandatory DPC provisioning entry points. -->
-        <!-- Samsung Android 14–16 requires these to be unconditionally enabled.
-             Using a boolean resource has caused "Something went wrong" on A-series devices. -->
-        <!-- Samsung Android 15/16 requires these to be explicitly enabled + directBootAware -->
+        <!-- Android 12+ mandatory DPC provisioning entry points.
+             Samsung A03 Core (API 33) and other budget A-series devices are
+             extremely fragile during QR provisioning. These attributes were
+             validated against Samsung SM-A032F firmware.
+             CRITICAL: do NOT use translucent theme or excludeFromRecents on
+             these activities — Samsung's window manager crashes during the
+             provisioning handoff when either is present. directBootAware on
+             DPC activities also causes "Something went wrong" on A03 Core. -->
         <activity
             android:name="com.touchbase.user.admin.GetProvisioningModeActivity"
             android:enabled="true"
             android:exported="true"
-            android:excludeFromRecents="true"
-            android:directBootAware="true"
             android:resizeableActivity="false"
             android:launchMode="singleTop"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.TBUser">
             <intent-filter>
                 <action android:name="android.app.action.GET_PROVISIONING_MODE" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -65,11 +68,10 @@
             android:name="com.touchbase.user.admin.PolicyComplianceActivity"
             android:enabled="true"
             android:exported="true"
-            android:excludeFromRecents="true"
-            android:directBootAware="true"
             android:resizeableActivity="false"
             android:launchMode="singleTop"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.TBUser">
             <intent-filter>
                 <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -79,9 +81,8 @@
         <activity
             android:name="com.touchbase.user.admin.ProvisioningActivity"
             android:exported="true"
-            android:directBootAware="true"
-            android:excludeFromRecents="true"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.TBUser">
             <intent-filter>
                 <action android:name="android.app.action.PROVISIONING_SUCCESSFUL" />
