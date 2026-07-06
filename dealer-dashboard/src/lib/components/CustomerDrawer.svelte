@@ -6,7 +6,7 @@
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
   import Map from '$lib/components/ui/Map.svelte';
   import { fade } from 'svelte/transition';
-  import { getAccountLocations } from '$lib/api/client';
+  import { getAccountLocations, getToken } from '$lib/api/client';
 
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
@@ -147,7 +147,7 @@
         <div class="flex items-center gap-3 min-w-0">
           {#if customer.customerPhotoPath}
             <img 
-              src="/api/accounts/{customer.id}/photos/photo" 
+              src="/api/accounts/{customer.id}/photos/photo?token={getToken()}" 
               alt={customer.customerName} 
               class="h-12 w-12 shrink-0 rounded-xl object-cover border border-edge"
             />
@@ -392,9 +392,9 @@
             <div class="mt-4 flex flex-col gap-4">
               {#if customer.customerPhotoPath}
                 <div class="flex items-center gap-4">
-                  <a href="/api/accounts/{customer.id}/photos/photo" target="_blank" class="block shrink-0 rounded-full border border-edge shadow-sm overflow-hidden cursor-zoom-in">
+                  <a href="/api/accounts/{customer.id}/photos/photo?token={getToken()}" target="_blank" class="block shrink-0 rounded-full border border-edge shadow-sm overflow-hidden cursor-zoom-in">
                     <img 
-                      src="/api/accounts/{customer.id}/photos/photo" 
+                      src="/api/accounts/{customer.id}/photos/photo?token={getToken()}" 
                       alt="Customer Selfie" 
                       class="h-16 w-16 object-cover"
                     />
@@ -411,12 +411,12 @@
                   <div class="flex flex-col gap-1.5">
                     <span class="text-2xs font-semibold text-ink-secondary">ID Document Front</span>
                     <a 
-                      href="/api/accounts/{customer.id}/photos/id_front" 
+                      href="/api/accounts/{customer.id}/photos/id_front?token={getToken()}" 
                       target="_blank" 
                       class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
                     >
                       <img 
-                        src="/api/accounts/{customer.id}/photos/id_front" 
+                        src="/api/accounts/{customer.id}/photos/id_front?token={getToken()}" 
                         alt="ID Card Front" 
                         class="h-24 w-full object-cover hover:scale-105 transition duration-200"
                       />
@@ -428,12 +428,12 @@
                   <div class="flex flex-col gap-1.5">
                     <span class="text-2xs font-semibold text-ink-secondary">ID Document Back</span>
                     <a 
-                      href="/api/accounts/{customer.id}/photos/id_back" 
+                      href="/api/accounts/{customer.id}/photos/id_back?token={getToken()}" 
                       target="_blank" 
                       class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
                     >
                       <img 
-                        src="/api/accounts/{customer.id}/photos/id_back" 
+                        src="/api/accounts/{customer.id}/photos/id_back?token={getToken()}" 
                         alt="ID Card Back" 
                         class="h-24 w-full object-cover hover:scale-105 transition duration-200"
                       />

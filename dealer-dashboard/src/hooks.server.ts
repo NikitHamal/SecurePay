@@ -115,7 +115,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   const authHeader = event.request.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '');
+  let token = authHeader?.replace('Bearer ', '');
+  if (!token) {
+    token = requestUrl.searchParams.get('token') || undefined;
+  }
 
   if (token && event.platform?.env?.JWT_SECRET) {
     const dealer = verifyToken(token, event.platform.env.JWT_SECRET);

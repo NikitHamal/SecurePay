@@ -85,14 +85,27 @@ export async function getAccount(id: string): Promise<Customer> {
 }
 
 export async function getAccountLocations(id: string): Promise<{
-  id: string;
   latitude: number;
   longitude: number;
   accuracy: number | null;
   batteryLevel: number | null;
   timestamp: number;
 }[]> {
-  return request(`/accounts/${id}/location`);
+  try {
+    const data = await request<any>(`/accounts/${id}/location`);
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      return [{
+        latitude: Number(data.lat),
+        longitude: Number(data.lng),
+        accuracy: data.accuracy != null ? Number(data.accuracy) : null,
+        batteryLevel: data.battery != null ? Number(data.battery) : null,
+        timestamp: Number(data.timestamp)
+      }];
+    }
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    return [];
+  }
 }
 
 
