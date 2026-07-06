@@ -88,7 +88,17 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (termDays !== undefined) { updates.push('term_days = ?'); args.push(termDays); }
   if (nextPaymentDue !== undefined) { updates.push('next_payment_due = ?'); args.push(nextPaymentDue); }
   if (amountPaid !== undefined) { updates.push('amount_paid = ?'); args.push(amountPaid); }
-  if (isStolen !== undefined) { updates.push('is_stolen = ?'); args.push(isStolen ? 1 : 0); }
+  if (isStolen !== undefined) {
+    updates.push('is_stolen = ?');
+    args.push(isStolen ? 1 : 0);
+    if (isStolen) {
+      // A stolen device should lock on the next heartbeat even if the dealer did
+      // not separately press Force Lock. Unflagging does not auto-unlock; the
+      // dealer can use Force Unlock after recovery/verification.
+      updates.push('locked_by_dealer = ?');
+      args.push(1);
+    }
+  }
 
   // Helper to decode Base64 and upload to R2
   const uploadBase64ToR2 = async (base64Data: string | undefined | null, key: string): Promise<string | null> => {

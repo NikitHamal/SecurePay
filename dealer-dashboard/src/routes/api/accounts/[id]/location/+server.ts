@@ -24,10 +24,13 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
   }
 
   return json({
+    latitude: row.latitude,
+    longitude: row.longitude,
     lat: row.latitude,
     lng: row.longitude,
     accuracy: row.accuracy,
     battery: row.battery_level,
+    batteryLevel: row.battery_level,
     timestamp: row.timestamp
   });
 };

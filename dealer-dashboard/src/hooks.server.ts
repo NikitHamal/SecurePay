@@ -19,6 +19,10 @@ function parseBodyForAccount(body: string): { accountId: string; imei: string } 
     const parsed = JSON.parse(body) as Record<string, unknown>;
     const accountId = String(parsed.accountId ?? '').trim();
     const imei = String(parsed.imei ?? '').trim();
+
+    // Location uploads can be sent as either a single ping or an offline batch.
+    // Keep accountId/imei top-level so hooks can resolve the per-device HMAC
+    // secret before the route handler consumes the request body.
     if (accountId && /^\d{15}$/.test(imei)) return { accountId, imei };
   } catch {
     // Ignore malformed body here; the route will return the user-facing error.
@@ -65,8 +69,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const method = event.request.method;
     const urlPath = requestUrl.pathname + requestUrl.search;
-    const accountId = requestUrl.searchParams.get('accountId') ?? parseBodyForAccount(body)?.accountId ?? '';
-    const imei = requestUrl.searchParams.get('imei') ?? parseBodyForAccount(body)?.imei ?? '';
+    const bodyIdentity = parseBodyForAccount(body);
+    const accountId = String(requestUrl.searchParams.get('accountId') ?? bodyIdentity?.accountId ?? '').trim();
+    const imei = String(requestUrl.searchParams.get('imei') ?? bodyIdentity?.imei ?? '').trim();
 
     const deviceSecret = await lookupDeviceSecret(db, accountId, imei);
     let valid = false;
@@ -84,7 +89,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       if (!valid) return jsonError('Invalid device HMAC signature', 401);
       event.locals.hmacScope = 'device';
     } else {
-      const allowGlobal = GLOBAL_DEVICE_PATHS.some((p) => path.startsWith(p)) || Boolean(accountId && imei);
+      const allowGlobal = GLOBAL_DEVICE_PATHS.some((p) => path.startsWith(p));
       if (!allowGlobal) return jsonError('Device credential required', 401);
       valid = await verifyHmacSignature({
         signature,

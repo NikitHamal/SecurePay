@@ -62,7 +62,8 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
-    status: 'LOCKED',
+    status: Number(row!.is_stolen ?? 0) === 1 ? 'STOLEN' : 'LOCKED',
+    isStolen: Number(row!.is_stolen ?? 0) === 1,
     termDays: Number(row!.term_days),
     downPayment: Number(row!.down_payment),
     ...releaseFields(row as Record<string, unknown>)

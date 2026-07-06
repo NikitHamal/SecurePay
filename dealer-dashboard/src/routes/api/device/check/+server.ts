@@ -8,6 +8,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   }
 
   const imei = url.searchParams.get('imei');
+  const accountId = String(url.searchParams.get('accountId') ?? '').trim();
 
   if (!imei) {
     return errorResponse('IMEI parameter is required', 400);
@@ -25,7 +26,9 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     return errorResponse('Device not found', 404);
   }
 
-  const account = await db.prepare('SELECT * FROM accounts WHERE device_id = ?').bind(device.id as string).first();
+  const account = accountId
+    ? await db.prepare('SELECT * FROM accounts WHERE device_id = ? AND id = ?').bind(device.id as string, accountId).first()
+    : await db.prepare('SELECT * FROM accounts WHERE device_id = ?').bind(device.id as string).first();
 
   if (!account) {
     return json({
@@ -42,9 +45,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const release = releaseFields(account as Record<string, unknown>);
+  const isStolen = Number(account.is_stolen ?? 0) === 1;
   const status = releaseApproved(account as Record<string, unknown>)
     ? 'ACTIVE'
-    : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due)));
+    : (isStolen ? 'STOLEN' : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due))));
 
   return json({
     enrolled: true,
@@ -62,6 +66,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
       dailyRate: Number(account.daily_rate),
+      isStolen,
       releaseApproved: release.releaseApproved,
       releaseApprovedAt: release.releaseApprovedAt,
       releasedAt: release.releasedAt

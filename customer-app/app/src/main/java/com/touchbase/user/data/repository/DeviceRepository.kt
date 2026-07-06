@@ -45,7 +45,7 @@ class DeviceRepository(
     suspend fun checkAndRegister(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try {
             val requestTime = System.currentTimeMillis()
-            val response = api.deviceCheck(imei)
+            val response = api.deviceCheck(imei, tokenManager.accountId)
             updateServerTimeOffset(requestTime, response.serverTime)
             tokenManager.saveSecurityPolicy(response.securityPolicy)
             if (response.enrolled && response.account != null && tokenManager.apiSecret != null) {
@@ -220,9 +220,10 @@ fun AccountResponse.toLoanAccount(): LoanAccount = LoanAccount(
     dailyRateCents = dailyRate,
     termDays = termDays,
     nextPaymentDueEpochMillis = nextPaymentDueEpochMillis,
-    lockedByDealer = lockedByDealer == 1,
+    lockedByDealer = lockedByDealer == 1 || isStolen,
     currencyCode = currencyCode.ifEmpty { "GHS" },
     releaseApproved = releaseApproved,
+    isStolen = isStolen,
     releaseApprovedAt = releaseApprovedAt,
     releasedAt = releasedAt,
     securityPolicy = securityPolicy

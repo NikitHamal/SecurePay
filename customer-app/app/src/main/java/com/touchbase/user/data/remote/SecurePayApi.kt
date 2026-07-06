@@ -6,6 +6,7 @@ import com.touchbase.user.data.model.DeviceCheckResponse
 import com.touchbase.user.data.model.PaymentsResponse
 import com.touchbase.user.data.model.ReleaseCompleteResponse
 import com.touchbase.user.data.model.AppUpdateResponse
+import com.touchbase.user.data.model.LocationReportRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -14,7 +15,10 @@ import retrofit2.http.Query
 interface SecurePayApi {
 
     @GET("device/check")
-    suspend fun deviceCheck(@Query("imei") imei: String): DeviceCheckResponse
+    suspend fun deviceCheck(
+        @Query("imei") imei: String,
+        @Query("accountId") accountId: String? = null
+    ): DeviceCheckResponse
 
     @POST("device/activate")
     suspend fun activate(@Body body: Map<String, @JvmSuppressWildcards String>): ActivateResponse
@@ -47,7 +51,7 @@ interface SecurePayApi {
 
     @POST("device/location")
     suspend fun reportLocation(
-        @Body body: Map<String, Any>
+        @Body body: LocationReportRequest
     ): retrofit2.Response<Unit>
 
     @GET("device/app-update")

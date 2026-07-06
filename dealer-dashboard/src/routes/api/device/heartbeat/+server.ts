@@ -42,9 +42,10 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const release = releaseFields(account as Record<string, unknown>);
+  const isStolen = Number(account.is_stolen ?? 0) === 1;
   const status = releaseApproved(account as Record<string, unknown>)
     ? 'ACTIVE'
-    : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due)));
+    : (isStolen ? 'STOLEN' : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due))));
 
   return json({
     enrolled: true,
@@ -61,6 +62,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       amountPaid: Number(account.amount_paid),
       totalLoanAmount: Number(account.total_loan_amount),
       dailyRate: Number(account.daily_rate),
+      isStolen,
       releaseApproved: release.releaseApproved,
       releaseApprovedAt: release.releaseApprovedAt,
       releasedAt: release.releasedAt

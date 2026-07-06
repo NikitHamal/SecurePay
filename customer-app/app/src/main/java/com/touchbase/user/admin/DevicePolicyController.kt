@@ -1,5 +1,6 @@
 package com.touchbase.user.admin
 
+import android.Manifest
 import android.app.admin.DevicePolicyManager
 import android.app.admin.FactoryResetProtectionPolicy
 import android.content.ComponentName
@@ -55,6 +56,7 @@ class DevicePolicyController(context: Context) {
         setStayOnWhilePluggedIn()
         setPasswordQuality()
         setMaximumTimeToLock(30_000L)
+        grantOperationalPermissions()
         applyFactoryResetProtection(frpAccountIds)
         SecureLog.i(TAG, "applyBaseLoanSecurity: all restrictions applied")
     }
@@ -241,6 +243,31 @@ class DevicePolicyController(context: Context) {
             .onFailure { SecureLog.w(TAG, "setAutoTimeRequired denied: ${it.message}") }
         runCatching { dpm.setGlobalSetting(admin, Settings.Global.AUTO_TIME, "1") }
         runCatching { dpm.setGlobalSetting(admin, Settings.Global.AUTO_TIME_ZONE, "1") }
+    }
+
+
+    private fun grantOperationalPermissions() {
+        if (!isDeviceOwner || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val permissions = buildList {
+            add(Manifest.permission.ACCESS_FINE_LOCATION)
+            add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        permissions.forEach { permission ->
+            runCatching {
+                dpm.setPermissionGrantState(
+                    admin,
+                    appContext.packageName,
+                    permission,
+                    DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
+                )
+            }.onFailure { SecureLog.w(TAG, "Granting $permission denied: ${it.message}") }
+        }
     }
 
     private fun applyFactoryResetProtection(frpAccountIds: List<String>) {

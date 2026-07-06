@@ -80,6 +80,7 @@ data class AccountResponse(
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
     val releaseApproved: Boolean = false,
+    val isStolen: Boolean = false,
     val releaseApprovedAt: Long? = null,
     val releasedAt: Long? = null,
     val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy(),
@@ -100,6 +101,7 @@ data class LoanAccount(
     val lockedByDealer: Boolean,
     val currencyCode: String = "GHS",
     val releaseApproved: Boolean = false,
+    val isStolen: Boolean = false,
     val releaseApprovedAt: Long? = null,
     val releasedAt: Long? = null,
     val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy()

@@ -7,8 +7,6 @@ CREATE TABLE IF NOT EXISTS dealers (
   email       TEXT UNIQUE NOT NULL,
   phone       TEXT,
   password    TEXT NOT NULL,
-  frp_account_ids TEXT NOT NULL DEFAULT '[]',
-  security_policy_updated_at INTEGER,
   created_at  INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
@@ -48,11 +46,6 @@ CREATE TABLE IF NOT EXISTS accounts (
   down_payment            INTEGER NOT NULL,
   term_days               INTEGER NOT NULL,
   currency_code           TEXT NOT NULL DEFAULT 'GHS',
-  release_approved        INTEGER NOT NULL DEFAULT 0,
-  release_approved_at     INTEGER,
-  released_at             INTEGER,
-  device_hmac_secret      TEXT,
-  device_hmac_secret_created_at INTEGER,
   created_at              INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at              INTEGER NOT NULL DEFAULT (unixepoch())
 );

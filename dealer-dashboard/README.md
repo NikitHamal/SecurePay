@@ -45,21 +45,23 @@ Rotate any value that appeared in the original uploaded `.env`; it must be treat
 
 ## Database migration
 
-For a brand-new environment, apply the current base schema:
+For a brand-new environment, apply **all migrations in filename order**. The base migration has been corrected so a fresh database no longer fails on duplicate `ALTER TABLE` columns.
 
 ```bash
 npx wrangler d1 execute securepay-db --remote --file=migrations/0001_initial.sql
-```
-
-The base schema already contains the release-lifecycle and security-hardening columns. Do not run the `20260619_*` ALTER migrations against a fresh database created from the current `0001_initial.sql`, because the columns already exist.
-
-For an existing database created from an older dashboard version, take a backup first, inspect which columns already exist, then apply only the missing migrations in order:
-
-```bash
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260618_provisioning_v2.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260619_release_lifecycle.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260619_security_hardening.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260624_kyc_photos.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260625_fcm_push.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260626_custom_plans.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260627_dangling_fk_cleanup.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260627_provisioning_tokens_fk.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260702_device_logs.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260706_stolen_tracking_location.sql
 ```
+
+For an existing database, take a backup first and inspect whether `accounts.is_stolen` already exists. SQLite/D1 does not support `ALTER TABLE ADD COLUMN IF NOT EXISTS`; if you already added `is_stolen` manually, skip only that line in `20260706_stolen_tracking_location.sql` and still run the `location_logs` table/index statements.
 
 Do not run `0001_initial.sql` against a populated database.
 
@@ -103,3 +105,13 @@ All persisted monetary values are integer pesewas. For example, `GHc 125.50` is 
 ## Security boundary
 
 This dashboard and DPC implement the strongest practical cross-OEM Android Enterprise path without Samsung Knox Guard: Device Owner, EFRP, per-device HMAC, nonce replay rejection, one-time provisioning tokens, release lifecycle, and update control. This does not guarantee survival against firmware flashing, service-center tooling, hardware attacks, or future OEM vulnerabilities. Samsung-only programs that require stronger OEM-backed financed-device controls should add Knox Guard as an optional premium layer.
+
+## July 6 location/stolen-device patch
+
+This package wires stolen-device tracking end-to-end:
+
+- `/api/device/check`, `/api/device/heartbeat`, `/api/device/account`, and `/api/device/activate` now include `isStolen` and return `STOLEN` status when applicable.
+- Flagging an account as stolen also sets `locked_by_dealer = 1`, so the customer app locks on heartbeat even before a push notification arrives.
+- `/api/device/location` now requires top-level `accountId` and `imei`, verifies the account/device binding, accepts single pings or offline batches, validates coordinates, and writes to `location_logs`.
+- Dealer/agent location reads now return both `latitude/longitude` and `lat/lng` for dashboard and agent compatibility.
+- Fresh D1 migrations were validated locally with SQLite in filename order.

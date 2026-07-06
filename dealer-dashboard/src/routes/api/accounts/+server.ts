@@ -191,6 +191,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: Number(row!.next_payment_due),
     status,
+    isStolen: row!.is_stolen === 1,
     customerPhotoPath: row!.customer_photo_path as string | null,
     nationalIdFrontPath: row!.national_id_front_path as string | null,
     nationalIdBackPath: row!.national_id_back_path as string | null,

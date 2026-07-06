@@ -95,10 +95,10 @@ export async function getAccountLocations(id: string): Promise<{
     const data = await request<any>(`/accounts/${id}/location`);
     if (data && typeof data === 'object' && !Array.isArray(data)) {
       return [{
-        latitude: Number(data.lat),
-        longitude: Number(data.lng),
+        latitude: Number(data.latitude ?? data.lat),
+        longitude: Number(data.longitude ?? data.lng),
         accuracy: data.accuracy != null ? Number(data.accuracy) : null,
-        batteryLevel: data.battery != null ? Number(data.battery) : null,
+        batteryLevel: data.batteryLevel != null ? Number(data.batteryLevel) : (data.battery != null ? Number(data.battery) : null),
         timestamp: Number(data.timestamp)
       }];
     }

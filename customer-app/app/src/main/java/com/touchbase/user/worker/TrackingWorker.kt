@@ -33,14 +33,14 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val tokenManager = DeviceTokenManager(applicationContext)
             val imei = tokenManager.imei
             val accountId = tokenManager.accountId ?: ""
-            if (imei == null) {
-                SecureLog.w(TAG, "No IMEI found, skipping tracking check")
+            if (imei == null || accountId.isBlank()) {
+                SecureLog.w(TAG, "No account/IMEI found, skipping tracking check")
                 return Result.success()
             }
 
             val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
             val api = ApiModule.provideApi(signingSecret, accountId)
-            val response = api.deviceCheck(imei)
+            val response = api.deviceCheck(imei, accountId)
 
             if (response.account != null) {
                 val isStolen = response.account.isStolen
@@ -61,8 +61,10 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
     }
 
     private fun startTrackingService(accountId: String) {
+        val tokenManager = DeviceTokenManager(applicationContext)
         val intent = Intent(applicationContext, TrackingService::class.java).apply {
             putExtra("accountId", accountId)
+            putExtra("imei", tokenManager.imei)
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             applicationContext.startForegroundService(intent)

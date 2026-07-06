@@ -33,7 +33,8 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   const amountPaid = Number(row.amount_paid);
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(row.dealer_id));
   const totalLoanAmount = Number(row.total_loan_amount);
-  const lockedByDealer = Number(row.locked_by_dealer) === 1;
+  const isStolen = Number(row.is_stolen ?? 0) === 1;
+  const lockedByDealer = Number(row.locked_by_dealer) === 1 || isStolen;
 
   return json({
     id: row.id,
@@ -48,8 +49,9 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
-    status: releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (lockedByDealer ? 'LOCKED' : computeStatus(nextPaymentDue)),
+    status: releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (isStolen ? 'STOLEN' : (lockedByDealer ? 'LOCKED' : computeStatus(nextPaymentDue))),
     lockedByDealer: lockedByDealer ? 1 : 0,
+    isStolen,
     downPayment: Number(row.down_payment),
     termDays: Number(row.term_days),
     currencyCode: String(row.currency_code || 'GHS'),

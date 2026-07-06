@@ -146,3 +146,5 @@ CREATE TABLE IF NOT EXISTS location_logs (
 
 CREATE INDEX IF NOT EXISTS idx_loc_account ON location_logs(account_id);
 CREATE INDEX IF NOT EXISTS idx_loc_time ON location_logs(timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_loc_account_time ON location_logs(account_id, timestamp DESC);

@@ -74,3 +74,17 @@ SecurePay employs a multi-layered security approach:
 
 ## 📅 Loan Lifecycle
 `Inventory` $\rightarrow$ `Agent Enrollment (KYC)` $\rightarrow$ `Device Provisioning` $\rightarrow$ `Active Loan` $\rightarrow$ `Payment Tracking` $\rightarrow$ `Overdue Lock` $\rightarrow$ `Payment` $\rightarrow$ `Remote Unlock` $\rightarrow$ `Final Release`.
+
+
+## July 6 location/stolen-device patch
+
+The customer DPC and dashboard API were updated so stolen-device tracking works after a dealer flags a device as stolen:
+
+- Customer app location upload now uses a typed Kotlin serialization payload instead of `Map<String, Any>`.
+- Every location upload includes both `accountId` and `imei`, allowing the dashboard to resolve the per-device HMAC secret.
+- Tracking pings are stored in a small persistent queue and uploaded in batches when network is available.
+- Device Owner policy now attempts to grant fine/coarse/background location and notification permissions for the managed app.
+- The tracking worker passes `accountId` to `/api/device/check`, so per-device HMAC verification works after activation.
+- The service removes location callbacks on shutdown and reports real battery percentage.
+
+Build/test note: the source package does not include a downloaded Gradle distribution in this environment, so compile validation must be run in Android Studio or a CI runner with internet/cached Gradle.
