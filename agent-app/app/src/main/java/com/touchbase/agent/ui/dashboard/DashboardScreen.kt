@@ -75,6 +75,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -267,7 +268,7 @@ fun DashboardScreen(
             indicator = { state, trigger ->
                 SwipeRefreshIndicator(
                     state = state,
-                    refreshTrigger = trigger,
+                    refreshTriggerDistance = trigger,
                     contentColor = MaterialTheme.colorScheme.primary
                 )
             }
