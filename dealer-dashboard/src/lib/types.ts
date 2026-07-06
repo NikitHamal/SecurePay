@@ -27,6 +27,7 @@ export interface Customer {
   nationalIdFrontPath?: string | null;
   nationalIdBackPath?: string | null;
   termDays: number;
+  downPayment: number;
 }
 
 

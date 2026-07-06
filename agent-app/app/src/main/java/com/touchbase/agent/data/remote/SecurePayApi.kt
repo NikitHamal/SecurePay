@@ -62,6 +62,12 @@ interface SecurePayApi {
     @GET("kpis")
     suspend fun getKpis(): KpiSummary
 
+    @GET("accounts/{id}/photos/{type}")
+    suspend fun getPhoto(
+        @Path("id") id: String,
+        @Path("type") type: String
+    ): retrofit2.Response<okhttp3.ResponseBody>
+
     @GET("device/check")
     suspend fun deviceCheck(@Query("imei") imei: String): DeviceCheckResponse
 

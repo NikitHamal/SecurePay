@@ -3,6 +3,11 @@ package com.touchbase.agent.ui.customers
 
 import com.touchbase.agent.ui.components.ButtonText
 import android.app.Activity
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -103,6 +108,9 @@ fun CustomerDetailScreen(
     var editCustomerPhoto by remember { mutableStateOf<String?>(null) }
     var editNationalIdFront by remember { mutableStateOf<String?>(null) }
     var editNationalIdBack by remember { mutableStateOf<String?>(null) }
+    var customerPhotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var idFrontBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var idBackBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
@@ -134,8 +142,8 @@ fun CustomerDetailScreen(
                     editName = it.customerName
                     editNationalId = it.nationalId
                     editPhone = it.phoneNumber
-                    editDailyRate = it.dailyRate.toString()
-                    editTotalLoan = it.totalLoanAmount.toString()
+                    editDailyRate = (it.dailyRate / 100.0).toString()
+                    editTotalLoan = (it.totalLoanAmount / 100.0).toString()
                     editTermDays = it.termDays.toString()
                 },
                 onFailure = { error = it.message }
@@ -148,8 +156,8 @@ fun CustomerDetailScreen(
             editName = acc.customerName
             editNationalId = acc.nationalId
             editPhone = acc.phoneNumber
-            editDailyRate = acc.dailyRate.toString()
-            editTotalLoan = acc.totalLoanAmount.toString()
+            editDailyRate = (acc.dailyRate / 100.0).toString()
+            editTotalLoan = (acc.totalLoanAmount / 100.0).toString()
             editTermDays = acc.termDays.toString()
             isEditing = true
         }
@@ -170,9 +178,9 @@ fun CustomerDetailScreen(
             if (editName.trim() != acc.customerName) updates["customerName"] = editName.trim()
             if (editNationalId.trim() != acc.nationalId) updates["nationalId"] = editNationalId.trim()
             if (editPhone.trim() != acc.phoneNumber) updates["phoneNumber"] = editPhone.trim()
-            val newDaily = editDailyRate.toIntOrNull() ?: acc.dailyRate
+            val newDaily = editDailyRate.toDoubleOrNull()?.let { Math.round(it * 100.0).toInt() } ?: acc.dailyRate
             if (newDaily != acc.dailyRate) updates["dailyRate"] = newDaily
-            val newTotal = editTotalLoan.toIntOrNull() ?: acc.totalLoanAmount
+            val newTotal = editTotalLoan.toDoubleOrNull()?.let { Math.round(it * 100.0).toInt() } ?: acc.totalLoanAmount
             if (newTotal != acc.totalLoanAmount) updates["totalLoanAmount"] = newTotal
             val newTerm = editTermDays.toIntOrNull() ?: acc.termDays
             if (newTerm != acc.termDays) updates["termDays"] = newTerm
@@ -194,6 +202,40 @@ fun CustomerDetailScreen(
     }
 
     LaunchedEffect(accountId) { loadAccount() }
+
+    LaunchedEffect(account) {
+        val acc = account ?: return@LaunchedEffect
+        if (!acc.customerPhotoPath.isNullOrEmpty()) {
+            scope.launch {
+                repository?.getPhoto(acc.id, "photo")?.fold(
+                    onSuccess = { customerPhotoBitmap = it },
+                    onFailure = { /* ignore */ }
+                )
+            }
+        } else {
+            customerPhotoBitmap = null
+        }
+        if (!acc.nationalIdFrontPath.isNullOrEmpty()) {
+            scope.launch {
+                repository?.getPhoto(acc.id, "id_front")?.fold(
+                    onSuccess = { idFrontBitmap = it },
+                    onFailure = { /* ignore */ }
+                )
+            }
+        } else {
+            idFrontBitmap = null
+        }
+        if (!acc.nationalIdBackPath.isNullOrEmpty()) {
+            scope.launch {
+                repository?.getPhoto(acc.id, "id_back")?.fold(
+                    onSuccess = { idBackBitmap = it },
+                    onFailure = { /* ignore */ }
+                )
+            }
+        } else {
+            idBackBitmap = null
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -254,6 +296,43 @@ fun CustomerDetailScreen(
 
             StatusBanner(status = acc.status, releaseApproved = acc.releaseApproved)
 
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (customerPhotoBitmap != null) {
+                    Image(
+                        bitmap = customerPhotoBitmap!!.asImageBitmap(),
+                        contentDescription = "Profile Photo",
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(acc.customerName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                    Text("ID: ${acc.id}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
             if (isEditing) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -266,8 +345,8 @@ fun CustomerDetailScreen(
                         EditField(label = "Name", value = editName, onValueChange = { editName = it })
                         EditField(label = "National ID", value = editNationalId, onValueChange = { editNationalId = it })
                         EditField(label = "Phone", value = editPhone, onValueChange = { editPhone = it })
-                        EditField(label = "Daily Rate (cents)", value = editDailyRate, onValueChange = { editDailyRate = it }, isNumber = true)
-                        EditField(label = "Total Loan (cents)", value = editTotalLoan, onValueChange = { editTotalLoan = it }, isNumber = true)
+                        EditField(label = "Daily Rate (GHS)", value = editDailyRate, onValueChange = { editDailyRate = it }, isNumber = true)
+                        EditField(label = "Total Loan (GHS)", value = editTotalLoan, onValueChange = { editTotalLoan = it }, isNumber = true)
                         EditField(label = "Term (days)", value = editTermDays, onValueChange = { editTermDays = it }, isNumber = true)
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -357,6 +436,67 @@ fun CustomerDetailScreen(
                 InfoRow(icon = null, label = "Amount Paid", value = formatAmount(acc.amountPaid))
                 InfoRow(icon = null, label = "Remaining", value = formatAmount(acc.remainingBalance))
                 InfoRow(icon = null, label = "Down Payment", value = formatAmount(acc.downPayment))
+            }
+
+            if (customerPhotoBitmap != null || idFrontBitmap != null || idBackBitmap != null) {
+                InfoCard(title = "KYC Verification Photos") {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (customerPhotoBitmap != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Image(
+                                    bitmap = customerPhotoBitmap!!.asImageBitmap(),
+                                    contentDescription = "Selfie",
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text("Customer Selfie", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                                    Text("Captured live during registration", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        if (idFrontBitmap != null || idBackBitmap != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                if (idFrontBitmap != null) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("ID Front", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Image(
+                                            bitmap = idFrontBitmap!!.asImageBitmap(),
+                                            contentDescription = "ID Front",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(100.dp)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                    }
+                                }
+                                if (idBackBitmap != null) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("ID Back", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Image(
+                                            bitmap = idBackBitmap!!.asImageBitmap(),
+                                            contentDescription = "ID Back",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(100.dp)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

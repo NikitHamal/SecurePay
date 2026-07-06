@@ -112,6 +112,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     nextPaymentDueEpochMillis: nextDue,
     status,
     termDays: Number(row.term_days),
+    downPayment: Number(row.down_payment),
     ...releaseFields(row as Record<string, unknown>)
   };
 

@@ -125,11 +125,70 @@ export function getDb(event: { platform?: App.Platform | null }): D1Database {
   return event.platform.env.DB;
 }
 
+import * as fs from 'fs';
+import * as path from 'path';
+
+let mockR2Instance: any = null;
+
 export function getR2(event: { platform?: App.Platform | null }): R2Bucket {
-  if (!event.platform?.env?.R2) {
-    throw new Error('R2 bucket not available');
+  if (event.platform?.env?.R2) {
+    return event.platform.env.R2;
   }
-  return event.platform.env.R2;
+
+  if (!mockR2Instance) {
+    try {
+      const baseDir = path.resolve('.kyc_local_storage');
+      if (!fs.existsSync(baseDir)) {
+        fs.mkdirSync(baseDir, { recursive: true });
+      }
+
+      mockR2Instance = {
+        async put(key: string, value: any, options?: any) {
+          const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          const filePath = path.join(baseDir, safeKey);
+          let buffer: Buffer;
+          if (value instanceof Uint8Array) {
+            buffer = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+          } else if (value instanceof ArrayBuffer) {
+            buffer = Buffer.from(value);
+          } else if (typeof value === 'string') {
+            buffer = Buffer.from(value, 'utf-8');
+          } else {
+            buffer = Buffer.from(value);
+          }
+          fs.writeFileSync(filePath, buffer);
+          return {};
+        },
+        async get(key: string) {
+          const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          const filePath = path.join(baseDir, safeKey);
+          if (!fs.existsSync(filePath)) {
+            return null;
+          }
+          const data = fs.readFileSync(filePath);
+          return {
+            arrayBuffer: async () => {
+              const ab = new ArrayBuffer(data.length);
+              const view = new Uint8Array(ab);
+              for (let i = 0; i < data.length; ++i) {
+                view[i] = data[i];
+              }
+              return ab;
+            },
+            text: async () => data.toString('utf-8')
+          };
+        }
+      };
+    } catch (e) {
+      console.error('Failed to initialize mock R2:', e);
+    }
+  }
+
+  if (mockR2Instance) {
+    return mockR2Instance as R2Bucket;
+  }
+
+  throw new Error('R2 bucket not available');
 }
 
 export function getJwtSecret(event: { platform?: App.Platform | null }): string {

@@ -31,8 +31,8 @@
     editName = customer.customerName;
     editNationalId = customer.nationalId;
     editPhone = customer.phoneNumber;
-    editDailyRate = String(customer.dailyRate);
-    editTotalLoan = String(customer.totalLoanAmount);
+    editDailyRate = String(customer.dailyRate / 100);
+    editTotalLoan = String(customer.totalLoanAmount / 100);
     editTermDays = String(customer.termDays);
     editing = true;
   }
@@ -49,8 +49,8 @@
         customerName: editName.trim(),
         nationalId: editNationalId.trim(),
         phoneNumber: editPhone.trim(),
-        dailyRate: Number(editDailyRate),
-        totalLoanAmount: Number(editTotalLoan),
+        dailyRate: Math.round(Number(editDailyRate) * 100),
+        totalLoanAmount: Math.round(Number(editTotalLoan) * 100),
         termDays: Number(editTermDays),
       });
       editing = false;
@@ -144,12 +144,20 @@
     >
       <header class="flex items-start justify-between gap-3 border-b border-edge px-6 py-5">
         <div class="flex items-center gap-3 min-w-0">
-          <span
-            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
-            style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
-          >
-            {customer.customerName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
-          </span>
+          {#if customer.customerPhotoPath}
+            <img 
+              src="/api/accounts/{customer.id}/photos/photo" 
+              alt={customer.customerName} 
+              class="h-12 w-12 shrink-0 rounded-xl object-cover border border-edge"
+            />
+          {:else}
+            <span
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
+              style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
+            >
+              {customer.customerName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
+            </span>
+          {/if}
           <div class="min-w-0">
             <h2 id="drawer-title" class="truncate text-lg font-semibold text-ink-primary">{customer.customerName}</h2>
             <p class="text-2xs text-ink-muted">{customer.id} · {formatPhone(customer.phoneNumber)}</p>
@@ -234,6 +242,10 @@
                 <p class="text-2xs uppercase tracking-wide text-ink-muted">Daily rate</p>
                 <p class="font-semibold text-ink-primary tabular-nums">{formatCurrency(customer.dailyRate)}</p>
               </div>
+              <div>
+                <p class="text-2xs uppercase tracking-wide text-ink-muted">Down payment</p>
+                <p class="font-semibold text-ink-primary tabular-nums">{formatCurrency(customer.downPayment)}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -265,11 +277,11 @@
               </div>
               <div class="grid grid-cols-3 gap-2">
                 <div>
-                  <label class="text-2xs text-ink-muted block mb-1">Daily rate (cents)</label>
+                  <label class="text-2xs text-ink-muted block mb-1">Daily rate (GHS)</label>
                   <input type="number" class="input w-full" bind:value={editDailyRate} />
                 </div>
                 <div>
-                  <label class="text-2xs text-ink-muted block mb-1">Total loan (cents)</label>
+                  <label class="text-2xs text-ink-muted block mb-1">Total loan (GHS)</label>
                   <input type="number" class="input w-full" bind:value={editTotalLoan} />
                 </div>
                 <div>

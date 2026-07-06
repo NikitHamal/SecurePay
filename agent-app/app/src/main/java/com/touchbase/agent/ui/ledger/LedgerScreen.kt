@@ -251,8 +251,14 @@ private fun LedgerEntryCard(entry: LedgerEntry, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                val displayMethod = entry.method.replace("_", " ").uppercase()
+                val displayText = if (entry.reference.isNotBlank()) {
+                    "$displayMethod · ${entry.reference}"
+                } else {
+                    displayMethod
+                }
                 Text(
-                    text = "${entry.method.uppercase()} · ${entry.reference.ifBlank { "N/A" }}",
+                    text = displayText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -47,6 +47,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     nationalIdFrontPath: row.national_id_front_path as string | null,
     nationalIdBackPath: row.national_id_back_path as string | null,
     termDays: Number(row.term_days),
+    downPayment: Number(row.down_payment),
     ...releaseFields(row as Record<string, unknown>)
   };
 
@@ -174,6 +175,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     nationalIdFrontPath: row!.national_id_front_path as string | null,
     nationalIdBackPath: row!.national_id_back_path as string | null,
     termDays: Number(row!.term_days),
+    downPayment: Number(row!.down_payment),
     ...releaseFields(row as Record<string, unknown>)
   };
 

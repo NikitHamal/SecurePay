@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 
 class SecurePayRepository(
     private val api: SecurePayApi,
@@ -149,5 +151,29 @@ class SecurePayRepository(
 
     suspend fun getProvisioningStatus(token: String): Result<ProvisioningStatusResponse> = withContext(Dispatchers.IO) {
         try { Result.success(api.getProvisioningStatus(token)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    suspend fun getPhoto(id: String, type: String): Result<Bitmap> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPhoto(id, type)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    val bytes = body.bytes()
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bitmap != null) {
+                        Result.success(bitmap)
+                    } else {
+                        Result.failure(Exception("Failed to decode bitmap"))
+                    }
+                } else {
+                    Result.failure(Exception("Empty response body"))
+                }
+            } else {
+                Result.failure(Exception("Failed to load photo: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
