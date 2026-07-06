@@ -46,9 +46,9 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 val isStolen = response.account.isStolen
                 if (isStolen) {
                     SecureLog.i(TAG, "Device is flagged as STOLEN. Starting tracking service.")
-                    startTrackingService(accountId)
+                    TrackingService.start(applicationContext, accountId)
                 } else {
-                    stopTrackingService()
+                    TrackingService.stop(applicationContext)
                 }
                 Result.success()
             } else {
@@ -58,23 +58,5 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
             SecureLog.e(TAG, "Tracking worker failed: ${e.message}")
             Result.retry()
         }
-    }
-
-    private fun startTrackingService(accountId: String) {
-        val tokenManager = DeviceTokenManager(applicationContext)
-        val intent = Intent(applicationContext, TrackingService::class.java).apply {
-            putExtra("accountId", accountId)
-            putExtra("imei", tokenManager.imei)
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            applicationContext.startForegroundService(intent)
-        } else {
-            applicationContext.startService(intent)
-        }
-    }
-
-    private fun stopTrackingService() {
-        val intent = Intent(applicationContext, TrackingService::class.java)
-        applicationContext.stopService(intent)
     }
 }

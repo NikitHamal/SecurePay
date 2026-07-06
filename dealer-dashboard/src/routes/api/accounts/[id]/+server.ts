@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getR2 } from '$lib/api/server';
+import { sendFcm } from '$lib/api/fcm';
 import type { Customer, Status } from '$lib/types';
 import Map from '$lib/components/ui/Map.svelte';
 
@@ -159,6 +160,16 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     LEFT JOIN plans p ON a.plan_id = p.id
     WHERE a.id = ? AND a.dealer_id = ?
   `).bind(params.id, locals.dealer.id).first();
+
+  if (isStolen !== undefined && row) {
+    const fcmToken = String(row.fcm_token ?? '').trim();
+    if (fcmToken) {
+      const fcmEnv = platform?.env as { FCM_SERVICE_ACCOUNT_EMAIL?: string; FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string; FCM_PROJECT_ID?: string } | undefined;
+      if (fcmEnv) {
+        sendFcm(fcmToken, { type: isStolen ? 'lock' : 'unlock', accountId: params.id }, fcmEnv).catch(() => {});
+      }
+    }
+  }
 
   const nextDue = Number(row!.next_payment_due);
   const amtPaid = Number(row!.amount_paid);

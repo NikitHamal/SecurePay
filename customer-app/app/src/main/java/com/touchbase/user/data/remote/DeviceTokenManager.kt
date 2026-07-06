@@ -39,11 +39,12 @@ class DeviceTokenManager private constructor(
         _imei = imei
     }
 
-    fun saveCachedStatus(nextPaymentDue: Long, lockedByDealer: Boolean, releaseApproved: Boolean = false) {
+    fun saveCachedStatus(nextPaymentDue: Long, lockedByDealer: Boolean, releaseApproved: Boolean = false, isStolen: Boolean = false) {
         prefs.edit()
             .putLong(KEY_CACHED_NEXT_DUE, nextPaymentDue)
             .putBoolean(KEY_CACHED_LOCKED_BY_DEALER, lockedByDealer)
             .putBoolean(KEY_CACHED_RELEASE_APPROVED, releaseApproved)
+            .putBoolean(KEY_CACHED_IS_STOLEN, isStolen)
             .apply()
     }
 
@@ -86,6 +87,7 @@ class DeviceTokenManager private constructor(
     val cachedNextPaymentDue: Long get() = prefs.getLong(KEY_CACHED_NEXT_DUE, 0L)
     val cachedLockedByDealer: Boolean get() = prefs.getBoolean(KEY_CACHED_LOCKED_BY_DEALER, false)
     val cachedReleaseApproved: Boolean get() = prefs.getBoolean(KEY_CACHED_RELEASE_APPROVED, false)
+    val cachedIsStolen: Boolean get() = prefs.getBoolean(KEY_CACHED_IS_STOLEN, false)
     val serverTimeOffset: Long get() = prefs.getLong(KEY_SERVER_TIME_OFFSET, 0L)
 
     /**
@@ -142,6 +144,7 @@ class DeviceTokenManager private constructor(
         private const val KEY_CACHED_NEXT_DUE = "cached_next_payment_due"
         private const val KEY_CACHED_LOCKED_BY_DEALER = "cached_locked_by_dealer"
         private const val KEY_CACHED_RELEASE_APPROVED = "cached_release_approved"
+        private const val KEY_CACHED_IS_STOLEN = "cached_is_stolen"
         private const val KEY_SERVER_TIME_OFFSET = "server_time_offset_millis"
         private const val KEY_LAST_TRUSTED_TIME = "last_trusted_time_millis"
         private const val KEY_LAST_WALL_CLOCK = "last_wall_clock_millis"

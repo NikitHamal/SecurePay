@@ -29,6 +29,24 @@ class TrackingService : Service() {
         const val NOTIFICATION_ID = 1001
         const val TAG = "TrackingService"
         private const val MAX_UPLOAD_BATCH = 50
+
+        fun start(context: Context, accountId: String) {
+            val tokenManager = DeviceTokenManager(context.applicationContext)
+            val intent = Intent(context.applicationContext, TrackingService::class.java).apply {
+                putExtra("accountId", accountId)
+                putExtra("imei", tokenManager.imei)
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.applicationContext.startForegroundService(intent)
+            } else {
+                context.applicationContext.startService(intent)
+            }
+        }
+
+        fun stop(context: Context) {
+            val intent = Intent(context.applicationContext, TrackingService::class.java)
+            context.applicationContext.stopService(intent)
+        }
     }
 
     override fun onCreate() {

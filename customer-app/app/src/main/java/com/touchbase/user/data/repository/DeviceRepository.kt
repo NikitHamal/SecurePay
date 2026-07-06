@@ -117,7 +117,12 @@ class DeviceRepository(
             val account = response.toLoanAccount()
             _account.value = account
             tokenManager.saveSecurityPolicy(response.securityPolicy)
-            tokenManager.saveCachedStatus(account.nextPaymentDueEpochMillis, account.lockedByDealer, account.releaseApproved)
+            tokenManager.saveCachedStatus(
+                account.nextPaymentDueEpochMillis,
+                account.lockedByDealer,
+                account.releaseApproved,
+                account.isStolen
+            )
             _error.value = null
         } catch (e: Exception) {
             SecureLog.e(TAG, "refresh failed", e)
