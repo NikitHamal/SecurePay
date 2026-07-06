@@ -38,6 +38,8 @@ on:
         required: false
       FCM_SENDER_ID:
         required: false
+      FCM_APPLICATION_ID:
+        required: false
 
 jobs:
   build:
@@ -109,6 +111,7 @@ jobs:
           FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
           FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
           FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
+          FCM_APPLICATION_ID: ${{ secrets.FCM_APPLICATION_ID }}
         run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
 
       - name: Sign release APK & AAB

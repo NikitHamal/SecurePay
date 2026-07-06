@@ -29,7 +29,7 @@ android {
             buildConfigField("String", "FCM_PROJECT_ID", "\"spay-fintech\"")
             buildConfigField("String", "FCM_API_KEY", "\"AIzaSyARxW2ltAOVQGbjL-qx6TC0HODLoNrtF2w\"")
             buildConfigField("String", "FCM_SENDER_ID", "\"1055815727331\"")
-            buildConfigField("String", "FCM_APPLICATION_ID", "\"\"")
+            buildConfigField("String", "FCM_APPLICATION_ID", "\"1:1055815727331:android:2d9fc26c70e61185a72dd6\"")
         }
         release {
             isMinifyEnabled = true
