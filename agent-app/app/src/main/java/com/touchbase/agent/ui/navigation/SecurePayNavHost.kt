@@ -32,6 +32,7 @@ import com.touchbase.agent.ui.customers.CustomerDetailScreen
 import com.touchbase.agent.ui.customers.CustomersScreen
 import com.touchbase.agent.ui.provisioning.ProvisioningScreen
 import com.touchbase.agent.ui.provisioning.ProvisioningViewModel
+import com.touchbase.agent.ui.tracking.TrackingMapScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -128,7 +129,22 @@ fun SecurePayNavHost(
                 onBack = { navController.popBackStack() },
                 onProvisionDevice = { imei ->
                     navController.navigate(Screen.Provisioning.createRoute(imei))
+                },
+                onViewLiveLocation = { accountId ->
+                    navController.navigate(Screen.TrackingMap.createRoute(accountId))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.TrackingMap.route,
+            arguments = listOf(navArgument("accountId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val accountId = backStackEntry.arguments?.getString("accountId") ?: return@composable
+            TrackingMapScreen(
+                accountId = accountId,
+                repository = repository,
+                onBack = { navController.popBackStack() }
             )
         }
 

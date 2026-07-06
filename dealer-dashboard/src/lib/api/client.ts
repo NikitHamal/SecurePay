@@ -92,18 +92,37 @@ export async function getAccountLocations(id: string): Promise<{
   timestamp: number;
 }[]> {
   try {
-    const data = await request<any>(`/accounts/${id}/location`);
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const data = await request<any>(`/accounts/${encodeURIComponent(id)}/location`);
+
+    if (Array.isArray(data)) {
+      return data
+        .map((item) => ({
+          latitude: Number(item.latitude ?? item.lat),
+          longitude: Number(item.longitude ?? item.lng),
+          accuracy: item.accuracy != null ? Number(item.accuracy) : null,
+          batteryLevel: item.batteryLevel != null ? Number(item.batteryLevel) : (item.battery != null ? Number(item.battery) : null),
+          timestamp: Number(item.timestamp)
+        }))
+        .filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude));
+    }
+
+    if (data && typeof data === 'object') {
+      if (data.available === false) return [];
+      const latitude = Number(data.latitude ?? data.lat);
+      const longitude = Number(data.longitude ?? data.lng);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
       return [{
-        latitude: Number(data.latitude ?? data.lat),
-        longitude: Number(data.longitude ?? data.lng),
+        latitude,
+        longitude,
         accuracy: data.accuracy != null ? Number(data.accuracy) : null,
         batteryLevel: data.batteryLevel != null ? Number(data.batteryLevel) : (data.battery != null ? Number(data.battery) : null),
         timestamp: Number(data.timestamp)
       }];
     }
-    return Array.isArray(data) ? data : [];
+
+    return [];
   } catch (e) {
+    console.warn('Location lookup failed', e);
     return [];
   }
 }

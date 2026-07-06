@@ -92,6 +92,7 @@ fun CustomerDetailScreen(
     repository: SecurePayRepository?,
     onBack: () -> Unit,
     onProvisionDevice: (imei: String) -> Unit = {},
+    onViewLiveLocation: (accountId: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var account by remember { mutableStateOf<Account?>(null) }
@@ -649,9 +650,9 @@ fun CustomerDetailScreen(
                 }
             }
 
-            if (acc.isStolen) {
+            if (acc.isStolen || acc.status == AccountStatus.STOLEN) {
                 Button(
-                    onClick = { onProvisionDevice(acc.imei) },
+                    onClick = { onViewLiveLocation(acc.id) },
                     modifier = Modifier.fillMaxWidth().height(48.dp).padding(top = 8.dp),
                     enabled = !actionInProgress && !isEditing,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),

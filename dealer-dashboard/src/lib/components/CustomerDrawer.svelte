@@ -6,6 +6,7 @@
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
   import Map from '$lib/components/ui/Map.svelte';
   import { fade } from 'svelte/transition';
+  import { onDestroy } from 'svelte';
   import { getAccountLocations, getToken } from '$lib/api/client';
 
   export let customerId: string | null = null;
@@ -104,22 +105,58 @@
 
   let locations: any[] = [];
   let loadingLocations = false;
+  let loadedLocationCustomerId: string | null = null;
+  let locationRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   async function loadLocations(id: string) {
     loadingLocations = true;
     try {
-      locations = await getAccountLocations(id);
+      const latest = await getAccountLocations(id);
+      if (customerId === id) {
+        locations = latest;
+      }
     } catch (e) {
       console.error('Failed to load locations', e);
-      locations = [];
+      if (customerId === id) {
+        locations = [];
+      }
     } finally {
-      loadingLocations = false;
+      if (customerId === id) {
+        loadingLocations = false;
+      }
     }
   }
 
-  $: if (customerId) {
-    loadLocations(customerId);
+  function stopLocationRefresh() {
+    if (locationRefreshTimer) {
+      clearInterval(locationRefreshTimer);
+      locationRefreshTimer = null;
+    }
   }
+
+  function startLocationRefresh(id: string) {
+    stopLocationRefresh();
+    loadLocations(id);
+    locationRefreshTimer = setInterval(() => {
+      loadLocations(id);
+    }, 15_000);
+  }
+
+  $: if (customerId !== loadedLocationCustomerId) {
+    loadedLocationCustomerId = customerId;
+    locations = [];
+    if (customerId) {
+      startLocationRefresh(customerId);
+    } else {
+      stopLocationRefresh();
+    }
+  }
+
+  $: if (customer && customer.isStolen && customer.id === loadedLocationCustomerId && !locationRefreshTimer) {
+    startLocationRefresh(customer.id);
+  }
+
+  onDestroy(stopLocationRefresh);
 </script>
 
 <svelte:window on:keydown={handleKey} />

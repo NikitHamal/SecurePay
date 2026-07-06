@@ -2,28 +2,76 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
 
+type AccountLocationRow = {
+  id: string;
+  is_stolen: number | null;
+};
+
+type LatestLocationRow = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  battery_level: number | null;
+  timestamp: number;
+};
+
+/**
+ * Dealer/agent endpoint for viewing the latest reported stolen-device location.
+ *
+ * Important behavior:
+ * - 404 is now reserved for a genuinely missing/unauthorized account.
+ * - A valid account with no uploaded location yet returns 200 with available=false.
+ *   This prevents the dashboard/agent live-location screen from throwing noisy
+ *   “Failed to load resource: 404” errors while the phone is still waiting for
+ *   GPS/network permission or has not sent its first ping.
+ */
 export const GET: RequestHandler = async ({ params, locals, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
+  const accountId = String(params.id ?? '').trim();
+  if (!accountId) {
+    return errorResponse('Account id is required', 400);
+  }
+
   const db = getDb({ platform });
-  
-  // Get the latest location for the device associated with this account
+
+  const account = await db.prepare(`
+    SELECT id, is_stolen
+      FROM accounts
+     WHERE id = ? AND dealer_id = ?
+     LIMIT 1
+  `).bind(accountId, locals.dealer.id).first<AccountLocationRow>();
+
+  if (!account) {
+    return errorResponse('Account not found', 404);
+  }
+
   const row = await db.prepare(`
-    SELECT l.latitude, l.longitude, l.accuracy, l.battery_level, l.timestamp
-    FROM location_logs l
-    JOIN accounts a ON l.account_id = a.id
-    WHERE a.id = ? AND a.dealer_id = ?
-    ORDER BY l.timestamp DESC
-    LIMIT 1
-  `).bind(params.id, locals.dealer.id).first();
+    SELECT latitude, longitude, accuracy, battery_level, timestamp
+      FROM location_logs
+     WHERE account_id = ?
+     ORDER BY timestamp DESC, created_at DESC
+     LIMIT 1
+  `).bind(accountId).first<LatestLocationRow>();
 
   if (!row) {
-    return json({ error: 'No location data available' }, { status: 404 });
+    return json({
+      available: false,
+      accountId,
+      isStolen: Number(account.is_stolen ?? 0) === 1,
+      message: Number(account.is_stolen ?? 0) === 1
+        ? 'No location ping has been received yet. Keep the customer phone online and wait for the tracking service to upload its first GPS fix.'
+        : 'No location data is available because this account is not currently flagged as stolen.',
+      serverTime: Date.now()
+    });
   }
 
   return json({
+    available: true,
+    accountId,
+    isStolen: Number(account.is_stolen ?? 0) === 1,
     latitude: row.latitude,
     longitude: row.longitude,
     lat: row.latitude,
@@ -31,6 +79,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
     accuracy: row.accuracy,
     battery: row.battery_level,
     batteryLevel: row.battery_level,
-    timestamp: row.timestamp
+    timestamp: row.timestamp,
+    serverTime: Date.now()
   });
 };

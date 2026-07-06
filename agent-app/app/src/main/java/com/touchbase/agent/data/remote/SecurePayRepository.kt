@@ -178,6 +178,15 @@ class SecurePayRepository(
     }
 
     suspend fun getLocation(accountId: String): Result<LocationResponse> = withContext(Dispatchers.IO) {
-        try { Result.success(api.getLocation(accountId)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+        try {
+            val response = api.getLocation(accountId)
+            if (!response.hasCoordinates) {
+                Result.failure(Exception(response.message ?: "No location ping has been received yet."))
+            } else {
+                Result.success(response)
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
     }
 }
