@@ -72,7 +72,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,6 +131,7 @@ fun DashboardScreen(
     previewKpis: KpiSummary? = null
 ) {
     val isPreview = LocalInspectionMode.current
+    val scope = rememberCoroutineScope()
     var kpis by remember {
         mutableStateOf<KpiSummary?>(previewKpis)
     }
@@ -251,15 +254,23 @@ fun DashboardScreen(
         SwipeRefresh(
             state = refreshState,
             onRefresh = { 
-                isLoading = true
-                val result = repository?.getKpis()
-                isLoading = false
-                result?.fold(
-                    onSuccess = { kpis = it },
-                    onFailure = { error = it.message }
-                )
+                scope.launch {
+                    isLoading = true
+                    val result = repository?.getKpis()
+                    isLoading = false
+                    result?.fold(
+                        onSuccess = { kpis = it },
+                        onFailure = { error = it.message }
+                    )
+                }
             },
-            color = MaterialTheme.colorScheme.primary
+            indicator = { state, trigger ->
+                SwipeRefreshIndicator(
+                    state = state,
+                    refreshTrigger = trigger,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            }
         ) {
             Column(
                 modifier = Modifier
@@ -1145,13 +1156,13 @@ fun CollectionOverviewCard(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = growthArrow, softWrap = false,
+                                    text = growthArrow,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = growthText,
                                     softWrap = false
                                 )
                                 Text(
-                                    text = growthRateText, softWrap = false,
+                                    text = growthRateText,
                                     color = growthText,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     softWrap = false
