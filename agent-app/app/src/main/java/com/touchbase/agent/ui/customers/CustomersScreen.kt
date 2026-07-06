@@ -66,6 +66,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,6 +83,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import com.touchbase.agent.ui.components.SecurePayBottomNavBar
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import kotlinx.coroutines.launch
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -253,6 +257,7 @@ fun CustomersScreen(
                     items(filteredAccounts, key = { it.id }) { account ->
                         CustomerRow(
                             account = account,
+                            repository = repository,
                             onClick = { onCustomerClick(account.id) }
                         )
                     }
@@ -265,9 +270,24 @@ fun CustomersScreen(
 @Composable
 private fun CustomerRow(
     account: Account,
+    repository: SecurePayRepository?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var photoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var photoLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(account.id) {
+        if (!account.customerPhotoPath.isNullOrEmpty()) {
+            photoLoading = true
+            repository?.getPhoto(account.id, "photo")?.fold(
+                onSuccess = { photoBitmap = it },
+                onFailure = { photoBitmap = null }
+            )
+            photoLoading = false
+        }
+    }
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -285,21 +305,39 @@ private fun CustomerRow(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Circular Avatar with first letter of customer name
-                val firstLetter = account.customerName.firstOrNull()?.toString()?.uppercase() ?: ""
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = firstLetter,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                if (photoBitmap != null) {
+                    Image(
+                        bitmap = photoBitmap!!.asImageBitmap(),
+                        contentDescription = "Profile",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    val firstLetter = account.customerName.firstOrNull()?.toString()?.uppercase() ?: ""
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (photoLoading) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            Text(
+                                text = firstLetter,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

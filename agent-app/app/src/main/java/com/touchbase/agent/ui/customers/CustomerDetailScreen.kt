@@ -2,6 +2,7 @@ package com.touchbase.agent.ui.customers
 
 
 import com.touchbase.agent.ui.components.ButtonText
+import com.touchbase.agent.ui.components.ImageViewerDialog
 import android.app.Activity
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
@@ -11,6 +12,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,6 +117,7 @@ fun CustomerDetailScreen(
     var customerPhotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idFrontBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idBackBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var viewerBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
@@ -327,7 +330,8 @@ fun CustomerDetailScreen(
                         modifier = Modifier
                             .size(72.dp)
                             .clip(CircleShape)
-                            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            .clickable { viewerBitmap = customerPhotoBitmap },
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
                 } else {
@@ -374,7 +378,21 @@ fun CustomerDetailScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         if (acc.customerPhotoPath != null && editCustomerPhoto == null) {
-                            Text("✓ Selfie Photo is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (customerPhotoBitmap != null) {
+                                    Image(
+                                        bitmap = customerPhotoBitmap!!.asImageBitmap(),
+                                        contentDescription = "Selfie",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable { viewerBitmap = customerPhotoBitmap },
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text("✓ Selfie Photo is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                         KycPhotoSelector(
@@ -386,7 +404,21 @@ fun CustomerDetailScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         if (acc.nationalIdFrontPath != null && editNationalIdFront == null) {
-                            Text("✓ National ID Front is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (idFrontBitmap != null) {
+                                    Image(
+                                        bitmap = idFrontBitmap!!.asImageBitmap(),
+                                        contentDescription = "ID Front",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable { viewerBitmap = idFrontBitmap },
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text("✓ National ID Front is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                         KycPhotoSelector(
@@ -398,7 +430,21 @@ fun CustomerDetailScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         if (acc.nationalIdBackPath != null && editNationalIdBack == null) {
-                            Text("✓ National ID Back is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (idBackBitmap != null) {
+                                    Image(
+                                        bitmap = idBackBitmap!!.asImageBitmap(),
+                                        contentDescription = "ID Back",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable { viewerBitmap = idBackBitmap },
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text("✓ National ID Back is already uploaded. Upload to replace.", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                         KycPhotoSelector(
@@ -468,7 +514,8 @@ fun CustomerDetailScreen(
                                     contentDescription = "Selfie",
                                     modifier = Modifier
                                         .size(64.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { viewerBitmap = customerPhotoBitmap },
                                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -493,7 +540,8 @@ fun CustomerDetailScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(100.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable { viewerBitmap = idFrontBitmap },
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     }
@@ -508,7 +556,8 @@ fun CustomerDetailScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(100.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable { viewerBitmap = idBackBitmap },
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     }
@@ -723,6 +772,13 @@ fun CustomerDetailScreen(
                 showPaymentSheet = false
                 loadAccount()
             }
+        )
+    }
+
+    if (viewerBitmap != null) {
+        ImageViewerDialog(
+            bitmap = viewerBitmap!!,
+            onDismiss = { viewerBitmap = null }
         )
     }
 }
