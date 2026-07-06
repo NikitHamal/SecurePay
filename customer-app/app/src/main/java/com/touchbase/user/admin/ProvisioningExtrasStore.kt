@@ -31,8 +31,35 @@ object ProvisioningExtrasStore {
     private const val TAG = "ProvisioningExtras"
 
     fun persistFromIntent(context: Context, intent: Intent?) {
-        val extras = adminExtras(intent) ?: return
-        persist(context, extras)
+        intent ?: return
+        val extras = adminExtras(intent)
+        if (extras != null) {
+            persist(context, extras)
+        } else {
+            // Direct intent extra fallback for ADB/Testing
+            val token = intent.getStringExtra(EXTRA_PROVISIONING_TOKEN)
+            val code = intent.getStringExtra(EXTRA_ACTIVATION_CODE)
+            val imei = intent.getStringExtra(EXTRA_EXPECTED_IMEI)
+            val accountId = intent.getStringExtra(EXTRA_ACCOUNT_ID)
+            val deviceId = intent.getStringExtra(EXTRA_DEVICE_ID)
+            val dealerId = intent.getStringExtra(EXTRA_DEALER_ID)
+            val frpCsv = intent.getStringExtra(EXTRA_FRP_ACCOUNT_IDS_CSV)
+            val policyVer = intent.getStringExtra(EXTRA_SECURITY_POLICY_VERSION)
+
+            if (token != null || code != null || imei != null || accountId != null || deviceId != null || dealerId != null) {
+                val editor = prefs(context).edit()
+                if (token != null) editor.putString(EXTRA_PROVISIONING_TOKEN, token)
+                if (code != null) editor.putString(EXTRA_ACTIVATION_CODE, code)
+                if (imei != null) editor.putString(EXTRA_EXPECTED_IMEI, imei)
+                if (accountId != null) editor.putString(EXTRA_ACCOUNT_ID, accountId)
+                if (deviceId != null) editor.putString(EXTRA_DEVICE_ID, deviceId)
+                if (dealerId != null) editor.putString(EXTRA_DEALER_ID, dealerId)
+                if (frpCsv != null) editor.putString(EXTRA_FRP_ACCOUNT_IDS_CSV, frpCsv)
+                if (policyVer != null) editor.putString(EXTRA_SECURITY_POLICY_VERSION, policyVer)
+                editor.apply()
+                SecureLog.i(TAG, "Provisioning extras saved from direct intent extras fallback (ADB/testing)")
+            }
+        }
     }
 
     fun persist(context: Context, extras: PersistableBundle) {

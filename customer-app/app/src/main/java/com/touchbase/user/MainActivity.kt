@@ -34,6 +34,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Parse intent for any direct testing/debug extras passed via ADB
+        runCatching { ProvisioningExtrasStore.persistFromIntent(this, intent) }
+
         // Everything here is wrapped so the DPC process can NEVER crash during or
         // right after the provisioning handoff (which would roll back to
         // "something went wrong"). Construct each helper defensively.
@@ -46,6 +49,12 @@ class MainActivity : ComponentActivity() {
         runCatching { runSecurityChecks() }
         if (runCatching { enforceCachedLockState() }.getOrDefault(false)) return
         runCatching { checkAndContinue() }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        runCatching { ProvisioningExtrasStore.persistFromIntent(this, intent) }
     }
 
     override fun onResume() {
