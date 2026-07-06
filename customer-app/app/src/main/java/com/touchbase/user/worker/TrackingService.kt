@@ -1,8 +1,13 @@
 package com.touchbase.user.worker
 
-import android.app.*
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.BatteryManager
@@ -10,13 +15,25 @@ import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
-import com.google.android.gms.location.*
+import androidx.core.content.ContextCompat
+import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.touchbase.user.data.model.LocationReportRequest
 import com.touchbase.user.data.model.LocationSample
-import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.ApiModule
+import com.touchbase.user.data.remote.DeviceTokenManager
+import com.touchbase.user.data.remote.DeviceAuthRecovery
 import com.touchbase.user.util.SecureLog
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class TrackingService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -31,21 +48,26 @@ class TrackingService : Service() {
         private const val MAX_UPLOAD_BATCH = 50
 
         fun start(context: Context, accountId: String) {
-            val tokenManager = DeviceTokenManager(context.applicationContext)
-            val intent = Intent(context.applicationContext, TrackingService::class.java).apply {
+            val appContext = context.applicationContext
+            val tokenManager = DeviceTokenManager(appContext)
+            val intent = Intent(appContext, TrackingService::class.java).apply {
                 putExtra("accountId", accountId)
                 putExtra("imei", tokenManager.imei)
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.applicationContext.startForegroundService(intent)
-            } else {
-                context.applicationContext.startService(intent)
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    appContext.startForegroundService(intent)
+                } else {
+                    appContext.startService(intent)
+                }
+            }.onFailure {
+                SecureLog.e(TAG, "Unable to start foreground tracking service: ${it.message}")
             }
         }
 
         fun stop(context: Context) {
             val intent = Intent(context.applicationContext, TrackingService::class.java)
-            context.applicationContext.stopService(intent)
+            runCatching { context.applicationContext.stopService(intent) }
         }
     }
 
@@ -63,10 +85,11 @@ class TrackingService : Service() {
 
         if (accountId.isNullOrBlank() || imei.isNullOrBlank()) {
             SecureLog.w(TAG, "Missing accountId/IMEI; stopping tracking service")
+            stopSelf()
             return START_NOT_STICKY
         }
 
-        val notification = createNotification("Device Security Active", "High-precision tracking enabled.")
+        val notification = createNotification("TB User recovery active", "Secure location reporting is enabled for this financed device.")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
@@ -82,16 +105,31 @@ class TrackingService : Service() {
         return START_STICKY
     }
 
+    private fun hasLocationPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
     private fun startLocationUpdates(accountId: String, imei: String) {
         if (locationCallback != null) return
 
+        if (!hasLocationPermission()) {
+            SecureLog.e(TAG, "Location permission is missing; cannot start stolen-device GPS tracking")
+            stopSelf()
+            return
+        }
+
+        requestImmediateLocation(accountId, imei)
+
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 60_000L)
             .setMinUpdateIntervalMillis(30_000L)
+            .setMinUpdateDistanceMeters(0f)
             .build()
 
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { loc ->
+                result.locations.lastOrNull()?.let { loc ->
                     queueAndUploadLocation(accountId, imei, loc)
                 }
             }
@@ -110,11 +148,27 @@ class TrackingService : Service() {
         }
     }
 
+    private fun requestImmediateLocation(accountId: String, imei: String) {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                loc?.let { queueAndUploadLocation(accountId, imei, it) }
+            }
+            val tokenSource = CancellationTokenSource()
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, tokenSource.token)
+                .addOnSuccessListener { loc -> loc?.let { queueAndUploadLocation(accountId, imei, it) } }
+                .addOnFailureListener { SecureLog.w(TAG, "Immediate GPS fix failed: ${it.message}") }
+        } catch (e: SecurityException) {
+            SecureLog.e(TAG, "Immediate location permission denied: ${e.message}")
+        } catch (e: Exception) {
+            SecureLog.w(TAG, "Immediate location request failed: ${e.message}")
+        }
+    }
+
     private fun queueAndUploadLocation(accountId: String, imei: String, location: Location) {
         val sample = LocationSample(
             lat = location.latitude,
             lng = location.longitude,
-            accuracy = location.accuracy.toDouble(),
+            accuracy = location.accuracy.takeIf { location.hasAccuracy() }?.toDouble(),
             battery = currentBatteryPercent(),
             timestamp = System.currentTimeMillis() / 1000L
         )
@@ -126,7 +180,12 @@ class TrackingService : Service() {
         serviceScope.launch {
             try {
                 val tokenManager = DeviceTokenManager(applicationContext)
-                val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
+                val signingSecret = tokenManager.apiSecret
+                    ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)
+                    ?: run {
+                        SecureLog.w(TAG, "Cannot upload location yet: no per-device API secret available")
+                        return@launch
+                    }
                 val api = ApiModule.provideApi(signingSecret, accountId)
                 val batch = locationStore.peek(MAX_UPLOAD_BATCH)
                 if (batch.isEmpty()) return@launch
@@ -170,9 +229,11 @@ class TrackingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Device Security Tracking",
+                "TB User Recovery Tracking",
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                description = "Shows when stolen-device location reporting is active."
+            }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }

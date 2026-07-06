@@ -19,6 +19,7 @@ export interface Customer {
   dailyRate: number;
   nextPaymentDueEpochMillis: number;
   status: Status;
+  lockedByDealer?: number;
   isStolen?: boolean;
   releaseApproved?: boolean;
   releaseApprovedAt?: number | null;

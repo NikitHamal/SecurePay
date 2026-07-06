@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
+import com.touchbase.user.data.remote.DeviceAuthRecovery
 import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.BuildConfig
 import java.util.concurrent.TimeUnit
@@ -29,24 +30,32 @@ class HeartbeatWorker(
             return Result.success()
         }
 
-        val app = applicationContext as? com.touchbase.user.SecurePayApplication
-        val repository = app?.deviceRepository ?: run {
-            val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
-            val api = com.touchbase.user.data.remote.ApiModule.provideApi(signingSecret, accountId)
+        val recoveredSecret = tokenManager.apiSecret
+            ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)
+
+        val repository = if (recoveredSecret.isNullOrBlank()) {
+            SecureLog.w(TAG, "No per-device API secret available yet; heartbeat will use cached/offline state")
+            null
+        } else {
+            // Use a fresh API instance after recovery so legacy app-level caches that
+            // were created with the global HMAC secret cannot keep producing 401s.
+            val api = com.touchbase.user.data.remote.ApiModule.provideApi(recoveredSecret, accountId)
             DeviceRepository(api, tokenManager)
         }
 
         // Step 1: Try network heartbeat — may fail when offline
         var heartbeatSucceeded = false
-        runCatching {
-            repository.heartbeat()
-            heartbeatSucceeded = true
-        }.onFailure {
-            SecureLog.w(TAG, "Heartbeat network call failed, using cached data", it)
+        if (repository != null) {
+            runCatching {
+                repository.heartbeat()
+                heartbeatSucceeded = true
+            }.onFailure {
+                SecureLog.w(TAG, "Heartbeat network call failed, using cached data", it)
+            }
         }
 
         // Step 2: Always evaluate lock status locally (works offline)
-        val account = repository.account.value
+        val account = repository?.account?.value
         val cachedDue = if (account != null) account.nextPaymentDueEpochMillis else tokenManager.cachedNextPaymentDue
         val lockedByDealer = account?.lockedByDealer ?: tokenManager.cachedLockedByDealer
         val trustedNow = tokenManager.getTrustedTimeMillis()
@@ -57,6 +66,14 @@ class HeartbeatWorker(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             runCatching { applicationContext.startActivity(intent) }
+        }
+
+        val stolenNow = account?.isStolen ?: tokenManager.cachedIsStolen
+        if (stolenNow) {
+            SecureLog.w(TAG, "Stolen flag active — ensuring location tracking service is running")
+            runCatching { TrackingService.start(applicationContext, accountId) }
+        } else {
+            runCatching { TrackingService.stop(applicationContext) }
         }
 
         // Step 3: Post-sync tasks (only when server reached)
@@ -70,7 +87,7 @@ class HeartbeatWorker(
             if ((account?.releaseApproved == true || tokenManager.cachedReleaseApproved) &&
                 status != com.touchbase.user.data.model.DeviceStatus.LOCKED) {
                 SecureLog.i(TAG, "Release approved — removing device management")
-                runCatching { repository.reportReleaseComplete() }
+                runCatching { repository?.reportReleaseComplete() }
                 runCatching { com.touchbase.user.admin.DevicePolicyController(applicationContext).releaseManagementForPaidLoan() }
             }
         }
@@ -83,7 +100,12 @@ class HeartbeatWorker(
         if (fcmToken == tokenManager.fcmToken) return
         val accountId = tokenManager.accountId ?: return
         val imei = tokenManager.imei ?: return
-        val signingSecret = tokenManager.apiSecret ?: BuildConfig.HMAC_SECRET
+        val signingSecret = tokenManager.apiSecret
+            ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)
+            ?: run {
+                SecureLog.w(TAG, "Skipping FCM token sync: no per-device API secret available")
+                return
+            }
         val api = ApiModule.provideApi(signingSecret, accountId)
         val response = api.uploadFcmToken(
             mapOf(

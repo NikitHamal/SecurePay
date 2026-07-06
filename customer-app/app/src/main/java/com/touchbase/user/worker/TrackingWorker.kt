@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.work.*
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.ApiModule
+import com.touchbase.user.data.remote.DeviceAuthRecovery
 import com.touchbase.user.util.SecureLog
 import java.util.concurrent.TimeUnit
 
@@ -38,15 +39,34 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 return Result.success()
             }
 
-            val signingSecret = tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET
-            val api = ApiModule.provideApi(signingSecret, accountId)
-            val response = api.deviceCheck(imei, accountId)
+            val signingSecret = tokenManager.apiSecret
+                ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)
+
+            if (signingSecret.isNullOrBlank()) {
+                SecureLog.w(TAG, "No per-device API secret available yet; tracking check will retry later")
+                return Result.retry()
+            }
+
+            val resolvedAccountId = tokenManager.accountId ?: accountId
+            val api = ApiModule.provideApi(signingSecret, resolvedAccountId)
+            val response = api.deviceCheck(imei, resolvedAccountId)
 
             if (response.account != null) {
+                if (response.apiSecret.isNotBlank() && response.apiSecret != signingSecret) {
+                    tokenManager.saveDevice(response.account.id, imei, response.apiSecret)
+                }
+                tokenManager.saveCachedStatus(
+                    nextPaymentDue = response.account.nextPaymentDue,
+                    lockedByDealer = response.account.status.equals("LOCKED", ignoreCase = true) || response.account.status.equals("STOLEN", ignoreCase = true),
+                    releaseApproved = response.account.releaseApproved,
+                    isStolen = response.account.isStolen
+                )
+
+                val trackedAccountId = response.account.id.ifBlank { resolvedAccountId }
                 val isStolen = response.account.isStolen
                 if (isStolen) {
                     SecureLog.i(TAG, "Device is flagged as STOLEN. Starting tracking service.")
-                    TrackingService.start(applicationContext, accountId)
+                    TrackingService.start(applicationContext, trackedAccountId)
                 } else {
                     TrackingService.stop(applicationContext)
                 }

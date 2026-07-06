@@ -12,8 +12,8 @@ android {
         applicationId = "com.touchbase.securepay.client"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.2.1"
+        versionCode = 17
+        versionName = "1.2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

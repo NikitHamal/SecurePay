@@ -17,6 +17,7 @@ import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.domain.RemainingTime
 import com.touchbase.user.ui.theme.SecurePayTheme
 import com.touchbase.user.util.SecureLog
+import com.touchbase.user.worker.TrackingService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -37,6 +38,9 @@ class LockTaskActivity : ComponentActivity() {
 
         SecureLog.w(TAG, "LockTaskActivity created — entering pinned lock mode")
         val tokenManager = com.touchbase.user.data.remote.DeviceTokenManager(this)
+        if (tokenManager.cachedIsStolen && !tokenManager.accountId.isNullOrBlank()) {
+            runCatching { TrackingService.start(this, tokenManager.accountId!!) }
+        }
         policyController.startLockTask(this)
         policyController.enforceLock(tokenManager.cachedFrpAccountIds)
 
@@ -69,6 +73,11 @@ class LockTaskActivity : ComponentActivity() {
                                 account = account,
                                 remaining = RemainingTime.until(account.nextPaymentDueEpochMillis, now)
                             )
+                            if (account.isStolen) {
+                                runCatching { TrackingService.start(this@LockTaskActivity, account.id) }
+                            } else {
+                                runCatching { TrackingService.stop(this@LockTaskActivity) }
+                            }
                             if (status != DeviceStatus.LOCKED) {
                                 SecureLog.i(TAG, "Status no longer LOCKED — releasing lock")
                                 releaseAndFinish()

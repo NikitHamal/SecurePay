@@ -45,13 +45,35 @@ class DeviceRepository(
     suspend fun checkAndRegister(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try {
             val requestTime = System.currentTimeMillis()
-            val response = api.deviceCheck(imei, tokenManager.accountId)
+            val response = if (tokenManager.apiSecret == null && !tokenManager.accountId.isNullOrBlank()) {
+                // Legacy self-heal path: do not send accountId when signing with
+                // the global secret, otherwise the server expects the per-device
+                // secret and correctly returns HTTP 401.
+                com.touchbase.user.data.remote.ApiModule
+                    .provideApi(BuildConfig.HMAC_SECRET, "")
+                    .deviceCheck(imei, null)
+            } else {
+                api.deviceCheck(imei, tokenManager.accountId)
+            }
             updateServerTimeOffset(requestTime, response.serverTime)
             tokenManager.saveSecurityPolicy(response.securityPolicy)
-            if (response.enrolled && response.account != null && tokenManager.apiSecret != null) {
-                tokenManager.saveDevice(response.account.id, imei)
+            if (response.enrolled && response.account != null) {
+                val recoveredSecret = response.apiSecret.ifBlank { tokenManager.apiSecret.orEmpty() }.ifBlank { null }
+                tokenManager.saveDevice(response.account.id, imei, recoveredSecret)
+                tokenManager.saveSecurityPolicy(response.securityPolicy)
+                if (!recoveredSecret.isNullOrBlank()) {
+                    api = com.touchbase.user.data.remote.ApiModule.provideApi(recoveredSecret, response.account.id)
+                }
+                tokenManager.saveCachedStatus(
+                    nextPaymentDue = response.account.nextPaymentDue,
+                    lockedByDealer = response.account.status.equals("LOCKED", ignoreCase = true) || response.account.status.equals("STOLEN", ignoreCase = true),
+                    releaseApproved = response.account.releaseApproved,
+                    isStolen = response.account.isStolen
+                )
                 _isRegistered.value = true
-                refresh()
+                if (!recoveredSecret.isNullOrBlank()) {
+                    refresh()
+                }
             }
             Result.success(response)
         } catch (e: Exception) {
@@ -111,6 +133,7 @@ class DeviceRepository(
         val imei = tokenManager.imei ?: return@withContext
         _isLoading.value = true
         try {
+            ensurePerDeviceApi(accountId, imei)
             val requestTime = System.currentTimeMillis()
             val response = api.getAccount(accountId, imei)
             updateServerTimeOffset(requestTime, response.serverTime)
@@ -136,6 +159,7 @@ class DeviceRepository(
         val accountId = tokenManager.accountId ?: return@withContext
         val imei = tokenManager.imei ?: return@withContext
         try {
+            ensurePerDeviceApi(accountId, imei)
             val requestTime = System.currentTimeMillis()
             val response = api.getPayments(accountId, imei)
             _payments.value = response.payments
@@ -149,6 +173,7 @@ class DeviceRepository(
         val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
         val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
         try {
+            ensurePerDeviceApi(accountId, imei)
             val requestTime = System.currentTimeMillis()
             val response = api.deviceHeartbeat(mapOf("imei" to imei, "accountId" to accountId))
             updateServerTimeOffset(requestTime, response.serverTime)
@@ -168,6 +193,7 @@ class DeviceRepository(
         val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
         val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
         try {
+            ensurePerDeviceApi(accountId, imei)
             val requestTime = System.currentTimeMillis()
             val response = api.releaseComplete(mapOf("accountId" to accountId, "imei" to imei))
             updateServerTimeOffset(requestTime, response.serverTime)
@@ -180,17 +206,53 @@ class DeviceRepository(
 
     suspend fun checkForAppUpdate(): Result<com.touchbase.user.data.model.AppUpdateResponse> = withContext(Dispatchers.IO) {
         try {
+            val accountId = tokenManager.accountId.orEmpty()
+            val imei = tokenManager.imei.orEmpty()
+            ensurePerDeviceApi(accountId, imei)
             val requestTime = System.currentTimeMillis()
             val response = api.appUpdate(
                 BuildConfig.VERSION_CODE,
-                tokenManager.accountId.orEmpty(),
-                tokenManager.imei.orEmpty()
+                accountId,
+                imei
             )
             updateServerTimeOffset(requestTime, response.serverTime)
             Result.success(response)
         } catch (e: Exception) {
             SecureLog.e(TAG, "appUpdate check failed", e)
             Result.failure(e)
+        }
+    }
+
+    private suspend fun ensurePerDeviceApi(accountId: String, imei: String): Boolean {
+        val existingSecret = tokenManager.apiSecret
+        if (!existingSecret.isNullOrBlank()) {
+            api = com.touchbase.user.data.remote.ApiModule.provideApi(existingSecret, accountId)
+            return true
+        }
+
+        if (imei.isBlank()) return false
+
+        return runCatching {
+            val response = com.touchbase.user.data.remote.ApiModule
+                .provideApi(BuildConfig.HMAC_SECRET, "")
+                .deviceCheck(imei, null)
+            val account = response.account ?: return@runCatching false
+            val recoveredSecret = response.apiSecret.trim()
+            if (recoveredSecret.length < 32) return@runCatching false
+
+            tokenManager.saveDevice(account.id.ifBlank { accountId }, imei, recoveredSecret)
+            tokenManager.saveSecurityPolicy(response.securityPolicy)
+            tokenManager.saveCachedStatus(
+                nextPaymentDue = account.nextPaymentDue,
+                lockedByDealer = account.status.equals("LOCKED", ignoreCase = true) || account.status.equals("STOLEN", ignoreCase = true),
+                releaseApproved = account.releaseApproved,
+                isStolen = account.isStolen
+            )
+            api = com.touchbase.user.data.remote.ApiModule.provideApi(recoveredSecret, account.id.ifBlank { accountId })
+            true
+        }.getOrElse {
+            SecureLog.w(TAG, "Could not recover per-device API secret: ${it.message}")
+            false
         }
     }
 

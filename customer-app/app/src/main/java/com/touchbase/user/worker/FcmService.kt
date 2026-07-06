@@ -4,11 +4,11 @@ import android.content.Intent
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.touchbase.user.BuildConfig
-import com.touchbase.user.SecurePayApplication
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
+import com.touchbase.user.data.remote.DeviceAuthRecovery
 import com.touchbase.user.ui.lock.LockTaskActivity
+import com.touchbase.user.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,30 +37,46 @@ class FcmService : FirebaseMessagingService() {
         Log.d(TAG, "FCM message received: type=$type accountId=$accountId")
 
         when (type) {
+            "stolen" -> {
+                val tokenManager = DeviceTokenManager(this)
+                val id = accountId ?: tokenManager.accountId
+                if (!id.isNullOrBlank()) TrackingService.start(this, id)
+                val intent = Intent(this, LockTaskActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+                startActivity(intent)
+            }
             "lock" -> {
+                if (data["isStolen"] == "true") {
+                    val tokenManager = DeviceTokenManager(this)
+                    val id = accountId ?: tokenManager.accountId
+                    if (!id.isNullOrBlank()) TrackingService.start(this, id)
+                }
                 val intent = Intent(this, LockTaskActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 }
                 startActivity(intent)
             }
             "unlock", "sync" -> {
+                if (type == "unlock") TrackingService.stop(this)
                 CoroutineScope(Dispatchers.IO).launch {
                     runCatching {
-                        val app = applicationContext as? SecurePayApplication
-                        val repository = app?.deviceRepository
-                        if (repository != null) {
-                            repository.heartbeat()
-                        } else {
-                            val tokenManager = DeviceTokenManager(this@FcmService)
-                            val signingSecret = tokenManager.apiSecret ?: BuildConfig.HMAC_SECRET
-                            val deviceId = tokenManager.accountId ?: tokenManager.imei.orEmpty()
-                            val api = ApiModule.provideApi(signingSecret, deviceId)
-                            api.deviceHeartbeat(
-                                mapOf(
-                                    "imei" to (tokenManager.imei ?: ""),
-                                    "accountId" to (tokenManager.accountId ?: "")
-                                )
+                        val tokenManager = DeviceTokenManager(this@FcmService)
+                        val signingSecret = tokenManager.apiSecret
+                            ?: DeviceAuthRecovery.ensureDeviceApiSecret(this@FcmService, tokenManager)
+                            ?: return@runCatching
+                        val deviceId = tokenManager.accountId ?: tokenManager.imei.orEmpty()
+                        val api = ApiModule.provideApi(signingSecret, deviceId)
+                        api.deviceHeartbeat(
+                            mapOf(
+                                "imei" to (tokenManager.imei ?: ""),
+                                "accountId" to (tokenManager.accountId ?: "")
                             )
+                        )
+                    }.onSuccess {
+                        if (type == "unlock") {
+                            val intent = MainActivity.newLaunchIntent(this@FcmService)
+                            startActivity(intent)
                         }
                     }
                 }
@@ -73,7 +89,9 @@ class FcmService : FirebaseMessagingService() {
             runCatching {
                 val accountId = tokenManager.accountId ?: return@launch
                 val imei = tokenManager.imei ?: return@launch
-                val signingSecret = tokenManager.apiSecret ?: BuildConfig.HMAC_SECRET
+                val signingSecret = tokenManager.apiSecret
+                    ?: DeviceAuthRecovery.ensureDeviceApiSecret(this@FcmService, tokenManager)
+                    ?: return@runCatching
                 val deviceId = accountId
                 val api = ApiModule.provideApi(signingSecret, deviceId)
                 api.uploadFcmToken(

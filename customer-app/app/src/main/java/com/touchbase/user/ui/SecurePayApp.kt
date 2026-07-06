@@ -24,8 +24,10 @@ import com.touchbase.user.ui.activation.ActivationViewModel
 import com.touchbase.user.ui.dashboard.DashboardScreen
 import com.touchbase.user.ui.navigation.Screen
 import com.touchbase.user.ui.payments.PaymentsScreen
+import com.touchbase.user.ui.update.UpdateScreen
 import com.touchbase.user.ui.release.ReleaseApprovedScreen
 import kotlinx.coroutines.launch
+import com.touchbase.user.worker.TrackingService
 
 @Composable
 fun SecurePayApp(
@@ -113,6 +115,19 @@ fun SecurePayApp(
         }
     }
 
+    LaunchedEffect(isRegistered, state.account?.id, state.account?.isStolen, state.releaseApproved) {
+        val account = state.account ?: return@LaunchedEffect
+        if (!isRegistered || state.releaseApproved) {
+            TrackingService.stop(context)
+            return@LaunchedEffect
+        }
+        if (account.isStolen) {
+            TrackingService.start(context, account.id)
+        } else {
+            TrackingService.stop(context)
+        }
+    }
+
     LaunchedEffect(state.isLocked, state.releaseApproved) {
         if (state.releaseApproved) return@LaunchedEffect
         val nowLocked = state.isLocked
@@ -159,12 +174,20 @@ fun SecurePayApp(
                 onRefresh = deviceViewModel::refreshStatus,
                 onMessageShown = deviceViewModel::consumeMessage,
                 onViewPayments = { navController.navigate(Screen.Payments.route) },
+                onCheckUpdates = { navController.navigate(Screen.Updates.route) },
                 securityReport = securityReport
             )
         }
 
         composable(Screen.Payments.route) {
             PaymentsScreen(
+                repository = repository,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Updates.route) {
+            UpdateScreen(
                 repository = repository,
                 onBack = { navController.popBackStack() }
             )

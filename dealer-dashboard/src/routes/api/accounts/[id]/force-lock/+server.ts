@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
   if (fcmToken) {
     const fcmEnv = platform?.env as { FCM_SERVICE_ACCOUNT_EMAIL?: string; FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string; FCM_PROJECT_ID?: string } | undefined;
     if (fcmEnv) {
-      sendFcm(fcmToken, { type: 'lock', accountId }, fcmEnv).catch(() => {});
+      sendFcm(fcmToken, { type: 'lock', accountId, isStolen: 'false' }, fcmEnv).catch(() => {});
     }
   }
 
@@ -63,6 +63,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status: Number(row!.is_stolen ?? 0) === 1 ? 'STOLEN' : 'LOCKED',
+    lockedByDealer: Number(row!.locked_by_dealer ?? 0),
     isStolen: Number(row!.is_stolen ?? 0) === 1,
     termDays: Number(row!.term_days),
     downPayment: Number(row!.down_payment),

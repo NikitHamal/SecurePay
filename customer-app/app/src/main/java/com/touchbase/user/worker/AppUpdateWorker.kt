@@ -8,9 +8,9 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.touchbase.user.SecurePayApplication
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
+import com.touchbase.user.data.remote.DeviceAuthRecovery
 import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.util.SecureLog
 import java.util.concurrent.TimeUnit
@@ -25,10 +25,15 @@ class AppUpdateWorker(
         if (!tokenManager.isRegistered) return Result.success()
 
         return try {
-            val app = applicationContext as? SecurePayApplication
-            val repository = app?.deviceRepository ?: DeviceRepository(
+            val recoveredSecret = tokenManager.apiSecret
+                ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)
+                ?: run {
+                    SecureLog.w(TAG, "Skipping update check: no per-device API secret available")
+                    return Result.retry()
+                }
+            val repository = DeviceRepository(
                 ApiModule.provideApi(
-                    tokenManager.apiSecret ?: com.touchbase.user.BuildConfig.HMAC_SECRET,
+                    recoveredSecret,
                     tokenManager.accountId ?: tokenManager.imei.orEmpty()
                 ),
                 tokenManager

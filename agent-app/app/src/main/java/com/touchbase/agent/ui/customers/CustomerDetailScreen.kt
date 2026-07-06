@@ -98,6 +98,7 @@ fun CustomerDetailScreen(
     var account by remember { mutableStateOf<Account?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var actionMessage by remember { mutableStateOf<String?>(null) }
     var actionInProgress by remember { mutableStateOf(false) }
     var showPaymentSheet by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
@@ -141,6 +142,7 @@ fun CustomerDetailScreen(
             isLoading = false
             result.fold(
                 onSuccess = {
+                    error = null
                     account = it
                     editName = it.customerName
                     editNationalId = it.nationalId
@@ -296,6 +298,21 @@ fun CustomerDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(0.dp))
+
+            actionMessage?.let { message ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(14.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
 
             StatusBanner(status = acc.status, releaseApproved = acc.releaseApproved)
 
@@ -527,8 +544,16 @@ fun CustomerDetailScreen(
                     OutlinedButton(
                         onClick = {
                             actionInProgress = true
+                            actionMessage = null
                             scope.launch {
-                                repository?.forceUnlock(acc.id)
+                                val result = repository?.forceUnlock(acc.id)
+                                result?.fold(
+                                    onSuccess = { updated ->
+                                        account = updated
+                                        actionMessage = "Unlock command sent. Ask the customer phone to tap Sync Now if it is still locked."
+                                    },
+                                    onFailure = { actionMessage = it.message ?: "Unlock failed" }
+                                ) ?: run { actionMessage = "Repository unavailable" }
                                 actionInProgress = false
                                 loadAccount()
                             }
@@ -548,8 +573,16 @@ fun CustomerDetailScreen(
                     OutlinedButton(
                         onClick = {
                             actionInProgress = true
+                            actionMessage = null
                             scope.launch {
-                                repository?.forceLock(acc.id)
+                                val result = repository?.forceLock(acc.id)
+                                result?.fold(
+                                    onSuccess = { updated ->
+                                        account = updated
+                                        actionMessage = "Lock command sent. The phone will lock on push, heartbeat, or next Sync Now."
+                                    },
+                                    onFailure = { actionMessage = it.message ?: "Lock failed" }
+                                ) ?: run { actionMessage = "Repository unavailable" }
                                 actionInProgress = false
                                 loadAccount()
                             }
@@ -613,8 +646,21 @@ fun CustomerDetailScreen(
                 OutlinedButton(
                     onClick = {
                         actionInProgress = true
+                        actionMessage = null
+                        val targetStolen = !acc.isStolen
                         scope.launch {
-                            repository?.updateAccount(acc.id, mapOf("isStolen" to !acc.isStolen))
+                            val result = repository?.updateAccount(acc.id, mapOf("isStolen" to targetStolen))
+                            result?.fold(
+                                onSuccess = { updated ->
+                                    account = updated
+                                    actionMessage = if (targetStolen) {
+                                        "Stolen mode enabled. The phone will lock and start reporting GPS after its next sync."
+                                    } else {
+                                        "Stolen mode cleared and unlock command sent."
+                                    }
+                                },
+                                onFailure = { actionMessage = it.message ?: "Stolen-state update failed" }
+                            ) ?: run { actionMessage = "Repository unavailable" }
                             actionInProgress = false
                             loadAccount()
                         }
@@ -626,7 +672,7 @@ fun CustomerDetailScreen(
                     ),
                     shape = RoundedCornerShape(360.dp)
                 ) {
-                    ButtonText(if (acc.isStolen) "Unflag Stolen" else "Flag as Stolen")
+                    ButtonText(if (acc.isStolen) "Recover + Unlock" else "Flag as Stolen")
                 }
 
                 OutlinedButton(

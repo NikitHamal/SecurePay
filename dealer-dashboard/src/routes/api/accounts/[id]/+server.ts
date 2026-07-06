@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getR2 } from '$lib/api/server';
 import { sendFcm } from '$lib/api/fcm';
+import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
-import Map from '$lib/components/ui/Map.svelte';
 
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
@@ -44,6 +44,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
     status,
+    lockedByDealer: Number(row.locked_by_dealer ?? 0),
     isStolen: row.is_stolen === 1,
     customerPhotoPath: row.customer_photo_path as string | null,
     nationalIdFrontPath: row.national_id_front_path as string | null,
@@ -89,16 +90,18 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (termDays !== undefined) { updates.push('term_days = ?'); args.push(termDays); }
   if (nextPaymentDue !== undefined) { updates.push('next_payment_due = ?'); args.push(nextPaymentDue); }
   if (amountPaid !== undefined) { updates.push('amount_paid = ?'); args.push(amountPaid); }
+  const nowMillis = Date.now();
+  const nowSeconds = Math.floor(nowMillis / 1000);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
   if (isStolen !== undefined) {
+    const stolen = Boolean(isStolen);
     updates.push('is_stolen = ?');
-    args.push(isStolen ? 1 : 0);
-    if (isStolen) {
-      // A stolen device should lock on the next heartbeat even if the dealer did
-      // not separately press Force Lock. Unflagging does not auto-unlock; the
-      // dealer can use Force Unlock after recovery/verification.
-      updates.push('locked_by_dealer = ?');
-      args.push(1);
-    }
+    args.push(stolen ? 1 : 0);
+    updates.push('locked_by_dealer = ?');
+    args.push(stolen ? 1 : 0);
+    updates.push('next_payment_due = ?');
+    args.push(stolen ? nowMillis - 60 * 60 * 1000 : nowMillis + DAY_MS);
   }
 
   // Helper to decode Base64 and upload to R2
@@ -146,7 +149,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   }
 
   updates.push('updated_at = ?');
-  args.push(Math.floor(Date.now() / 1000));
+  args.push(nowSeconds);
   args.push(params.id);
   args.push(locals.dealer.id);
 
@@ -166,9 +169,20 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     if (fcmToken) {
       const fcmEnv = platform?.env as { FCM_SERVICE_ACCOUNT_EMAIL?: string; FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string; FCM_PROJECT_ID?: string } | undefined;
       if (fcmEnv) {
-        sendFcm(fcmToken, { type: isStolen ? 'lock' : 'unlock', accountId: params.id }, fcmEnv).catch(() => {});
+        sendFcm(
+          fcmToken,
+          {
+            type: isStolen ? 'stolen' : 'unlock',
+            accountId: params.id,
+            isStolen: isStolen ? 'true' : 'false'
+          },
+          fcmEnv
+        ).catch(() => {});
       }
     }
+    await db.prepare(
+      "INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, ?, 'dealer', ?)"
+    ).bind(uuidv4(), params.id, isStolen ? 'stolen' : 'recover', nowSeconds).run();
   }
 
   const nextDue = Number(row!.next_payment_due);
@@ -192,6 +206,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status,
+    lockedByDealer: Number(row.locked_by_dealer ?? 0),
     isStolen: row!.is_stolen === 1,
     customerPhotoPath: row!.customer_photo_path as string | null,
     nationalIdFrontPath: row!.national_id_front_path as string | null,

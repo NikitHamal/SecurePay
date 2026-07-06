@@ -18,22 +18,24 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
   if (!acct) {
     return errorResponse('Account not found', 404);
   }
-  if (Number(acct.is_stolen ?? 0) === 1) {
-    return errorResponse('Unflag the device as stolen before force-unlocking it', 409);
-  }
-
   const now = Date.now();
+  const nowSeconds = Math.floor(now / 1000);
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  await db.prepare('UPDATE accounts SET locked_by_dealer = 0, next_payment_due = ?, updated_at = ? WHERE id = ?').bind(now + DAY_MS, Math.floor(now / 1000), accountId).run();
+  // Force Unlock is the operational recovery path from the Agent app. If the
+  // account was flagged stolen, also clear the stolen flag so the customer phone
+  // receives a single unmistakable UNLOCK/SYNC state on the next heartbeat.
+  await db.prepare('UPDATE accounts SET is_stolen = 0, locked_by_dealer = 0, next_payment_due = ?, updated_at = ? WHERE id = ?')
+    .bind(now + DAY_MS, nowSeconds, accountId)
+    .run();
 
-  await db.prepare("INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, 'unlock', 'dealer', ?)").bind(uuidv4(), accountId, Math.floor(now / 1000)).run();
+  await db.prepare("INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, 'unlock', 'dealer', ?)").bind(uuidv4(), accountId, nowSeconds).run();
 
   const fcmToken = String(acct.fcm_token ?? '').trim();
   if (fcmToken) {
     const fcmEnv = platform?.env as { FCM_SERVICE_ACCOUNT_EMAIL?: string; FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string; FCM_PROJECT_ID?: string } | undefined;
     if (fcmEnv) {
-      sendFcm(fcmToken, { type: 'unlock', accountId }, fcmEnv).catch(() => {});
+      sendFcm(fcmToken, { type: 'unlock', accountId, isStolen: 'false' }, fcmEnv).catch(() => {});
     }
   }
 
@@ -63,6 +65,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status: Number(row!.is_stolen ?? 0) === 1 ? 'STOLEN' : computeStatus(nextDue),
+    lockedByDealer: Number(row!.locked_by_dealer ?? 0),
     isStolen: Number(row!.is_stolen ?? 0) === 1,
     termDays: Number(row!.term_days),
     downPayment: Number(row!.down_payment),

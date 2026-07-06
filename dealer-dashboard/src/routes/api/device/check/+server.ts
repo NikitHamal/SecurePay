@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy, generateDeviceApiSecret } from '$lib/api/server';
 
 export const GET: RequestHandler = async ({ url, platform, locals }) => {
   if (!locals.hmacVerified) {
@@ -43,6 +43,19 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     });
   }
 
+  const nowSec = Math.floor(Date.now() / 1000);
+  let apiSecret = String(account.device_hmac_secret ?? '').trim();
+  if (apiSecret.length < 32) {
+    apiSecret = generateDeviceApiSecret();
+    await db.prepare(`
+      UPDATE accounts
+         SET device_hmac_secret = ?,
+             device_hmac_secret_created_at = COALESCE(device_hmac_secret_created_at, ?),
+             updated_at = ?
+       WHERE id = ?
+    `).bind(apiSecret, nowSec, nowSec, account.id as string).run();
+  }
+
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const release = releaseFields(account as Record<string, unknown>);
   const isStolen = Number(account.is_stolen ?? 0) === 1;
@@ -58,6 +71,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
       model: device.model,
       status: device.status
     },
+    apiSecret,
     account: {
       id: account.id,
       customerName: account.customer_name,
