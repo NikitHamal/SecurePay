@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
@@ -645,6 +646,20 @@ fun CustomerDetailScreen(
                     shape = RoundedCornerShape(360.dp)
                 ) {
                     ButtonText("Delete")
+                }
+            }
+
+            if (acc.isStolen) {
+                Button(
+                    onClick = { onProvisionDevice(acc.imei) },
+                    modifier = Modifier.fillMaxWidth().height(48.dp).padding(top = 8.dp),
+                    enabled = !actionInProgress && !isEditing,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    shape = RoundedCornerShape(360.dp)
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ButtonText("View Live Location")
                 }
             }
 

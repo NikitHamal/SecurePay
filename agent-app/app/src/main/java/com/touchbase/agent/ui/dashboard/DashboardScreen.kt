@@ -62,7 +62,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.SwipeRefresh
+import androidx.compose.material.rememberSwipeRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -245,6 +246,20 @@ fun DashboardScreen(
                 Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
             }
         } else {
+        val refreshState = rememberSwipeRefreshState(isLoading)
+        SwipeRefresh(
+            state = refreshState,
+            onRefresh = { 
+                isLoading = true
+                val result = repository?.getKpis()
+                isLoading = false
+                result?.fold(
+                    onSuccess = { kpis = it },
+                    onFailure = { error = it.message }
+                )
+            },
+            color = MaterialTheme.colorScheme.primary
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1091,55 +1106,57 @@ fun CollectionOverviewCard(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_ledger),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    val growthBg = if (isGrowthPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    val growthText = if (isGrowthPositive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onError
-                    val growthArrow = if (isGrowthPositive) "↗" else "↘"
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(growthBg)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = growthArrow,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = growthText
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_ledger),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = growthRateText,
-                                color = growthText,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
+
+                        val growthBg = if (isGrowthPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        val growthText = if (isGrowthPositive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onError
+                        val growthArrow = if (isGrowthPositive) "↗" else "↘"
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(growthBg)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = growthArrow, softWrap = false,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = growthText,
+                                    softWrap = false
+                                )
+                                Text(
+                                    text = growthRateText, softWrap = false,
+                                    color = growthText,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
-                }
 
                 Row(
                     verticalAlignment = Alignment.Bottom

@@ -176,4 +176,8 @@ class SecurePayRepository(
             Result.failure(e)
         }
     }
+
+    suspend fun getLocation(accountId: String): Result<LocationResponse> = withContext(Dispatchers.IO) {
+        try { Result.success(api.getLocation(accountId)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
 }

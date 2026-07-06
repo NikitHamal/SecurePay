@@ -69,7 +69,7 @@
           stroke-width={stroke}
           stroke-dasharray="{arc.length} {circumference - arc.length}"
           stroke-dashoffset={-arc.offset}
-          stroke-linecap="round"
+          stroke-linecap="butt"
           class="transition-all duration-700 ease-out"
         />
       {/each}

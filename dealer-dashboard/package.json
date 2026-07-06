@@ -27,8 +27,10 @@
   },
   "dependencies": {
     "@sveltejs/adapter-cloudflare": "7.2.9",
+    "@types/leaflet": "^1.9.21",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
+    "leaflet": "^1.9.4",
     "uuid": "^14.0.0"
   }
 }

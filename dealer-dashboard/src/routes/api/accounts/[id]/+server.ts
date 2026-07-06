@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getR2 } from '$lib/api/server';
 import type { Customer, Status } from '$lib/types';
+import Map from '$lib/components/ui/Map.svelte';
 
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {

@@ -4,6 +4,7 @@
   import { formatCountdown, formatCurrency, formatDate, formatPhone, formatRelative } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
+  import Map from '$lib/components/ui/Map.svelte';
   import { fade } from 'svelte/transition';
   import { getAccountLocations } from '$lib/api/client';
 
@@ -330,56 +331,57 @@
         {#if customer.status === 'STOLEN' || locations.length > 0}
           <div class="card mt-4 p-5">
             <div class="flex items-center justify-between mb-3">
-              <p class="section-title">Last Known Location</p>
+              <p class="section-title">Live Location Tracking</p>
               {#if loadingLocations}
-                <span class="text-2xs text-ink-muted">Loading...</span>
+                <span class="text-2xs text-ink-muted">Updating...</span>
               {:else if locations.length > 0}
-                <span class="text-2xs text-emerald font-semibold uppercase tracking-wide">Active</span>
+                <span class="text-2xs text-emerald font-semibold uppercase tracking-wide">Live</span>
               {/if}
             </div>
             
             {#if locations.length > 0}
               {@const latest = locations[0]}
-              <div class="grid grid-cols-1 gap-3 text-sm">
-                <div class="flex items-center justify-between">
-                  <span class="text-ink-secondary">Coordinates</span>
-                  <span class="font-mono text-ink-primary font-medium">
-                    {latest.latitude.toFixed(6)}, {latest.longitude.toFixed(6)}
-                  </span>
+              <div class="grid grid-cols-1 gap-4">
+                <div class="h-64 w-full overflow-hidden rounded-xl border border-edge bg-surface-100">
+                  <Map lat={latest.latitude} lng={latest.longitude} />
                 </div>
-                {#if latest.accuracy !== null}
-                  <div class="flex items-center justify-between">
+                
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div class="flex items-center justify-between p-2 rounded-lg bg-surface-100">
                     <span class="text-ink-secondary">Accuracy</span>
-                    <span class="text-ink-primary font-medium">±{latest.accuracy.toFixed(1)}m</span>
+                    <span class="font-medium text-ink-primary">±{latest.accuracy?.toFixed(1) || 'N/A'}m</span>
                   </div>
-                {/if}
-                {#if latest.batteryLevel !== null}
-                  <div class="flex items-center justify-between">
-                    <span class="text-ink-secondary">Battery Level</span>
-                    <span class="text-ink-primary font-medium">{latest.batteryLevel}%</span>
+                  <div class="flex items-center justify-between p-2 rounded-lg bg-surface-100">
+                    <span class="text-ink-secondary">Battery</span>
+                    <span class="font-medium text-ink-primary">{latest.batteryLevel || 'N/A'}%</span>
                   </div>
-                {/if}
-                <div class="flex items-center justify-between">
-                  <span class="text-ink-secondary">Updated At</span>
+                </div>
+                <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-surface-100">
+                  <span class="text-ink-secondary">Last updated</span>
                   <span class="text-ink-primary font-medium">{formatDate(latest.timestamp * 1000)}</span>
                 </div>
                 
-                <div class="mt-2">
-                  <a
-                    href="https://www.google.com/maps/search/?api=1&query={latest.latitude},{latest.longitude}"
-                    target="_blank"
-                    class="btn-primary w-full text-center flex items-center justify-center gap-2"
-                  >
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    Open in Google Maps
-                  </a>
-                </div>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query={latest.latitude},{latest.longitude}"
+                  target="_blank"
+                  class="btn-primary w-full text-center flex items-center justify-center gap-2"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  Navigate to Device
+                </a>
               </div>
             {:else if !loadingLocations}
-              <p class="text-2xs text-ink-muted">No location logs available yet.</p>
+              <div class="flex flex-col items-center justify-center py-8 text-center">
+                <svg class="h-12 w-12 text-ink-muted mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2v20M2 12h20" stroke-linecap="round" />
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+                <p class="text-sm text-ink-secondary">No location data reported yet.</p>
+                <p class="text-xs text-ink-muted mt-1">Device must be flagged as stolen to begin tracking.</p>
+              </div>
             {/if}
           </div>
         {/if}

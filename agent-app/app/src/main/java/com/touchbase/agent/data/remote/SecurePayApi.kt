@@ -68,6 +68,9 @@ interface SecurePayApi {
         @Path("type") type: String
     ): retrofit2.Response<okhttp3.ResponseBody>
 
+    @GET("accounts/{id}/location")
+    suspend fun getLocation(@Path("id") id: String): LocationResponse
+
     @GET("device/check")
     suspend fun deviceCheck(@Query("imei") imei: String): DeviceCheckResponse
 
