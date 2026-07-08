@@ -6,6 +6,11 @@ import { verifyHmacSignature, getHmacSecret } from '$lib/hmac';
 const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update', '/api/device/fcm-token', '/api/device/location'];
 const GLOBAL_DEVICE_PATHS = ['/api/device/check', '/api/device/activate', '/api/device/app-update'];
 
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW = 3600;
+const GENERAL_RATE_LIMIT = 100;
+const GENERAL_RATE_WINDOW = 60;
+
 function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
@@ -42,12 +47,43 @@ async function lookupDeviceSecret(db: D1Database, accountId: string, imei: strin
   return secret.length >= 32 ? secret : null;
 }
 
+async function checkRateLimit(db: D1Database, key: string, limit: number, window: number): Promise<boolean> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  await db.prepare('DELETE FROM rate_limits WHERE created_at < ?')
+    .bind(nowSec - window).run();
+  const count = await db.prepare(
+    'SELECT COUNT(*) as count FROM rate_limits WHERE key = ? AND created_at >= ?'
+  ).bind(key, nowSec - window).first<{ count: number }>();
+  if (count && count.count >= limit) return false;
+  await db.prepare('INSERT INTO rate_limits (key, created_at) VALUES (?, ?)')
+    .bind(key, nowSec).run();
+  return true;
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.hmacVerified = false;
   event.locals.hmacScope = undefined;
 
   const requestUrl = new URL(event.request.url);
   const path = requestUrl.pathname;
+
+  const db = event.platform?.env?.DB;
+
+  if (db && path === '/api/auth/login' && event.request.method === 'POST') {
+    const ip = event.request.headers.get('cf-connecting-ip') || 'unknown';
+    const allowed = await checkRateLimit(db, `login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW);
+    if (!allowed) {
+      return jsonError('Too many login attempts. Try again in 1 hour.', 429);
+    }
+  }
+
+  if (db && path.startsWith('/api/') && path !== '/api/auth/login' && event.request.method !== 'GET') {
+    const ip = event.request.headers.get('cf-connecting-ip') || 'unknown';
+    const allowed = await checkRateLimit(db, `api:${ip}`, GENERAL_RATE_LIMIT, GENERAL_RATE_WINDOW);
+    if (!allowed) {
+      return jsonError('Rate limit exceeded. Slow down.', 429);
+    }
+  }
 
   if (DEVICE_PATHS.some((p) => path.startsWith(p))) {
     const signature = event.request.headers.get('x-signature');
@@ -64,8 +100,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       event.request = new Request(event.request, { body });
     }
 
-    const db = event.platform?.env?.DB;
-    if (!db) return jsonError('Database unavailable', 503);
+    const deviceDb = event.platform?.env?.DB;
+    if (!deviceDb) return jsonError('Database unavailable', 503);
 
     const method = event.request.method;
     const urlPath = requestUrl.pathname + requestUrl.search;
@@ -73,7 +109,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     const accountId = String(requestUrl.searchParams.get('accountId') ?? bodyIdentity?.accountId ?? '').trim();
     const imei = String(requestUrl.searchParams.get('imei') ?? bodyIdentity?.imei ?? '').trim();
 
-    const deviceSecret = await lookupDeviceSecret(db, accountId, imei);
+    const deviceSecret = await lookupDeviceSecret(deviceDb, accountId, imei);
     let valid = false;
 
     if (deviceSecret) {
@@ -106,10 +142,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const nowSec = Math.floor(Date.now() / 1000);
     // Keep only a short replay window and atomically reject a reused nonce.
-    await db.prepare('DELETE FROM hmac_nonces WHERE created_at < ?')
+    await deviceDb.prepare('DELETE FROM hmac_nonces WHERE created_at < ?')
       .bind(nowSec - 10 * 60)
       .run();
-    const nonceResult = await db.prepare(
+    const nonceResult = await deviceDb.prepare(
       'INSERT OR IGNORE INTO hmac_nonces (nonce, created_at) VALUES (?, ?)'
     ).bind(nonce, nowSec).run();
     if (!nonceResult.success || Number(nonceResult.meta.changes ?? 0) !== 1) {
@@ -128,7 +164,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (token && event.platform?.env?.JWT_SECRET) {
     const dealer = verifyToken(token, event.platform.env.JWT_SECRET);
     if (dealer) {
-      event.locals.dealer = { id: dealer.sub, name: dealer.name };
+      event.locals.dealer = {
+        id: dealer.sub,
+        name: dealer.name,
+        role: dealer.role || 'SUPER_ADMIN',
+        agencyId: dealer.agencyId || null,
+        branchId: dealer.branchId || null
+      };
     }
   }
 

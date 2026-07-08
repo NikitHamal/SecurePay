@@ -9,6 +9,7 @@
     href: string;
     icon: string;
     badge?: string;
+    roles?: string[];
   }
 
   interface NavGroup {
@@ -22,6 +23,7 @@
       items: [
         { label: 'Overview', href: '/', icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
         { label: 'Customers', href: '/customers', icon: 'M16 14a4 4 0 10-8 0M12 7a3 3 0 100 6 3 3 0 000-6zM4 20a8 8 0 0116 0' },
+        { label: 'My Sales', href: '/my-sales', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', roles: ['AGENT'] },
         { label: 'Device Logs', href: '/logs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
       ]
     },
@@ -31,6 +33,16 @@
         { label: 'Payment Ledger', href: '/ledger', icon: 'M4 6h16M4 12h16M4 18h10', badge: 'New' },
         { label: 'Inventory', href: '/inventory', icon: 'M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7' }
       ]
+    },
+    {
+      label: 'Organization',
+      items: [
+        { label: 'Agent Requests', href: '/agent-requests', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', badge: 'Pending', roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'] },
+        { label: 'Agents', href: '/agents', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'] },
+        { label: 'Branches', href: '/branches', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'] },
+        { label: 'Agencies', href: '/agencies', icon: 'M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z', roles: ['SUPER_ADMIN', 'AGENCY_OWNER'] },
+        { label: 'Notifications', href: '/notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' }
+      ]
     }
   ];
 
@@ -39,7 +51,13 @@
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  function canAccessItem(item: NavItem, role: string | undefined): boolean {
+    if (!item.roles) return true;
+    return role ? item.roles.includes(role) : false;
+  }
+
   $: pathname = $page.url.pathname;
+  $: userRole = $dealer?.role;
 </script>
 
 <aside
@@ -79,48 +97,51 @@
 
   <nav class="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
     {#each groups as group (group.label)}
-      <div class="flex flex-col gap-1.5">
-        <p class="px-3 section-title">{group.label}</p>
-        {#each group.items as item (item.href)}
-          {@const active = isActive(item.href, pathname)}
-          <a
-            href={item.href}
-            aria-current={active ? 'page' : undefined}
-            class="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all
-                   {active
-              ? 'bg-emerald/10 text-emerald'
-              : 'text-ink-secondary hover:bg-hover hover:text-ink-primary'}"
-          >
-            {#if active}
-              <span
-                class="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-emerald"
-                aria-hidden="true"
-              ></span>
-            {/if}
-            <span
-              class="flex h-7 w-7 items-center justify-center rounded-md
-                     {active ? 'bg-emerald/15 text-emerald' : 'text-ink-muted group-hover:text-ink-secondary'}"
+      {@const visibleItems = group.items.filter(item => canAccessItem(item, userRole))}
+      {#if visibleItems.length > 0}
+        <div class="flex flex-col gap-1.5">
+          <p class="px-3 section-title">{group.label}</p>
+          {#each visibleItems as item (item.href)}
+            {@const active = isActive(item.href, pathname)}
+            <a
+              href={item.href}
+              aria-current={active ? 'page' : undefined}
+              class="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all
+                     {active
+                ? 'bg-emerald/10 text-emerald'
+                : 'text-ink-secondary hover:bg-hover hover:text-ink-primary'}"
             >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
+              {#if active}
+                <span
+                  class="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-emerald"
+                  aria-hidden="true"
+                ></span>
+              {/if}
+              <span
+                class="flex h-7 w-7 items-center justify-center rounded-md
+                       {active ? 'bg-emerald/15 text-emerald' : 'text-ink-muted group-hover:text-ink-secondary'}"
               >
-                <path d={item.icon} />
-              </svg>
-            </span>
-            <span class="flex-1">{item.label}</span>
-            {#if item.badge}
-              <span class="chip-emerald text-2xs">{item.badge}</span>
-            {/if}
-          </a>
-        {/each}
-      </div>
+                <svg
+                  class="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d={item.icon} />
+                </svg>
+              </span>
+              <span class="flex-1">{item.label}</span>
+              {#if item.badge}
+                <span class="chip-emerald text-2xs">{item.badge}</span>
+              {/if}
+            </a>
+          {/each}
+        </div>
+      {/if}
     {/each}
   </nav>
 

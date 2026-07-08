@@ -1,7 +1,15 @@
+import type { DealerRole } from '$lib/auth';
+
 declare global {
   namespace App {
     interface Locals {
-      dealer: { id: string; name: string } | null;
+      dealer: {
+        id: string;
+        name: string;
+        role: DealerRole;
+        agencyId?: string | null;
+        branchId?: string | null;
+      } | null;
       hmacVerified: boolean;
       hmacScope?: 'global' | 'device';
     }
@@ -17,6 +25,9 @@ declare global {
         FCM_SERVICE_ACCOUNT_EMAIL?: string;
         FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
         FCM_PROJECT_ID?: string;
+        DIDIT_API_KEY?: string;
+        DIDIT_WEBHOOK_SECRET?: string;
+        DIDIT_WORKFLOW_ID?: string;
       };
     }
   }

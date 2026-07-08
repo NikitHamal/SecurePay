@@ -67,6 +67,13 @@ export function generateDeviceApiSecret(): string {
   return generateToken(32);
 }
 
+export function generateAccountId(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `ACC-${hex.toUpperCase()}`;
+}
+
 
 export function releaseApproved(row: Record<string, unknown>): boolean {
   return Number(row.release_approved ?? 0) === 1 || Number(row.amount_paid ?? 0) >= Number(row.total_loan_amount ?? 1);
@@ -125,62 +132,67 @@ export function getDb(event: { platform?: App.Platform | null }): D1Database {
   return event.platform.env.DB;
 }
 
-import * as fs from 'fs';
-import * as path from 'path';
-
 let mockR2Instance: any = null;
+
+function createMockR2(): any {
+  // Dynamic require for Node.js only — will throw in Workers (caught below)
+  const fs = require('fs');
+  const path = require('path');
+  const baseDir = path.resolve('.kyc_local_storage');
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
+  return {
+    async put(key: string, value: any, _options?: any) {
+      const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const filePath = path.join(baseDir, safeKey);
+      let buffer: Buffer;
+      if (value instanceof Uint8Array) {
+        buffer = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+      } else if (value instanceof ArrayBuffer) {
+        buffer = Buffer.from(value);
+      } else if (typeof value === 'string') {
+        buffer = Buffer.from(value, 'utf-8');
+      } else {
+        buffer = Buffer.from(value);
+      }
+      fs.writeFileSync(filePath, buffer);
+      return {};
+    },
+    async get(key: string) {
+      const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const filePath = path.join(baseDir, safeKey);
+      if (!fs.existsSync(filePath)) {
+        return null;
+      }
+      const data = fs.readFileSync(filePath);
+      return {
+        arrayBuffer: async () => {
+          const ab = new ArrayBuffer(data.length);
+          const view = new Uint8Array(ab);
+          for (let i = 0; i < data.length; ++i) {
+            view[i] = data[i];
+          }
+          return ab;
+        },
+        text: async () => data.toString('utf-8')
+      };
+    }
+  };
+}
 
 export function getR2(event: { platform?: App.Platform | null }): R2Bucket {
   if (event.platform?.env?.R2) {
     return event.platform.env.R2;
   }
 
+  // Dev-only mock R2 (Node.js dev server only — never runs in Cloudflare Workers)
   if (!mockR2Instance) {
     try {
-      const baseDir = path.resolve('.kyc_local_storage');
-      if (!fs.existsSync(baseDir)) {
-        fs.mkdirSync(baseDir, { recursive: true });
-      }
-
-      mockR2Instance = {
-        async put(key: string, value: any, options?: any) {
-          const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
-          const filePath = path.join(baseDir, safeKey);
-          let buffer: Buffer;
-          if (value instanceof Uint8Array) {
-            buffer = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
-          } else if (value instanceof ArrayBuffer) {
-            buffer = Buffer.from(value);
-          } else if (typeof value === 'string') {
-            buffer = Buffer.from(value, 'utf-8');
-          } else {
-            buffer = Buffer.from(value);
-          }
-          fs.writeFileSync(filePath, buffer);
-          return {};
-        },
-        async get(key: string) {
-          const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
-          const filePath = path.join(baseDir, safeKey);
-          if (!fs.existsSync(filePath)) {
-            return null;
-          }
-          const data = fs.readFileSync(filePath);
-          return {
-            arrayBuffer: async () => {
-              const ab = new ArrayBuffer(data.length);
-              const view = new Uint8Array(ab);
-              for (let i = 0; i < data.length; ++i) {
-                view[i] = data[i];
-              }
-              return ab;
-            },
-            text: async () => data.toString('utf-8')
-          };
-        }
-      };
+      mockR2Instance = createMockR2();
     } catch (e) {
-      console.error('Failed to initialize mock R2:', e);
+      // In Workers runtime, require() throws — this is expected
+      console.error('Mock R2 unavailable (expected in production Workers):', (e as Error).message);
     }
   }
 

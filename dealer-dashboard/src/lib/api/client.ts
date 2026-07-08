@@ -51,6 +51,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+export async function apiClient(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...headers(), ...(options.headers as Record<string, string> || {}) }
+  });
+  if (res.status === 401) {
+    clearToken();
+  }
+  return res;
+}
+
 export function computeStatus(nextPaymentDueEpochMillis: number, now = Date.now()): 'ACTIVE' | 'WARNING' | 'LOCKED' {
   const DAY_MS = 24 * 60 * 60 * 1000;
   if (now >= nextPaymentDueEpochMillis) return 'LOCKED';

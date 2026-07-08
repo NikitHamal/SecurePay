@@ -5,6 +5,8 @@
 
 export type Status = 'ACTIVE' | 'WARNING' | 'LOCKED' | 'STOLEN';
 
+export type DealerRole = 'SUPER_ADMIN' | 'AGENCY_OWNER' | 'BRANCH_ADMIN' | 'AGENT';
+
 export interface Customer {
   id: string;
   customerName: string;
@@ -29,6 +31,9 @@ export interface Customer {
   nationalIdBackPath?: string | null;
   termDays: number;
   downPayment: number;
+  enrolledBy?: string | null;
+  ghanaCardVerified?: boolean;
+  ghanaCardStatus?: string | null;
 }
 
 
@@ -70,3 +75,46 @@ export interface LedgerEntry {
 }
 
 export type PaymentMethod = 'MOBILE_MONEY' | 'CARD' | 'BANK' | 'CASH';
+
+export interface Agency {
+  id: string;
+  name: string;
+  ownerId: string;
+  phone?: string | null;
+  region?: string | null;
+  isActive: boolean;
+  createdAt: number;
+}
+
+export interface Branch {
+  id: string;
+  name: string;
+  agencyId: string;
+  adminId?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  isActive: boolean;
+  createdAt: number;
+}
+
+export interface AgentRequest {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  requestedBranchId?: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: number;
+}
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | null;
+  createdAt: number;
+}

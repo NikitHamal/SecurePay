@@ -63,8 +63,12 @@
       >
         {submitting ? 'Signing in...' : 'Sign in'}
       </button>
-    </form>
 
-    
+      <div class="text-center">
+        <a href="/register" class="text-sm text-emerald hover:underline">
+          Become an agent? Register here
+        </a>
+      </div>
+    </form>
   </div>
 </div>
