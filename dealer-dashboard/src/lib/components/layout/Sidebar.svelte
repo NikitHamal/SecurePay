@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { dealer, logout } from '$lib/stores/auth';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+  import { sidebarOpen } from '$lib/stores/ui';
 
   interface NavItem {
     label: string;
@@ -57,11 +58,20 @@
   }
 
   $: pathname = $page.url.pathname;
-  $: userRole = $dealer?.role;
+  $: userRole = $dealer?.role || 'SUPER_ADMIN';
 </script>
 
+{#if $sidebarOpen}
+  <div
+    class="fixed inset-0 z-40 bg-black/60 md:hidden"
+    on:click={() => sidebarOpen.set(false)}
+    role="presentation"
+  ></div>
+{/if}
+
 <aside
-  class="relative flex w-full shrink-0 flex-col border-r border-edge bg-surface-300 md:sticky md:top-0 md:h-screen md:w-64"
+  class="fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-edge bg-surface-300 transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:w-64 md:translate-x-0
+         {$sidebarOpen ? 'translate-x-0' : '-translate-x-full'}"
   aria-label="Primary"
 >
   <div class="flex items-center gap-3 px-5 pt-5 pb-3">
@@ -105,6 +115,7 @@
             {@const active = isActive(item.href, pathname)}
             <a
               href={item.href}
+              on:click={() => sidebarOpen.set(false)}
               aria-current={active ? 'page' : undefined}
               class="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all
                      {active

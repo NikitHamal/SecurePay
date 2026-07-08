@@ -5,6 +5,7 @@
   import { customers } from '$lib/stores/customers';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
   import { formatRelative } from '$lib/utils/format';
+  import { sidebarOpen } from '$lib/stores/ui';
 
   export let searchPlaceholder: string = 'Search customers, IMEI, references…';
   export let showSearch: boolean = true;
@@ -82,6 +83,16 @@
 <header class="sticky top-0 z-20 -mx-6 mb-6 px-6 py-3 md:-mx-8 md:px-8 bg-surface-200/80 backdrop-blur-xl border-b border-edge">
   <div class="flex items-center gap-3">
     <div class="flex min-w-0 items-center gap-2 text-sm">
+      <button
+        type="button"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted hover:bg-hover hover:text-ink-primary md:hidden"
+        on:click={() => sidebarOpen.set(true)}
+        aria-label="Open sidebar"
+      >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
       <span class="text-ink-muted">SecurePay</span>
       <svg class="h-3.5 w-3.5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />

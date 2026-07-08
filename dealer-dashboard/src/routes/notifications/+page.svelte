@@ -3,6 +3,7 @@
   import { apiClient } from '$lib/api/client';
   import Card from '$lib/components/ui/Card.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import TopBar from '$lib/components/layout/TopBar.svelte';
 
   interface Notification {
     id: string;
@@ -99,60 +100,64 @@
   $: unreadCount = notifications.filter(n => !n.isRead).length;
 </script>
 
-<PageHeader title="Notifications" subtitle="Stay updated on important events">
-  {#if unreadCount > 0}
-    <button type="button" class="btn-ghost" disabled={marking} on:click={markAllRead}>
-      {marking ? 'Marking...' : `Mark all read (${unreadCount})`}
-    </button>
-  {/if}
-</PageHeader>
+<div class="page">
+  <TopBar showSearch={false} />
 
-{#if loading}
-  <div class="flex items-center justify-center py-12">
-    <div class="h-8 w-8 animate-spin rounded-full border-2 border-emerald border-t-transparent"></div>
-  </div>
-{:else if error}
-  <Card>
-    <div class="rounded-lg border border-crimson-200/30 bg-crimson-200/10 px-4 py-3 text-sm text-crimson">
-      {error}
+  <PageHeader title="Notifications" subtitle="Stay updated on important events">
+    {#if unreadCount > 0}
+      <button type="button" class="btn-ghost" disabled={marking} on:click={markAllRead}>
+        {marking ? 'Marking...' : `Mark all read (${unreadCount})`}
+      </button>
+    {/if}
+  </PageHeader>
+
+  {#if loading}
+    <div class="flex items-center justify-center py-12">
+      <div class="h-8 w-8 animate-spin rounded-full border-2 border-emerald border-t-transparent"></div>
     </div>
-  </Card>
-{:else if notifications.length === 0}
-  <Card>
-    <div class="flex flex-col items-center justify-center py-12 text-center">
-      <svg class="mb-3 h-12 w-12 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-      </svg>
-      <p class="text-sm font-medium text-ink-primary">No notifications yet</p>
-      <p class="mt-1 text-xs text-ink-muted">You'll be notified when important events occur</p>
-    </div>
-  </Card>
-{:else}
-  <div class="space-y-2">
-    {#each notifications as notification (notification.id)}
-      <Card hover={false}>
-        <div class="flex items-start gap-3">
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-100">
-            <svg class="h-5 w-5 {getIconColor(notification.type)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d={getIcon(notification.type)} />
-            </svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex-1">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-sm font-semibold text-ink-primary">{notification.title}</h3>
-                  {#if !notification.isRead}
-                    <span class="h-2 w-2 rounded-full bg-emerald"></span>
-                  {/if}
+  {:else if error}
+    <Card>
+      <div class="rounded-lg border border-crimson-200/30 bg-crimson-200/10 px-4 py-3 text-sm text-crimson">
+        {error}
+      </div>
+    </Card>
+  {:else if notifications.length === 0}
+    <Card>
+      <div class="flex flex-col items-center justify-center py-12 text-center">
+        <svg class="mb-3 h-12 w-12 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        <p class="text-sm font-medium text-ink-primary">No notifications yet</p>
+        <p class="mt-1 text-xs text-ink-muted">You'll be notified when important events occur</p>
+      </div>
+    </Card>
+  {:else}
+    <div class="space-y-2">
+      {#each notifications as notification (notification.id)}
+        <Card hover={false}>
+          <div class="flex items-start gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-100">
+              <svg class="h-5 w-5 {getIconColor(notification.type)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d={getIcon(notification.type)} />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-semibold text-ink-primary">{notification.title}</h3>
+                    {#if !notification.isRead}
+                      <span class="h-2 w-2 rounded-full bg-emerald"></span>
+                    {/if}
+                  </div>
+                  <p class="mt-1 text-sm text-ink-secondary">{notification.message}</p>
+                  <p class="mt-1 text-xs text-ink-muted">{formatDate(notification.createdAt)}</p>
                 </div>
-                <p class="mt-1 text-sm text-ink-secondary">{notification.message}</p>
-                <p class="mt-1 text-xs text-ink-muted">{formatDate(notification.createdAt)}</p>
               </div>
             </div>
           </div>
-        </div>
-      </Card>
-    {/each}
-  </div>
-{/if}
+        </Card>
+      {/each}
+    </div>
+  {/if}
+</div>
