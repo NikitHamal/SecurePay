@@ -104,11 +104,13 @@
   <TopBar showSearch={false} />
 
   <PageHeader title="Notifications" subtitle="Stay updated on important events">
-    {#if unreadCount > 0}
-      <button type="button" class="btn-ghost" disabled={marking} on:click={markAllRead}>
-        {marking ? 'Marking...' : `Mark all read (${unreadCount})`}
-      </button>
-    {/if}
+    <div slot="actions">
+      {#if unreadCount > 0}
+        <button type="button" class="btn-ghost" disabled={marking} on:click={markAllRead}>
+          {marking ? 'Marking...' : `Mark all read (${unreadCount})`}
+        </button>
+      {/if}
+    </div>
   </PageHeader>
 
   {#if loading}
