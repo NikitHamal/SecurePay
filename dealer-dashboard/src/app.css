@@ -179,9 +179,20 @@
   }
 
   .input {
-    @apply w-full rounded-lg border border-edge bg-surface-100 px-3 py-2 text-sm text-ink-primary
-           placeholder:text-ink-muted focus:border-emerald-300/50 focus:outline-none
-           focus:ring-2 focus:ring-emerald/20;
+    @apply w-full rounded-lg border px-3 py-2 text-sm text-ink-primary
+           focus:outline-none focus:ring-2 focus:ring-emerald/20 transition-all duration-150;
+    border-color: var(--border-strong);
+    background-color: var(--bg-input);
+  }
+  .input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.85;
+  }
+  .input:focus {
+    border-color: #10B981;
+  }
+  .dark .input {
+    border-color: rgba(255, 255, 255, 0.16);
   }
 
 

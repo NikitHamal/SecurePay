@@ -80,7 +80,7 @@
   <TopBar showSearch={false} />
 
   <PageHeader title="Agencies" subtitle="Manage DSL agencies and regional leaders">
-    <button slot="actions" type="button" class="btn-primary" on:click={() => (showCreateForm = !showCreateForm)}>
+    <button slot="actions" type="button" class={showCreateForm ? 'btn-outline' : 'btn-primary'} on:click={() => (showCreateForm = !showCreateForm)}>
       {showCreateForm ? 'Cancel' : '+ New Agency'}
     </button>
   </PageHeader>
