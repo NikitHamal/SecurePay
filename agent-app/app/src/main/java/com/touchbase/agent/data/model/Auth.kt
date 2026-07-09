@@ -20,3 +20,18 @@ data class DealerInfo(
     val name: String,
     val email: String
 )
+
+@Serializable
+data class RegisterAgentRequest(
+    val fullName: String,
+    val email: String,
+    val phone: String,
+    val password: String,
+    val requestedBranchId: String? = null
+)
+
+@Serializable
+data class RegisterAgentResponse(
+    val message: String,
+    val requestId: String
+)

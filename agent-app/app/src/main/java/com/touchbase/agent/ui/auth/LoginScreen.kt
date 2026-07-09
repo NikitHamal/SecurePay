@@ -76,6 +76,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     repository: SecurePayRepository?,
     onLoginSuccess: () -> Unit,
+    onRegisterClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
@@ -350,10 +351,10 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Contact Admin",
+                        text = "Register here",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { }
+                        modifier = Modifier.clickable { onRegisterClick() }
                     )
                 }
 

@@ -24,6 +24,7 @@ import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.data.local.WifiSettingsStore
 import com.touchbase.agent.data.remote.TokenManager
 import com.touchbase.agent.ui.auth.LoginScreen
+import com.touchbase.agent.ui.auth.RegisterScreen
 import com.touchbase.agent.ui.dashboard.DashboardScreen
 import com.touchbase.agent.ui.enrollment.EnrollmentWizardScreen
 import com.touchbase.agent.ui.inventory.InventoryScreen
@@ -70,7 +71,17 @@ fun SecurePayNavHost(
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
+                },
+                onRegisterClick = {
+                    navController.navigate(Screen.Register.route)
                 }
+            )
+        }
+
+        composable(Screen.Register.route) {
+            RegisterScreen(
+                repository = repository,
+                onBackToLogin = { navController.popBackStack() }
             )
         }
 

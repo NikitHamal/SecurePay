@@ -4,6 +4,7 @@ import android.net.Uri
 
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
+    data object Register : Screen("register")
     data object Dashboard : Screen("dashboard")
     data object Customers : Screen("customers")
     data object CustomerDetail : Screen("customers/{accountId}") {

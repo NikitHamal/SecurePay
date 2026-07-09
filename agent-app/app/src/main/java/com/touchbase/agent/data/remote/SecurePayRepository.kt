@@ -42,6 +42,22 @@ class SecurePayRepository(
         }
     }
 
+    suspend fun registerAgent(
+        fullName: String,
+        email: String,
+        phone: String,
+        password: String
+    ): Result<RegisterAgentResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.registerAgent(
+                RegisterAgentRequest(fullName, email, phone, password)
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
+    }
+
     suspend fun logout() {
         try { api.logout() } catch (_: Exception) {}
         tokenManager.clearSession()

@@ -8,6 +8,9 @@ interface SecurePayApi {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
+    @POST("auth/register-agent")
+    suspend fun registerAgent(@Body request: RegisterAgentRequest): RegisterAgentResponse
+
     @POST("auth/logout")
     suspend fun logout()
 
