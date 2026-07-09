@@ -218,4 +218,29 @@ class SecurePayRepository(
             Result.failure(Exception(e.friendlyMessage()))
         }
     }
+
+    suspend fun listAgencies(): Result<List<Agency>> = withContext(Dispatchers.IO) {
+        try { Result.success(api.listAgencies()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    suspend fun listBranches(): Result<List<Branch>> = withContext(Dispatchers.IO) {
+        try { Result.success(api.listBranches()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    suspend fun listNotifications(): Result<List<ApiNotification>> = withContext(Dispatchers.IO) {
+        try { Result.success(api.listNotifications()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    suspend fun markNotificationsRead(ids: List<String>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            api.markNotificationsRead(MarkReadRequest(ids))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
+    }
+
+    suspend fun getMySales(): Result<List<SaleItem>> = withContext(Dispatchers.IO) {
+        try { Result.success(api.getMySales()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
 }

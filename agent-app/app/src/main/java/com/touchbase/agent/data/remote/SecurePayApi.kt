@@ -88,4 +88,19 @@ interface SecurePayApi {
 
     @POST("verify")
     suspend fun verifyIdentity(@Body request: VerifyRequest): VerifyResponse
+
+    @GET("agencies")
+    suspend fun listAgencies(): List<Agency>
+
+    @GET("branches")
+    suspend fun listBranches(): List<Branch>
+
+    @GET("notifications")
+    suspend fun listNotifications(): List<ApiNotification>
+
+    @POST("notifications")
+    suspend fun markNotificationsRead(@Body request: MarkReadRequest): Map<String, String>
+
+    @GET("my-sales")
+    suspend fun getMySales(): List<SaleItem>
 }
