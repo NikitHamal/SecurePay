@@ -11,5 +11,6 @@
 -dontwarn com.google.errorprone.annotations.**
 -keep class com.google.errorprone.annotations.** { *; }
 
--keep class com.google.common.util.concurrent.** { *; }
--keep class com.google.common.base.** { *; }
+-dontwarn autovalue.shaded.**
+-dontwarn javax.lang.model.**
+-dontwarn com.google.auto.value.**
