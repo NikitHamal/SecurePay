@@ -15,6 +15,10 @@ android {
         versionCode = 5
         versionName = "1.1.2"
 
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -111,16 +115,14 @@ dependencies {
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
     implementation("com.google.android.gms:play-services-maps:18.2.0")
-    implementation("com.google.android.gms:play-services-location:21.1.0")
-
-    implementation("com.google.guava:guava:31.1-android") {
+    implementation("com.google.android.gms:play-services-location:21.1.0") {
         exclude(group = "com.google.guava", module = "listenablefuture")
         exclude(group = "com.google.auto.value", module = "auto-value-annotations")
         exclude(group = "com.google.code.findbugs")
         exclude(group = "org.checkerframework")
     }
 
-    implementation("me.didit:didit-sdk:1.0.0")
+    implementation("me.didit:didit-sdk:4.0.9")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
