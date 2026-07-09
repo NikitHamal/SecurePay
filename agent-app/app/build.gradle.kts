@@ -15,10 +15,6 @@ android {
         versionCode = 5
         versionName = "1.1.2"
 
-        ndk {
-            abiFilters += listOf("arm64-v8a")
-        }
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
