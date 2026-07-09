@@ -593,7 +593,9 @@ fun CustomerDetailScreen(
                                     onSuccess = { response ->
                                         verifyInProgress = false
                                         if (response.sessionToken != null) {
-                                            DiditSdk.startVerification(response.sessionToken)
+                                            DiditSdk.startVerification(response.sessionToken) { _ ->
+                                                verifyMessage = "Verification flow completed. Check the dashboard for the decision."
+                                            }
                                         } else {
                                             verifyMessage = "Verification session created. Check the dashboard."
                                         }

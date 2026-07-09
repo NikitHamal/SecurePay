@@ -10,3 +10,6 @@
 
 -dontwarn com.google.errorprone.annotations.**
 -keep class com.google.errorprone.annotations.** { *; }
+
+-keep class com.google.common.util.concurrent.** { *; }
+-keep class com.google.common.base.** { *; }
