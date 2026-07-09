@@ -60,6 +60,9 @@ android {
 
     packaging {
         resources {
+            pickFirsts += "/META-INF/services/*"
+            pickFirsts += "/META-INF/*.kotlin_module"
+            pickFirsts += "/META-INF/DEPENDENCIES"
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
