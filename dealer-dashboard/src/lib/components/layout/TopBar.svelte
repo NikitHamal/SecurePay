@@ -22,9 +22,8 @@
   let notifications: ApiNotification[] = [];
   let notificationsOpen = false;
 
-  onMount(async () => {
-    await fetchNotifications();
-    // Poll every 30 seconds
+  onMount(() => {
+    fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   });

@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, errorResponse } from '$lib/api/server';
-import { v4 as uuidv4 } from 'uuid';
+import { getDb, errorResponse, generateToken } from '$lib/api/server';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   const db = getDb({ platform });
@@ -69,7 +68,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         await db.prepare(`
           INSERT INTO notifications (id, recipient_id, type, title, message, related_entity_type, related_entity_id, created_at)
           VALUES (?, ?, 'KYC_VERIFIED', 'Ghana Card Verified', ?, 'account', ?, ?)
-        `).bind(uuidv4(), r.id as string,
+        `).bind(`NOTIF-${generateToken(4).toUpperCase()}`, r.id as string,
           `Customer ${(account.customer_name as string)} Ghana Card verification approved`, accountId, now).run();
       }
     }
@@ -96,7 +95,7 @@ async function verifyDiditSignature(body: string, signature: string, secret: str
     const sigBytes = hexToUint8Array(signature);
     const dataBytes = encoder.encode(canonical);
 
-    return await crypto.subtle.verify('HMAC', key, sigBytes, dataBytes);
+    return await crypto.subtle.verify('HMAC', key, sigBytes as BufferSource, dataBytes);
   } catch {
     return false;
   }

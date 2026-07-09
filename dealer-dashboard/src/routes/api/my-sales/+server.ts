@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse, releaseFields } from '$lib/api/server';
-import type { Status } from '$lib/types';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
@@ -22,9 +21,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
   const sales = result.results.map((row) => {
     const nextPaymentDue = Number(row.next_payment_due);
-    const amountPaid = Number(row.amount_paid);
-    const totalLoanAmount = Number(row.total_loan_amount);
-    const status: Status = row.release_approved === 1
+    const status = row.release_approved === 1
       ? 'ACTIVE'
       : (row.is_stolen === 1 ? 'STOLEN' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue)));
 
@@ -34,29 +31,16 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
       imei: row.imei,
       deviceModel: row.device_model,
       planName: row.plan_name,
-      totalLoanAmount,
-      amountPaid,
-      remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
+      totalLoanAmount: Number(row.total_loan_amount),
+      amountPaid: Number(row.amount_paid),
+      remainingBalance: Math.max(0, Number(row.total_loan_amount) - Number(row.amount_paid)),
       dailyRate: Number(row.daily_rate),
       nextPaymentDueEpochMillis: nextPaymentDue,
       status,
       downPayment: Number(row.down_payment),
-      createdAt: Number(row.created_at) * 1000,
-      ...releaseFields(row as Record<string, unknown>)
+      ...releaseFields(row as Record<string, any>)
     };
   });
 
-  const totalSales = sales.length;
-  const totalDownPayments = sales.reduce((sum, s) => sum + s.downPayment, 0);
-  const activeLoans = sales.filter(s => s.status === 'ACTIVE' || s.status === 'WARNING').length;
-
-  return json({
-    sales,
-    summary: {
-      totalSales,
-      totalDownPayments,
-      activeLoans,
-      totalRevenue: sales.reduce((sum, s) => sum + s.amountPaid, 0)
-    }
-  });
+  return json(sales);
 };

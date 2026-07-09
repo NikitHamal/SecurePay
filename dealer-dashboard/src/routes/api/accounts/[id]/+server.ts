@@ -206,7 +206,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
     status,
-    lockedByDealer: Number(row.locked_by_dealer ?? 0),
+    lockedByDealer: Number(row!.locked_by_dealer ?? 0),
     isStolen: row!.is_stolen === 1,
     customerPhotoPath: row!.customer_photo_path as string | null,
     nationalIdFrontPath: row!.national_id_front_path as string | null,

@@ -5,6 +5,9 @@ export interface Dealer {
   id: string;
   name: string;
   email: string;
+  role: string;
+  agencyId?: string | null;
+  branchId?: string | null;
 }
 
 const initialDealer = typeof window !== 'undefined' && localStorage.getItem('securepay_token')

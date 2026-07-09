@@ -74,8 +74,9 @@ async function getAccessToken(
 }
 
 export interface FcmDataMessage {
-  type: 'lock' | 'unlock' | 'sync';
+  type: 'lock' | 'unlock' | 'sync' | 'stolen';
   accountId: string;
+  isStolen?: string;
 }
 
 export async function sendFcm(

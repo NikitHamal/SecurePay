@@ -31,21 +31,27 @@ class TokenManager(context: Context) {
     private val _dealerName = MutableStateFlow<String?>(null)
     val dealerName: StateFlow<String?> = _dealerName.asStateFlow()
 
+    private val _dealerRole = MutableStateFlow<String?>(null)
+    val dealerRole: StateFlow<String?> = _dealerRole.asStateFlow()
+
     init {
         _token.value = prefs.getString(KEY_TOKEN, null)
         _dealerId.value = prefs.getString(KEY_DEALER_ID, null)
         _dealerName.value = prefs.getString(KEY_DEALER_NAME, null)
+        _dealerRole.value = prefs.getString(KEY_DEALER_ROLE, null)
     }
 
-    fun saveSession(token: String, dealerId: String, dealerName: String) {
+    fun saveSession(token: String, dealerId: String, dealerName: String, role: String = "AGENT") {
         prefs.edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_DEALER_ID, dealerId)
             .putString(KEY_DEALER_NAME, dealerName)
+            .putString(KEY_DEALER_ROLE, role)
             .apply()
         _token.value = token
         _dealerId.value = dealerId
         _dealerName.value = dealerName
+        _dealerRole.value = role
     }
 
     fun clearSession() {
@@ -53,6 +59,7 @@ class TokenManager(context: Context) {
         _token.value = null
         _dealerId.value = null
         _dealerName.value = null
+        _dealerRole.value = null
     }
 
     val isLoggedIn: Boolean get() = !_token.value.isNullOrEmpty()
@@ -61,5 +68,6 @@ class TokenManager(context: Context) {
         private const val KEY_TOKEN = "jwt_token"
         private const val KEY_DEALER_ID = "dealer_id"
         private const val KEY_DEALER_NAME = "dealer_name"
+        private const val KEY_DEALER_ROLE = "dealer_role"
     }
 }

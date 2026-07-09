@@ -7,7 +7,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
   const db = getDb({ platform });
   const result = await db.prepare(`
-    SELECT id, type, title, message, is_read, related_entity_type, related_entity_id, created_at
+    SELECT id, recipient_id, type, title, message, is_read, related_entity_type, related_entity_id, created_at
     FROM notifications
     WHERE recipient_id = ?
     ORDER BY created_at DESC
@@ -16,6 +16,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
   return json(result.results.map(r => ({
     id: r.id,
+    recipientId: r.recipient_id,
     type: r.type,
     title: r.title,
     message: r.message,
@@ -30,14 +31,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
 
   const { ids } = await request.json();
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return errorResponse('ids must be a non-empty array', 400);
-  }
+  if (!Array.isArray(ids)) return errorResponse('ids must be an array', 400);
 
   const db = getDb({ platform });
   for (const id of ids) {
     await db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND recipient_id = ?')
-      .bind(String(id), locals.dealer.id).run();
+      .bind(id, locals.dealer.id).run();
   }
 
   return json({ message: 'Marked as read' });

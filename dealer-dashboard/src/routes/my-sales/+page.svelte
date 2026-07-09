@@ -96,28 +96,24 @@
     <!-- KPI Cards -->
     <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <KpiCard
-        id="total-sales"
         title="Total Sales"
         value={data.summary.totalSales.toString()}
         sublabel="Customers enrolled"
         accent="emerald"
       />
       <KpiCard
-        id="active-loans"
         title="Active Loans"
         value={data.summary.activeLoans.toString()}
         sublabel="Currently paying"
-        accent="active"
+        accent="emerald"
       />
       <KpiCard
-        id="down-payments"
         title="Down Payments"
         value={formatCurrency(data.summary.totalDownPayments)}
         sublabel="Collected upfront"
         accent="emerald"
       />
       <KpiCard
-        id="total-revenue"
         title="Total Revenue"
         value={formatCurrency(data.summary.totalRevenue)}
         sublabel="All payments collected"

@@ -18,7 +18,10 @@ data class LoginResponse(
 data class DealerInfo(
     val id: String,
     val name: String,
-    val email: String
+    val email: String,
+    val role: String = "AGENT",
+    val agencyId: String? = null,
+    val branchId: String? = null
 )
 
 @Serializable

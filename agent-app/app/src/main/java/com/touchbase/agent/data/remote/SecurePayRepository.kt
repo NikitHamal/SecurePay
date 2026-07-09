@@ -35,7 +35,12 @@ class SecurePayRepository(
     suspend fun login(email: String, password: String): Result<LoginResponse> = withContext(Dispatchers.IO) {
         try {
             val response = api.login(LoginRequest(email, password))
-            tokenManager.saveSession(response.token, response.dealer.id, response.dealer.name)
+            tokenManager.saveSession(
+                response.token,
+                response.dealer.id,
+                response.dealer.name,
+                response.dealer.role
+            )
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(Exception(e.friendlyMessage()))

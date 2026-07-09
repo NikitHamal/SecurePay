@@ -69,8 +69,8 @@ export function computeStatus(nextPaymentDueEpochMillis: number, now = Date.now(
   return 'ACTIVE';
 }
 
-export async function login(email: string, password: string): Promise<{ token: string; dealer: { id: string; name: string; email: string } }> {
-  const result = await request<{ token: string; dealer: { id: string; name: string; email: string } }>('/auth/login', {
+export async function login(email: string, password: string): Promise<{ token: string; dealer: { id: string; name: string; email: string; role: string; agencyId?: string | null; branchId?: string | null } }> {
+  const result = await request<{ token: string; dealer: { id: string; name: string; email: string; role: string; agencyId?: string | null; branchId?: string | null } }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password })
   });
