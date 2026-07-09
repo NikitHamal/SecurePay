@@ -63,6 +63,7 @@ android {
             pickFirsts += "/META-INF/services/*"
             pickFirsts += "/META-INF/*.kotlin_module"
             pickFirsts += "/META-INF/DEPENDENCIES"
+            pickFirsts += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
