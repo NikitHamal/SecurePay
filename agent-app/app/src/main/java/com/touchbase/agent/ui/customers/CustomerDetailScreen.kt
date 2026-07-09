@@ -87,7 +87,6 @@ import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.ui.enrollment.steps.KycPhotoSelector
 import kotlinx.coroutines.launch
-import me.didit.sdk.DiditSdk
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -593,9 +592,9 @@ fun CustomerDetailScreen(
                                     onSuccess = { response ->
                                         verifyInProgress = false
                                         if (response.sessionToken != null) {
-                                            DiditSdk.startVerification(response.sessionToken) { _ ->
-                                                verifyMessage = "Verification flow completed. Check the dashboard for the decision."
-                                            }
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(response.url ?: "https://verify.didit.me"))
+                                            view.context.startActivity(intent)
+                                            verifyMessage = "Verification flow opened in browser."
                                         } else {
                                             verifyMessage = "Verification session created. Check the dashboard."
                                         }

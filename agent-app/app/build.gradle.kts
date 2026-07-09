@@ -115,14 +115,7 @@ dependencies {
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
     implementation("com.google.android.gms:play-services-maps:18.2.0")
-    implementation("com.google.android.gms:play-services-location:21.1.0") {
-        exclude(group = "com.google.guava", module = "listenablefuture")
-        exclude(group = "com.google.auto.value", module = "auto-value-annotations")
-        exclude(group = "com.google.code.findbugs")
-        exclude(group = "org.checkerframework")
-    }
-
-    implementation("me.didit:didit-sdk:4.0.9")
+    implementation("com.google.android.gms:play-services-location:21.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
