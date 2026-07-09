@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -86,6 +87,7 @@ import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.ui.enrollment.steps.KycPhotoSelector
 import kotlinx.coroutines.launch
+import me.didit.sdk.DiditSdk
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +120,8 @@ fun CustomerDetailScreen(
     var idFrontBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idBackBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var viewerBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var verifyInProgress by remember { mutableStateOf(false) }
+    var verifyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
@@ -564,6 +568,61 @@ fun CustomerDetailScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            acc.let { a ->
+                if (a.ghanaCardVerified != true) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (verifyMessage != null) {
+                        Text(
+                            text = verifyMessage!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            verifyInProgress = true
+                            verifyMessage = null
+                            scope.launch {
+                                val result = repository?.verifyIdentity(a.id)
+                                result?.fold(
+                                    onSuccess = { response ->
+                                        verifyInProgress = false
+                                        if (response.sessionToken != null) {
+                                            DiditSdk.startVerification(response.sessionToken)
+                                        } else {
+                                            verifyMessage = "Verification session created. Check the dashboard."
+                                        }
+                                    },
+                                    onFailure = {
+                                        verifyInProgress = false
+                                        verifyMessage = it.message ?: "Verification failed"
+                                    }
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        enabled = !verifyInProgress && !actionInProgress,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(360.dp)
+                    ) {
+                        if (verifyInProgress) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(Icons.Filled.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        ButtonText("Verify Identity")
                     }
                 }
             }

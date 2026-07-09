@@ -210,4 +210,12 @@ class SecurePayRepository(
             Result.failure(Exception(e.friendlyMessage()))
         }
     }
+
+    suspend fun verifyIdentity(accountId: String): Result<VerifyResponse> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.verifyIdentity(VerifyRequest(accountId)))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
+    }
 }

@@ -85,4 +85,7 @@ interface SecurePayApi {
 
     @GET("provisioning/qr/{token}")
     suspend fun getProvisioningStatus(@Path("token") token: String): ProvisioningStatusResponse
+
+    @POST("verify")
+    suspend fun verifyIdentity(@Body request: VerifyRequest): VerifyResponse
 }

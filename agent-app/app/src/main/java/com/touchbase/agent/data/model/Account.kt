@@ -34,7 +34,8 @@ data class Account(
     val customerPhotoPath: String? = null,
     val nationalIdFrontPath: String? = null,
     val nationalIdBackPath: String? = null,
-    val isStolen: Boolean = false
+    val isStolen: Boolean = false,
+    val ghanaCardVerified: Boolean? = null
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED

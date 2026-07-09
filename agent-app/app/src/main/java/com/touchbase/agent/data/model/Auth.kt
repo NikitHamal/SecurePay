@@ -38,3 +38,15 @@ data class RegisterAgentResponse(
     val message: String,
     val requestId: String
 )
+
+@Serializable
+data class VerifyRequest(
+    val vendorData: String
+)
+
+@Serializable
+data class VerifyResponse(
+    val url: String? = null,
+    val sessionId: String? = null,
+    val sessionToken: String? = null
+)
