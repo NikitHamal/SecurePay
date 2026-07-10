@@ -22,7 +22,8 @@ data class ActivationUiState(
 
 class ActivationViewModel(
     private val repository: DeviceRepository,
-    private val provisioningToken: String?
+    private val provisioningToken: String?,
+    private val expectedImei: String?
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ActivationUiState())
@@ -47,9 +48,16 @@ class ActivationViewModel(
             )
             return
         }
+        val imei = expectedImei
+        if (imei.isNullOrBlank() || !imei.matches(Regex("\\d{15}"))) {
+            _uiState.value = _uiState.value.copy(
+                error = "Provisioned IMEI is missing. Reset the phone and use a new dealer QR code."
+            )
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isChecking = true, error = null)
-            val result = repository.activate(code, token)
+            val result = repository.activate(code, token, imei)
             _uiState.value = _uiState.value.copy(isChecking = false)
             result
                 .onSuccess { response -> handleActivateResponse(response) }
@@ -78,14 +86,15 @@ class ActivationViewModel(
 
     class Factory(
         private val repository: DeviceRepository,
-        private val provisioningToken: String?
+        private val provisioningToken: String?,
+        private val expectedImei: String?
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(ActivationViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return ActivationViewModel(repository, provisioningToken) as T
+            return ActivationViewModel(repository, provisioningToken, expectedImei) as T
         }
     }
 }

@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
                b.name as branch_name
                FROM agent_requests ar
                LEFT JOIN branches b ON ar.requested_branch_id = b.id
-               WHERE b.agency_id = ? OR ar.requested_branch_id IS NULL
+               WHERE b.agency_id = ?
                ORDER BY ar.created_at DESC`;
       params = [locals.dealer.agencyId];
       break;
@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
                b.name as branch_name
                FROM agent_requests ar
                LEFT JOIN branches b ON ar.requested_branch_id = b.id
-               WHERE ar.requested_branch_id = ? OR ar.requested_branch_id IS NULL
+               WHERE ar.requested_branch_id = ?
                ORDER BY ar.created_at DESC`;
       params = [locals.dealer.branchId];
       break;

@@ -68,8 +68,14 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!name) return errorResponse('Branch name is required', 400);
 
   const db = getDb({ platform });
-  const branchAgencyId = agencyId || locals.dealer.agencyId;
+  const branchAgencyId = String(agencyId || locals.dealer.agencyId || '').trim();
   if (!branchAgencyId) return errorResponse('Agency ID is required', 400);
+  if (locals.dealer.role === 'AGENCY_OWNER' && branchAgencyId !== locals.dealer.agencyId) {
+    return errorResponse('Cannot create a branch outside your agency', 403);
+  }
+  const agency = await db.prepare('SELECT id FROM agencies WHERE id = ? AND is_active = 1')
+    .bind(branchAgencyId).first();
+  if (!agency) return errorResponse('Agency not found', 404);
 
   const branchId = `BR-${uuidv4().slice(0, 8).toUpperCase()}`;
 

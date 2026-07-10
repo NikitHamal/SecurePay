@@ -8,7 +8,11 @@ import { getDb, errorResponse } from '$lib/api/server';
  * The phone does not have a registered device credential yet, so this endpoint
  * authenticates with the 256-bit token embedded in the QR admin-extras bundle.
  */
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
+  if (!locals.hmacVerified || locals.hmacScope !== 'global') {
+    return errorResponse('Bootstrap HMAC verification required', 401);
+  }
+
   const body = await request.json();
   const token = String(body.token ?? '').trim();
   const imei = String(body.imei ?? '').trim();

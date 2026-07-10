@@ -3,7 +3,9 @@ package com.touchbase.user.worker
 import android.content.Context
 import android.content.Intent
 import com.touchbase.user.util.SecureLog
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.NetworkType
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -11,6 +13,7 @@ import androidx.work.WorkerParameters
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.DeviceAuthRecovery
+import com.touchbase.user.data.remote.DeviceRegistrationRecovery
 import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.BuildConfig
 import java.util.concurrent.TimeUnit
@@ -22,13 +25,15 @@ class HeartbeatWorker(
 
     override suspend fun doWork(): Result {
         val tokenManager = DeviceTokenManager(applicationContext)
-        val accountId = tokenManager.accountId
-        val imei = tokenManager.imei
-
-        if (accountId == null || imei == null) {
-            SecureLog.w(TAG, "Not registered, skipping heartbeat")
-            return Result.success()
+        if (!tokenManager.isRegistered || tokenManager.imei.isNullOrBlank()) {
+            val repaired = DeviceRegistrationRecovery.repair(applicationContext, tokenManager)
+            if (!repaired) {
+                SecureLog.w(TAG, "Not registered; heartbeat will retry after deployment/enrollment is available")
+                return Result.retry()
+            }
         }
+        val accountId = tokenManager.accountId ?: return Result.retry()
+        val imei = tokenManager.imei ?: return Result.retry()
 
         val recoveredSecret = tokenManager.apiSecret
             ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)
@@ -79,6 +84,7 @@ class HeartbeatWorker(
         // Step 3: Post-sync tasks (only when server reached)
         if (heartbeatSucceeded) {
             runCatching { syncFcmTokenIfNeeded(tokenManager) }
+            runCatching { AppUpdateWorker.runNow(applicationContext) }
 
             val frpIds = account?.securityPolicy?.frpAccountIds
                 ?: tokenManager.cachedFrpAccountIds
@@ -128,6 +134,10 @@ class HeartbeatWorker(
             val request = PeriodicWorkRequestBuilder<HeartbeatWorker>(
                 15, TimeUnit.MINUTES,
                 5, TimeUnit.MINUTES
+            ).setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
             ).build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(

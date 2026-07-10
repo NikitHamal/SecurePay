@@ -1,11 +1,13 @@
 package com.touchbase.agent.admin
 
 import android.content.Context
+import android.util.Base64
 import com.touchbase.agent.BuildConfig
 import java.io.File
 import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import java.util.concurrent.TimeUnit
 
 object SecurityChecker {
 
@@ -66,8 +68,9 @@ object SecurityChecker {
 
         try {
             val process = Runtime.getRuntime().exec(arrayOf("su"))
-            val exitCode = process.waitFor()
-            if (exitCode == 0) return true
+            val completed = process.waitFor(750, TimeUnit.MILLISECONDS)
+            if (completed && process.exitValue() == 0) return true
+            if (!completed) process.destroyForcibly()
         } catch (_: Exception) {
         }
 
@@ -181,7 +184,11 @@ object SecurityChecker {
         for (sig in signatures) {
             val hash = digest.digest(sig.toByteArray())
             val hex = hash.joinToString("") { "%02x".format(it) }
-            if (hex in expectedHashes) return true
+            val base64Url = Base64.encodeToString(
+                hash,
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
+            if (hex in expectedHashes || base64Url in expectedHashes) return true
         }
         return false
     }
@@ -196,11 +203,13 @@ object SecurityChecker {
     private const val TAG = "SecurityChecker"
 
     private val EXPECTED_SIGNING_HASHES: Set<String>
-        get() {
-            val hash = BuildConfig.SIGNING_CERT_HASH
-                .replace(":", "")
-                .trim()
-                .lowercase()
-            return if (hash.isNotBlank()) setOf(hash) else emptySet()
-        }
+        get() = BuildConfig.SIGNING_CERT_HASH
+            .split(',', ';', '\n')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map { value ->
+                val noColons = value.replace(":", "")
+                if (noColons.matches(Regex("^[A-Fa-f0-9]{64}$"))) noColons.lowercase() else value
+            }
+            .toSet()
 }

@@ -3,8 +3,12 @@ package com.touchbase.user.admin
 import android.Manifest
 import android.app.admin.DevicePolicyManager
 import android.app.admin.FactoryResetProtectionPolicy
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.telecom.TelecomManager
 import android.os.Build
 import android.os.UserManager
 import android.provider.Settings
@@ -20,8 +24,11 @@ class DevicePolicyController(context: Context) {
     val isAdminActive: Boolean
         get() = dpm.isAdminActive(admin)
 
-    private val isDeviceOwner: Boolean
+    val isDeviceOwnerApp: Boolean
         get() = dpm.isDeviceOwnerApp(appContext.packageName)
+
+    private val isDeviceOwner: Boolean
+        get() = isDeviceOwnerApp
 
     fun enableAdminIntent() = android.content.Intent(
         DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN
@@ -114,38 +121,85 @@ class DevicePolicyController(context: Context) {
         return !runCatching { dpm.isDeviceOwnerApp(appContext.packageName) || dpm.isAdminActive(admin) }.getOrDefault(true)
     }
 
-    fun startLockTask(activity: android.app.Activity) {
+    /**
+     * Enters a restricted financed-device experience while still allowing the
+     * customer to open the system internet panel and the emergency dialer.
+     * Only those system packages are added to the lock-task allowlist.
+     */
+    fun startLockTask(activity: Activity) {
         if (!isDeviceOwner) {
             SecureLog.w(TAG, "startLockTask requires device owner privilege")
             return
         }
         runCatching {
-            dpm.setLockTaskPackages(admin, arrayOf(appContext.packageName))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                dpm.setLockTaskFeatures(
-                    admin,
-                    DevicePolicyManager.LOCK_TASK_FEATURE_NONE
-                )
-            }
-            activity.startLockTask()
-        }.onFailure { SecureLog.w(TAG, "startLockTask failed: ${it.message}") }
-    }
-
-    fun stopLockTask(activity: android.app.Activity) {
-        if (!isDeviceOwner) {
-            activity.finish()
-            return
-        }
-        runCatching {
+            val packages = linkedSetOf(appContext.packageName, SETTINGS_PACKAGE)
+            defaultDialerPackage()?.let(packages::add)
+            dpm.setLockTaskPackages(admin, packages.toTypedArray())
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 dpm.setLockTaskFeatures(
                     admin,
                     DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO
                 )
             }
-            activity.stopLockTask()
-        }.onFailure { SecureLog.w(TAG, "stopLockTask failed: ${it.message}") }
+            activity.startLockTask()
+            SecureLog.i(TAG, "Lock task started with allowlist=$packages")
+        }.onFailure { SecureLog.w(TAG, "startLockTask failed: ${it.message}") }
+    }
+
+    fun stopLockTask(activity: Activity) {
+        if (!isDeviceOwner) {
+            activity.finish()
+            return
+        }
+        runCatching { activity.stopLockTask() }
+            .onFailure { SecureLog.w(TAG, "stopLockTask failed: ${it.message}") }
         activity.finish()
+    }
+
+    /** Opens only Android's connectivity panel/settings while the app is locked. */
+    fun openInternetSettings(activity: Activity): Boolean {
+        val intents = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                add(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY))
+            }
+            add(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+            add(Intent(Settings.ACTION_WIFI_SETTINGS))
+        }
+        for (intent in intents) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(appContext.packageManager) != null) {
+                val launched = runCatching { activity.startActivity(intent); true }
+                    .onFailure { SecureLog.w(TAG, "Opening internet settings failed: ${it.message}") }
+                    .getOrDefault(false)
+                if (launched) return true
+            }
+        }
+        return false
+    }
+
+    /** Opens the platform emergency dialer without granting normal phone access. */
+    fun openEmergencyDialer(activity: Activity, number: String = EMERGENCY_NUMBER): Boolean {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val telecom = appContext.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+            telecom?.createLaunchEmergencyDialerIntent(number)
+                ?: Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+        } else {
+            Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+        }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        return runCatching {
+            activity.startActivity(intent)
+            true
+        }.onFailure { SecureLog.w(TAG, "Emergency dialer failed: ${it.message}") }
+            .getOrDefault(false)
+    }
+
+    private fun defaultDialerPackage(): String? {
+        val telecom = appContext.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+        return runCatching { telecom?.defaultDialerPackage }
+            .onFailure { SecureLog.w(TAG, "Unable to resolve default dialer: ${it.message}") }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
     }
 
     fun hideApp(packageName: String) {
@@ -358,5 +412,7 @@ class DevicePolicyController(context: Context) {
 
     companion object {
         private const val TAG = "SecurePayDPC"
+        private const val SETTINGS_PACKAGE = "com.android.settings"
+        private const val EMERGENCY_NUMBER = "112"
     }
 }

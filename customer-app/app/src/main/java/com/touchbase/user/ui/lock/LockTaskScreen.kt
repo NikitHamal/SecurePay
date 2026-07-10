@@ -1,10 +1,7 @@
 package com.touchbase.user.ui.lock
 
-
-import com.touchbase.user.ui.components.ButtonText
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,13 +11,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,7 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,13 +43,13 @@ import androidx.compose.ui.unit.sp
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.formatCentsAsCurrency
 import com.touchbase.user.domain.RemainingTime
-import com.touchbase.user.ui.theme.Charcoal
-import com.touchbase.user.ui.theme.Crimson
-import com.touchbase.user.ui.theme.CrimsonDim
-import com.touchbase.user.ui.theme.TextPrimary
-import com.touchbase.user.ui.theme.TextSecondary
 
-private const val EMERGENCY_DIAL_NUMBER = "112"
+private val LockBackground = Color(0xFF090B10)
+private val LockSurface = Color(0xE61A1D24)
+private val LockText = Color(0xFFF8FAFC)
+private val LockMuted = Color(0xFFB6C0CC)
+private val LockDanger = Color(0xFFFF4D32)
+private val LockNetwork = Color(0xFF33D6C4)
 
 data class LockTaskUiState(
     val account: LoanAccount? = null,
@@ -59,119 +61,136 @@ data class LockTaskUiState(
 @Composable
 fun LockTaskScreen(
     state: LockTaskUiState,
+    onOpenInternet: () -> Unit,
+    onEmergencyCall: () -> Unit,
     onSync: () -> Unit
 ) {
     BackHandler(enabled = true) { }
-
-    val context = LocalContext.current
-    val account = state.account
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.verticalGradient(listOf(Charcoal, CrimsonDim.copy(alpha = 0.5f)))
+                Brush.verticalGradient(
+                    listOf(LockBackground, Color(0xFF151019), Color(0xFF2B0D0B))
+                )
             )
-            .padding(28.dp),
-        contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(96.dp)
-                    .background(Crimson.copy(alpha = 0.16f), RoundedCornerShape(50)),
+                    .size(92.dp)
+                    .background(LockDanger.copy(alpha = 0.16f), RoundedCornerShape(46.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Filled.Lock,
                     contentDescription = "Device locked",
-                    tint = Crimson,
-                    modifier = Modifier.size(48.dp)
+                    tint = LockDanger,
+                    modifier = Modifier.size(44.dp)
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(22.dp))
             Text(
                 text = "Device Locked",
-                color = TextPrimary,
+                color = LockText,
                 fontWeight = FontWeight.Bold,
-                fontSize = 30.sp,
+                fontSize = 32.sp,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = "Your financing payment is overdue. Make a payment to restore access.",
-                color = TextSecondary,
+                text = "Your financing payment is overdue. Connect to the internet, make a payment, then sync your account.",
+                color = LockMuted,
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            if (account != null) {
+            state.account?.let {
                 Spacer(Modifier.height(20.dp))
-                LockedAccountSummary(account)
+                LockedAccountSummary(it)
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(20.dp))
+            Text(
+                text = "TIME UNTIL NEXT CHECK",
+                color = LockMuted,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.4.sp
+            )
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = state.remaining.format(),
-                color = Crimson,
+                color = LockDanger,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
-                fontSize = 26.sp
+                fontSize = 29.sp
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(26.dp))
             OutlinedButton(
-                onClick = {
-                    val dial = Intent(
-                        Intent.ACTION_DIAL,
-                        Uri.parse("tel:$EMERGENCY_DIAL_NUMBER")
-                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    runCatching { context.startActivity(dial) }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                onClick = onOpenInternet,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = LockNetwork),
+                border = BorderStroke(1.dp, LockNetwork.copy(alpha = 0.65f))
+            ) {
+                Icon(Icons.Filled.Wifi, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("Wi-Fi & mobile data", fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onEmergencyCall,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = LockText)
             ) {
                 Icon(Icons.Filled.Phone, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                ButtonText("Emergency Calls", fontWeight = FontWeight.SemiBold)
+                Text("Emergency call", fontWeight = FontWeight.SemiBold)
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onSync,
                 enabled = !state.isSyncing,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Crimson,
-                    contentColor = TextPrimary
+                    containerColor = LockDanger,
+                    contentColor = Color.White,
+                    disabledContainerColor = LockDanger.copy(alpha = 0.45f)
                 )
             ) {
                 if (state.isSyncing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = TextPrimary,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Icon(Icons.Filled.Refresh, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    ButtonText("Sync Now", fontWeight = FontWeight.SemiBold)
+                    Text("Sync payment status", fontWeight = FontWeight.Bold)
                 }
             }
 
             state.message?.let {
-                Spacer(Modifier.height(16.dp))
-                Text(it, color = TextSecondary, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(14.dp))
+                Text(it, color = LockMuted, textAlign = TextAlign.Center)
             }
         }
     }
@@ -182,24 +201,32 @@ private fun LockedAccountSummary(account: LoanAccount) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Charcoal.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .background(LockSurface, RoundedCornerShape(20.dp))
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        SummaryRow("Account Holder", account.customerName)
+        SummaryRow("Account holder", account.customerName)
         SummaryRow("Device", account.deviceModel)
         SummaryRow("Account", account.id)
-        SummaryRow("Outstanding", formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode))
+        SummaryRow("Outstanding", formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode), LockDanger)
     }
 }
 
 @Composable
-private fun SummaryRow(label: String, value: String) {
+private fun SummaryRow(label: String, value: String, valueColor: Color = LockText) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = TextSecondary, style = MaterialTheme.typography.labelMedium)
-        Text(value, color = TextPrimary, style = MaterialTheme.typography.labelLarge)
+        Text(label, color = LockMuted, style = MaterialTheme.typography.labelMedium)
+        Text(
+            value,
+            color = valueColor,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.End,
+            modifier = Modifier.padding(start = 16.dp)
+        )
     }
 }

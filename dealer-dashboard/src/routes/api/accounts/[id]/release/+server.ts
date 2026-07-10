@@ -1,12 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, releaseHorizon } from '$lib/api/server';
+import { getAccountScopeFilter, canReleaseOrDeleteAccount } from '$lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 
 export const POST: RequestHandler = async ({ locals, params, request, platform }) => {
-  if (!locals.dealer) {
-    return errorResponse('Unauthorized', 401);
+  if (!locals.dealer) return errorResponse('Unauthorized', 401);
+  if (!canReleaseOrDeleteAccount(locals.dealer.role)) {
+    return errorResponse('Only branch admins and above can release a financed device', 403);
   }
 
   const body = await request.json().catch(() => ({}));
@@ -14,13 +16,14 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   const note = typeof body?.note === 'string' ? body.note.trim().slice(0, 160) : '';
 
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
   const account = await db.prepare(`
     SELECT a.*, d.id AS device_id, d.imei, d.model AS device_model, COALESCE(p.name, 'Custom') AS plan_name
       FROM accounts a
       JOIN devices d ON a.device_id = d.id
       LEFT JOIN plans p ON a.plan_id = p.id
-     WHERE a.id = ? AND a.dealer_id = ?
-  `).bind(params.id, locals.dealer.id).first();
+     WHERE a.id = ? AND ${scope.where}
+  `).bind(params.id, ...scope.params).first();
 
   if (!account) return errorResponse('Account not found', 404);
 
@@ -28,7 +31,7 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   const totalLoanAmount = Number(account.total_loan_amount);
   const remaining = Math.max(0, totalLoanAmount - amountPaid);
   if (remaining > 0 && !allowEarlyRelease) {
-    return errorResponse('Loan is not fully paid. Pass allowEarlyRelease=true for a dealer-approved test/settlement release.', 409);
+    return errorResponse('Loan is not fully paid. Pass allowEarlyRelease=true only for an authorized settlement release.', 409);
   }
 
   const now = Date.now();
@@ -41,18 +44,19 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
           SET release_approved = 1,
               release_approved_at = COALESCE(release_approved_at, ?),
               locked_by_dealer = 0,
+              is_stolen = 0,
               next_payment_due = ?,
               updated_at = ?
-        WHERE id = ? AND dealer_id = ?`
-    ).bind(nowSec, releaseDue, nowSec, params.id, locals.dealer.id),
-    db.prepare("INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, 'release_approved', 'dealer', ?)")
-      .bind(uuidv4(), params.id, nowSec)
+        WHERE id = ?`
+    ).bind(nowSec, releaseDue, nowSec, params.id),
+    db.prepare("INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, 'release_approved', ?, ?)")
+      .bind(uuidv4(), params.id, locals.dealer.id, nowSec)
   ]);
 
   if (note) {
     await db.prepare(
-      "INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, ?, 'dealer', ?)"
-    ).bind(uuidv4(), params.id, `release_note:${note}`, nowSec).run();
+      'INSERT INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(uuidv4(), params.id, `release_note:${note}`, locals.dealer.id, nowSec).run();
   }
 
   const row = await db.prepare(`
@@ -60,15 +64,17 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
       FROM accounts a
       JOIN devices d ON a.device_id = d.id
       LEFT JOIN plans p ON a.plan_id = p.id
-     WHERE a.id = ? AND a.dealer_id = ?
-  `).bind(params.id, locals.dealer.id).first();
+     WHERE a.id = ?
+  `).bind(params.id).first();
 
   if (!row) return errorResponse('Release approved but the account could not be reloaded', 500);
 
   const nextDue = Number(row.next_payment_due);
   const amtPaid = Number(row.amount_paid);
   const totalLoan = Number(row.total_loan_amount);
-  const status: Status = releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
+  const status: Status = releaseApproved(row as Record<string, unknown>)
+    ? 'ACTIVE'
+    : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
 
   const customer: Customer = {
     id: row.id as string,
@@ -77,7 +83,7 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
     phoneNumber: row.phone_number as string,
     imei: row.imei as string,
     deviceModel: row.device_model as string,
-    planName: row.plan_name as string || 'Custom',
+    planName: (row.plan_name as string) || 'Custom',
     totalLoanAmount: totalLoan,
     amountPaid: amtPaid,
     remainingBalance: Math.max(0, totalLoan - amtPaid),

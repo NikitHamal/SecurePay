@@ -1,90 +1,103 @@
-# 🛡️ SecurePay: Device Financing & Loan Management System
+# Touch Base Android apps
 
-SecurePay is an enterprise-grade loan management platform designed for phone dealers to sell devices on EMI (Equated Monthly Installments). The system provides a complete lifecycle—from agent-led customer enrollment to automated device locking upon payment default.
+This directory contains the two Android clients for the Touch Base device-financing system:
 
-## 🚀 System Architecture
+- `agent-app/` — KYC, inventory allocation, customer enrollment, loan-plan assignment, provisioning and agent-scoped sales/payment views.
+- `customer-app/` — Android Device Policy Controller (DPC), payment status, overdue lock screen, visible stolen-device tracking, heartbeat and managed application updates.
 
-The platform is composed of three primary modules:
+The backend and administration console are in `../dashboard/`.
 
-### 1. Dealer Dashboard (Backend & Admin UI)
-- **Tech Stack:** SvelteKit, TypeScript, Tailwind CSS.
-- **Infrastructure:** Cloudflare Workers, D1 (SQL Database), R2 (Object Storage).
-- **Capabilities:** 
-  - Portfolio overview and KPI tracking.
-  - Customer KYC and loan management.
-  - Device inventory tracking.
-  - Remote lock/unlock control.
-  - Automated loan status calculations.
+## Supported operating model
 
-### 2. Agent App (Enrollment Tool)
-- **Tech Stack:** Kotlin, Jetpack Compose.
-- **Capabilities:**
-  - Digital KYC (Photo capture, National ID upload).
-  - Device pairing via IMEI.
-  - Loan plan selection and customization.
-  - Provisioning token generation for customer devices.
+The production tenancy model is:
 
-### 3. Customer App (Device Controller)
-- **Tech Stack:** Kotlin, Jetpack Compose, Android DPC.
-- **Capabilities:**
-  - **Deep System Integration:** Acts as a Device Owner to prevent unauthorized factory resets, ADB access, and app uninstallation.
-  - **Kiosk Mode:** Locks the device into a restricted state when payments are overdue.
-  - **FRP Management:** Sets Factory Reset Protection policies to ensure the device remains secured.
-  - **Real-time Sync:** Heartbeat system to keep device status in sync with the server.
+```text
+Super Admin
+  -> DSL Agency
+     -> Branch Admin
+        -> Agent
+           -> Customers / devices / sales / payments
+```
 
----
+The server enforces scope on every protected resource. Agents can see only records they enrolled; branch administrators can see their branch; agency owners can see their agency; Super Admin can see the whole platform.
 
-## 🛠️ Installation & Setup
+## Security boundary
 
-### Backend (Dealer Dashboard)
-1. **Requirements:** [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/), Cloudflare Account.
-2. **Database Setup:**
-   ```bash
-   wrangler d1 create securepay-db
-   wrangler d1 execute securepay-db --file=./schema.sql
-   ```
-3. **R2 Bucket Setup:**
-   ```bash
-   wrangler r2 bucket create securepay-kyc
-   ```
-4. **Deployment:**
-   ```bash
-   npm install
-   npm run build
-   wrangler deploy
-   ```
+The customer app uses the standard Android Enterprise Device Owner/DPC path. It can apply managed-device restrictions, allowlisted lock task mode, scheduled heartbeat, a visible foreground location service after a device is marked stolen, and policy-controlled APK updates.
 
-### Android Apps (Agent & Customer)
-1. Open both `agent-app` and `customer-app` folders in **Android Studio**.
-2. Configure `local.properties` with your API keys:
-   - `API_BASE_URL`
-   - `HMAC_SECRET`
-   - `FCM_API_KEY`
-3. Build and install the APKs.
+It does **not** claim persistence against bootloader unlocking, OEM service tools, custom firmware, hardware attacks or a full reflash. Do not ship a rooted or hidden-surveillance build as a substitute for an OEM-supported financed-device program. See `../SECURITY_AND_COMPLIANCE_NOTES.md`.
 
----
+## Configuration
 
-## 🔒 Security Model
+Never place production secrets in source control. Copy each example file to `local.properties` or set matching environment variables.
 
-SecurePay employs a multi-layered security approach:
-- **Dealer Auth:** JWT-based authentication with bcrypt password hashing.
-- **Device Auth:** HMAC-SHA256 signatures on every request, utilizing device-specific secrets, nonces, and timestamps to prevent replay attacks.
-- **Anti-Tamper:** The Customer app uses `DevicePolicyManager` to restrict `ADB_ENABLED`, `DISALLOW_FACTORY_RESET`, and `DISALLOW_UNINSTALL_APPS`.
-- **Provisioning:** A secure token-based flow ensures only authorized devices are enrolled into the system.
+### Agent app
 
-## 📅 Loan Lifecycle
-`Inventory` $\rightarrow$ `Agent Enrollment (KYC)` $\rightarrow$ `Device Provisioning` $\rightarrow$ `Active Loan` $\rightarrow$ `Payment Tracking` $\rightarrow$ `Overdue Lock` $\rightarrow$ `Payment` $\rightarrow$ `Remote Unlock` $\rightarrow$ `Final Release`.
+```properties
+TB_DEBUG_API_BASE_URL=http://10.0.2.2:5173/api/
+TB_API_BASE_URL=https://your-dashboard.example/api/
+TB_HMAC_SECRET=replace-with-rotated-bootstrap-secret
+TB_SIGNING_CERT_HASH=sha256-cert-digest-hex-or-base64url
+```
 
+### Customer app
 
-## July 6 location/stolen-device patch
+The customer app uses the same four settings plus Firebase values:
 
-The customer DPC and dashboard API were updated so stolen-device tracking works after a dealer flags a device as stolen:
+```properties
+TB_FCM_PROJECT_ID=your-firebase-project
+TB_FCM_API_KEY=your-firebase-web-api-key
+TB_FCM_SENDER_ID=your-sender-id
+TB_FCM_APPLICATION_ID=your-android-app-id
+```
 
-- Customer app location upload now uses a typed Kotlin serialization payload instead of `Map<String, Any>`.
-- Every location upload includes both `accountId` and `imei`, allowing the dashboard to resolve the per-device HMAC secret.
-- Tracking pings are stored in a small persistent queue and uploaded in batches when network is available.
-- Device Owner policy now attempts to grant fine/coarse/background location and notification permissions for the managed app.
-- The tracking worker passes `accountId` to `/api/device/check`, so per-device HMAC verification works after activation.
-- The service removes location callbacks on shutdown and reports real battery percentage.
+`TB_HMAC_SECRET` is only the bootstrap secret. Successful activation requires the original provisioning token, six-digit code and exact 15-digit IMEI, then returns a distinct per-device secret used for registered device traffic.
 
-Build/test note: the source package does not include a downloaded Gradle distribution in this environment, so compile validation must be run in Android Studio or a CI runner with internet/cached Gradle.
+## Build
+
+Open each Android project in Android Studio, use JDK 17, install the Android SDK requested by Gradle, and build with the permanent release signing key.
+
+```bash
+cd agent-app
+./gradlew :app:assembleRelease
+
+cd ../customer-app
+./gradlew :app:assembleRelease
+```
+
+The release build intentionally fails when required production values are missing. Use one permanent signing key: the configured signing-certificate hash, anti-tamper check, update pipeline and installed package must all refer to that same certificate.
+
+## ADB provisioning for controlled deployment/testing
+
+Deploy the dashboard and create a fresh provisioning token first, then run:
+
+```bash
+./scripts/adb-provision-customer.sh \
+  ./customer-app/app/build/outputs/apk/release/app-release.apk \
+  '<PROVISIONING_TOKEN>' \
+  '<6_DIGIT_CODE>' \
+  '<DEVICE_IMEI>'
+```
+
+The correct Device Owner component is:
+
+```text
+com.touchbase.securepay.client/com.touchbase.user.admin.SecurePayDeviceAdminReceiver
+```
+
+The script refuses incomplete arguments, verifies that ADB sees exactly one device, installs the APK, sets Device Owner and launches the activation flow. A factory reset is normally required before assigning Device Owner.
+
+## Before field deployment
+
+1. Deploy the backend and migrations first.
+2. Rotate JWT, bootstrap HMAC, Didit webhook and Firebase credentials.
+3. Create the initial Super Admin with `../dashboard/scripts/create-super-admin.mjs`.
+4. Build the release APKs with the permanent key and publish the customer APK plus `latest.json` to R2.
+5. Run the acceptance matrix in `../DEPLOYMENT_RUNBOOK.md` on the exact Samsung/Android models to be sold.
+6. Test activation, payment, overdue lock, Wi-Fi/mobile-data access while locked, emergency dialer, stolen tracking, reboot enforcement, update and final release.
+
+## Current verification status
+
+All 109 Kotlin source files and 6 Gradle Kotlin DSL files were scanned for syntax diagnostics, and the backend was type-checked/built during the production pass. Android APK compilation and physical-device behavior still require Android Studio/CI and real-device testing; they were not possible in the audit container.
+
+Start with `../PRODUCTION_AUDIT_2026-07-10.md` and `../DEPLOYMENT_RUNBOOK.md`.

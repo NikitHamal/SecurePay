@@ -1,54 +1,61 @@
-# SecurePay Dealer Dashboard - production-hardened source
+# Touch Base dashboard and device API
 
-SvelteKit/Cloudflare Pages dashboard and API for the Ghana phone-financing deployment.
+SvelteKit/TypeScript application deployed to Cloudflare Pages/Workers with D1 and R2. It provides the dealer console plus the APIs consumed by the agent and customer Android apps.
 
-## What changed
+## Production pass highlights
 
-- QR provisioning reads signed APK metadata from R2 `latest.json`.
-- Each QR is pinned to an immutable HTTPS APK and exact SHA-256 checksum.
-- QR version is now `3` and includes Android Device Owner component, Wi-Fi security type, one-time admin extras, and security-policy extras.
-- Dealer-configurable EFRP policy is available in Inventory -> Production security policy.
-- Wi-Fi passwords are no longer stored in D1.
-- Activation requires both a 256-bit one-time token and six-digit code.
-- Successful activation issues a per-device API HMAC secret stored against the financed account.
-- Registered device requests are verified with the per-device secret when possible; the global APK HMAC secret is only a bootstrap/fallback path.
-- HMAC requests have timestamp and nonce replay rejection.
-- Customer app uses device-scoped account/payment endpoints instead of dealer-only endpoints.
-- Device/account/heartbeat/payment binding checks include both account ID and IMEI.
-- Final payment automatically approves customer-app release, and dealers/agents can trigger explicit release for test/early settlement.
-- Customer-app update endpoint supports a minimum supported version gate.
-- Ghana locale, `GHS`, `+233`, Mobile Money naming, and integer-pesewa formatting are used.
-- Demo seeding is authenticated and disabled unless explicitly enabled.
+- Enforced four-level visibility: Super Admin -> DSL Agency -> Branch Admin -> Agent.
+- Added resource-level scope checks to accounts, devices, payments, ledger, locations, KYC, agents, branches and provisioning.
+- Shortened authenticated sessions, moved browser auth to `HttpOnly`, `Secure`, `SameSite=Strict` cookies, stopped returning/persisting browser bearer tokens, and retained bearer tokens for Android clients.
+- Added rate limits for login, registration and sensitive mutations.
+- Hardened activation and recovery so an enrolled device receives and can recover its per-device HMAC secret only when the provisioning token, activation code and exact 15-digit IMEI match, without leaking customer data from the bootstrap check endpoint.
+- Added Didit hosted verification-session creation and signed/idempotent webhook processing.
+- Added stolen-location ingestion/read scope, device update metadata, health checks and security-policy inheritance.
+- Disabled destructive demo seeding unless explicitly enabled.
+- Removed bundled APKs and all committed runtime credentials.
+
+The complete findings, limitations and file-level changes are in `../PRODUCTION_AUDIT_2026-07-10.md`.
 
 ## Required Cloudflare bindings
 
 `wrangler.toml` expects:
 
-- D1 binding: `DB`
-- R2 binding: `R2`
+- D1: `DB`
+- R2: `R2`
 
-Replace the example/previous D1 `database_id` and bucket values when deploying to a different Cloudflare account.
+Replace the sample D1 database ID, bucket and Firebase project values for the client's Cloudflare/Firebase accounts.
 
-Required worker secrets/variables:
+Set secrets with Wrangler rather than committing `.env` or `.dev.vars`:
 
 ```text
 JWT_SECRET=<long random value>
-HMAC_SECRET=<different long random value; same value used by Android CI for bootstrap traffic>
+HMAC_SECRET=<different long random bootstrap value>
+DIDIT_API_KEY=<Didit server API key>
+DIDIT_WEBHOOK_SECRET=<Didit webhook secret>
+DIDIT_WORKFLOW_ID=<approved Didit workflow ID>
+DIDIT_CALLBACK_URL=https://your-dashboard.example/api/webhooks/didit
 ALLOW_DEMO_SEED=false
 FRP_ACCOUNT_IDS=
-CUSTOMER_APP_MIN_SUPPORTED_VERSION_CODE=4
+CUSTOMER_APP_MIN_SUPPORTED_VERSION_CODE=18
 ```
 
-`FRP_ACCOUNT_IDS` is an optional comma-separated fallback. Prefer saving dealer-specific numeric Google account IDs from the dashboard UI instead.
+Firebase service-account material (`FCM_SERVICE_ACCOUNT_EMAIL`, `FCM_SERVICE_ACCOUNT_PRIVATE_KEY`, and `FCM_PROJECT_ID`) must also be supplied through the deployment secret mechanism used by this project. Rotate every credential that was present in a previous source archive.
 
-Rotate any value that appeared in the original uploaded `.env`; it must be treated as exposed.
+## Install and validate
 
-## Database migration
+```bash
+npm ci
+npm run check
+npm run build
+```
 
-For a brand-new environment, apply **all migrations in filename order**. The base migration has been corrected so a fresh database no longer fails on duplicate `ALTER TABLE` columns.
+## New database deployment
+
+Apply every migration in filename order:
 
 ```bash
 npx wrangler d1 execute securepay-db --remote --file=migrations/0001_initial.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/0002_multi_tenant.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260618_provisioning_v2.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260619_release_lifecycle.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260619_security_hardening.sql
@@ -59,59 +66,87 @@ npx wrangler d1 execute securepay-db --remote --file=migrations/20260627_danglin
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260627_provisioning_tokens_fk.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260702_device_logs.sql
 npx wrangler d1 execute securepay-db --remote --file=migrations/20260706_stolen_tracking_location.sql
+npx wrangler d1 execute securepay-db --remote --file=migrations/20260710_production_hardening.sql
 ```
 
-For an existing database, take a backup first and inspect whether `accounts.is_stolen` already exists. SQLite/D1 does not support `ALTER TABLE ADD COLUMN IF NOT EXISTS`; if you already added `is_stolen` manually, skip only that line in `20260706_stolen_tracking_location.sql` and still run the `location_logs` table/index statements.
+The migration chain was replayed against a fresh SQLite database and passed `PRAGMA foreign_key_check` during this audit.
 
-Do not run `0001_initial.sql` against a populated database.
+## Existing database warning
 
-## EFRP production policy
+Back up D1 before changing it. An older `20260626_custom_plans.sql` rebuilt `accounts` without preserving the multi-tenant/KYC columns introduced earlier. The corrected migration fixes fresh deployments, but it cannot restore columns already lost in a live database.
 
-EFRP requires Google numeric account IDs, not plain email addresses. Configure the dealer's permanent admin account IDs in Inventory -> Production security policy before generating production QRs. Every QR generated after a policy change embeds the current policy version and account IDs in the Android admin extras.
+For a database that already ran the broken migration:
 
-Recommended release flow:
+1. Export/backup the remote D1 database.
+2. Inspect `PRAGMA table_info(accounts);` and affected data.
+3. Review and adapt `manual-migrations/repair_accounts_after_20260626.sql`.
+4. Execute the repair in staging first.
+5. Run `20260710_production_hardening.sql`.
+6. Verify counts, hierarchy assignments, KYC state and `PRAGMA foreign_key_check` before production traffic.
 
-1. Dealer configures EFRP numeric Google account IDs.
-2. Agent generates a fresh QR and confirms the agent app shows EFRP enabled.
-3. Customer app applies the base loan policy immediately after Device Owner provisioning.
-4. While the loan is active, Settings factory reset, app removal, ADB/developer features, unknown-source install, and account-modification paths are restricted where Android permits.
-5. After full payment or explicit dealer release, the app clears EFRP/restrictions, clears Device Owner/admin state, calls `/api/device/release-complete`, and can be uninstalled.
+Do not blindly run the repair against a healthy schema.
 
-## Install, validate, build
+## Create the first Super Admin
 
 ```bash
-npm ci
-npm run check
-npm run build
+node scripts/create-super-admin.mjs \
+  --name 'Touch Base Owner' \
+  --email 'owner@example.com' \
+  --password 'use-a-password-manager-generated-password'
 ```
 
-Expected result for this source: `0 errors and 0 warnings`, followed by a successful Cloudflare adapter build.
+The script prints SQL containing a bcrypt cost-12 hash. Review it, then execute that SQL against D1 through an authenticated administrative workflow. It never writes a plaintext password to the database.
 
-## Deploy order
+Create agency owners, branch administrators or directly provisioned agents after their agency/branch rows exist:
 
-1. Rotate production secrets.
-2. Apply the D1 migrations.
-3. Set Cloudflare secrets/bindings and deploy this dashboard.
-4. Configure Android GitHub release secrets.
-5. Build the customer APK with the permanent release key.
-6. Let CI upload the immutable APK and publish `latest.json` last.
-7. Configure EFRP numeric Google IDs in Inventory -> Production security policy.
-8. Generate a new provisioning QR. Old QRs/APKs must not be reused.
+```bash
+node scripts/create-staff.mjs \
+  --role BRANCH_ADMIN \
+  --name 'Accra Branch Admin' \
+  --email 'branch@example.com' \
+  --password 'use-a-password-manager-generated-password' \
+  --approved-by 'DLR-SUPERADMINID' \
+  --agency 'AGY-XXXXXXXX' \
+  --branch 'BR-XXXXXXXX'
+```
 
-## Money storage
+The script emits reviewed SQL and updates `agencies.owner_id` or `branches.admin_id` when applicable. Normal field agents should still use the self-registration and approval workflow.
 
-All persisted monetary values are integer pesewas. For example, `GHc 125.50` is stored as `12550`. API payment amounts must be positive integers and cannot exceed the outstanding balance.
+## Didit Ghana Card/KYC flow
 
-## Security boundary
+1. An authorized operator opens a customer and requests verification.
+2. The server creates a Didit hosted session using its server-side API key and stores the returned session ID against the customer.
+3. The browser opens the hosted verification URL; the API key is never sent to the Android/web client.
+4. Didit calls `/api/webhooks/didit`.
+5. The webhook verifies the v2 timestamp and HMAC signature, rejects replay/duplicate events, confirms the session/account binding and updates KYC status.
 
-This dashboard and DPC implement the strongest practical cross-OEM Android Enterprise path without Samsung Knox Guard: Device Owner, EFRP, per-device HMAC, nonce replay rejection, one-time provisioning tokens, release lifecycle, and update control. This does not guarantee survival against firmware flashing, service-center tooling, hardware attacks, or future OEM vulnerabilities. Samsung-only programs that require stronger OEM-backed financed-device controls should add Knox Guard as an optional premium layer.
+Configure the Didit workflow for the documents and liveness checks legally approved for the Ghana deployment. A provider decision is an input to the lender's KYC process, not a substitute for licensing, consent, retention rules or manual exception handling.
 
-## July 6 location/stolen-device patch
+## Customer APK update publishing
 
-This package wires stolen-device tracking end-to-end:
+Publish immutable, release-signed APK objects to R2 and update `latest.json` only after the APK upload succeeds. Metadata must include the HTTPS URL, version code and SHA-256 checksum expected by the customer app. The app rejects insecure URLs, excessive files, checksum mismatch and signing-certificate mismatch.
 
-- `/api/device/check`, `/api/device/heartbeat`, `/api/device/account`, and `/api/device/activate` now include `isStolen` and return `STOLEN` status when applicable.
-- Flagging an account as stolen also sets `locked_by_dealer = 1`, so the customer app locks on heartbeat even before a push notification arrives.
-- `/api/device/location` now requires top-level `accountId` and `imei`, verifies the account/device binding, accepts single pings or offline batches, validates coordinates, and writes to `location_logs`.
-- Dealer/agent location reads now return both `latitude/longitude` and `lat/lng` for dashboard and agent compatibility.
-- Fresh D1 migrations were validated locally with SQLite in filename order.
+After `latest.json` is live, send the best-effort FCM update trigger from an authenticated Super Admin session:
+
+```bash
+curl -fsS -X POST -b /path/to/super-admin-cookie.txt \
+  https://YOUR-DOMAIN/api/admin/push-customer-update
+```
+
+Customer apps subscribe to the `tb-customer-updates` topic. FCM delivery is not a hard real-time guarantee, so successful heartbeat and periodic WorkManager checks remain fallback paths.
+
+## Deployment order
+
+1. Back up and migrate D1.
+2. Set/rotate all Cloudflare secrets and deploy the dashboard/API.
+3. Confirm `/api/health` reports the expected build/routes.
+4. Create the Super Admin and configure agency/branch hierarchy.
+5. Configure Didit/Firebase callbacks and production domains.
+6. Build both Android apps with the permanent release key.
+7. Publish customer update metadata.
+8. Provision only with fresh tokens generated by the deployed API.
+9. Complete the physical-device acceptance matrix in `../DEPLOYMENT_RUNBOOK.md`.
+
+## Non-goals
+
+This code does not implement covert tracking, root persistence, custom-ROM survival or a guarantee against firmware flashing. Stronger guarantees require an OEM/Android Enterprise commercial program, contractual/legal controls and model-specific validation.

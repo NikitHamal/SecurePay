@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
 import { parsePaymentMethod } from '$lib/payment-method';
 import type { LedgerEntry, PaymentMethod } from '$lib/types';
+import { getAccountScopeFilter } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ locals, url, platform }) => {
   if (!locals.dealer) {
@@ -17,15 +18,16 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
   const accountIdFilter = url.searchParams.get('accountId');
 
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
 
   let sql = `
     SELECT p.*, a.customer_name, d.imei
     FROM payments p
     JOIN accounts a ON p.account_id = a.id
     JOIN devices d ON a.device_id = d.id
-    WHERE a.dealer_id = ?
+    WHERE ${scope.where}
   `;
-  const args: (string | number)[] = [locals.dealer.id];
+  const args: (string | number)[] = [...scope.params];
 
   if (accountIdFilter) {
     sql += ' AND p.account_id = ?';

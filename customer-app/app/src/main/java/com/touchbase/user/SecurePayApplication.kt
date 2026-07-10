@@ -3,10 +3,10 @@ package com.touchbase.user
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.os.Looper
 import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.messaging.FirebaseMessaging
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.SecurePayApi
@@ -64,7 +64,7 @@ class SecurePayApplication : Application() {
         super.onCreate()
 
         // Ultra-early log — this runs before almost everything
-        SecureLog.forceError(TAG, "Application.onCreate() called — APK started successfully")
+        SecureLog.i(TAG, "Application.onCreate() called — APK started successfully")
 
         // Global safety net: background-thread failures during early DPC launch must not
         // kill provisioning. Main-thread crashes still go to Android's normal handler so
@@ -72,9 +72,7 @@ class SecurePayApplication : Application() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             SecureLog.provisioningError(TAG, "Uncaught exception on thread ${thread.name}", throwable)
-            if (thread == Looper.getMainLooper().thread) {
-                previous?.uncaughtException(thread, throwable)
-            }
+            previous?.uncaughtException(thread, throwable)
         }
 
         // Initialize Firebase for FCM push notifications. This runs without
@@ -83,18 +81,25 @@ class SecurePayApplication : Application() {
             if (FirebaseApp.getApps(this).isEmpty()) {
                 val projectId = BuildConfig.FCM_PROJECT_ID
                 val appId = BuildConfig.FCM_APPLICATION_ID
-                if (projectId.isNotBlank() && appId.isNotBlank()) {
+                val apiKey = BuildConfig.FCM_API_KEY
+                val senderId = BuildConfig.FCM_SENDER_ID
+                if (projectId.isNotBlank() && appId.isNotBlank() && apiKey.isNotBlank() && senderId.isNotBlank()) {
                     val options = FirebaseOptions.Builder()
                         .setProjectId(projectId)
-                        .setApiKey(BuildConfig.FCM_API_KEY)
+                        .setApiKey(apiKey)
                         .setApplicationId(appId)
-                        .setGcmSenderId(BuildConfig.FCM_SENDER_ID)
+                        .setGcmSenderId(senderId)
                         .build()
                     FirebaseApp.initializeApp(this, options)
                     SecureLog.i(TAG, "Firebase initialized for project $projectId")
                 } else {
-                    SecureLog.w(TAG, "Firebase skipped: FCM_PROJECT_ID or FCM_APPLICATION_ID not configured")
+                    SecureLog.w(TAG, "Firebase skipped: one or more FCM BuildConfig values are missing")
                 }
+            }
+            if (FirebaseApp.getApps(this).isNotEmpty()) {
+                FirebaseMessaging.getInstance().subscribeToTopic(UPDATE_TOPIC)
+                    .addOnSuccessListener { SecureLog.i(TAG, "Subscribed to managed update notifications") }
+                    .addOnFailureListener { SecureLog.w(TAG, "Update topic subscription failed: ${it.message}") }
             }
         }.onFailure { SecureLog.w(TAG, "Firebase initialization skipped", it) }
 
@@ -152,5 +157,6 @@ class SecurePayApplication : Application() {
     companion object {
         private const val TAG = "SecurePayApp"
         const val FCM_CHANNEL_ID = "securepay_fcm"
+        private const val UPDATE_TOPIC = "tb-customer-updates"
     }
 }

@@ -6,6 +6,7 @@ import androidx.work.*
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceAuthRecovery
+import com.touchbase.user.data.remote.DeviceRegistrationRecovery
 import com.touchbase.user.util.SecureLog
 import java.util.concurrent.TimeUnit
 
@@ -19,6 +20,10 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val request = PeriodicWorkRequestBuilder<TrackingWorker>(
                 15, TimeUnit.MINUTES,
                 5, TimeUnit.MINUTES
+            ).setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
             ).build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -32,12 +37,16 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
     override suspend fun doWork(): Result {
         return try {
             val tokenManager = DeviceTokenManager(applicationContext)
-            val imei = tokenManager.imei
-            val accountId = tokenManager.accountId ?: ""
-            if (imei == null || accountId.isBlank()) {
-                SecureLog.w(TAG, "No account/IMEI found, skipping tracking check")
-                return Result.success()
+            if (!tokenManager.isRegistered || tokenManager.imei.isNullOrBlank()) {
+                val repaired = DeviceRegistrationRecovery.repair(applicationContext, tokenManager)
+                if (!repaired) {
+                    SecureLog.w(TAG, "Account/IMEI still unavailable; tracking check will retry")
+                    return Result.retry()
+                }
             }
+            val imei = tokenManager.imei ?: return Result.retry()
+            val accountId = tokenManager.accountId.orEmpty()
+            if (accountId.isBlank()) return Result.retry()
 
             val signingSecret = tokenManager.apiSecret
                 ?: DeviceAuthRecovery.ensureDeviceApiSecret(applicationContext, tokenManager)

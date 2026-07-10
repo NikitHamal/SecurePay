@@ -4,6 +4,7 @@ import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, ge
 import { sendFcm } from '$lib/api/fcm';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
+import { getAccountScopeFilter, canReleaseOrDeleteAccount } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
@@ -11,13 +12,14 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
   }
 
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
   const row = await db.prepare(`
     SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
     LEFT JOIN plans p ON a.plan_id = p.id
-    WHERE a.id = ? AND a.dealer_id = ?
-  `).bind(params.id, locals.dealer.id).first();
+    WHERE a.id = ? AND ${scope.where}
+  `).bind(params.id, ...scope.params).first();
 
   if (!row) {
     return errorResponse('Account not found', 404);
@@ -63,6 +65,13 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     return errorResponse('Unauthorized', 401);
   }
 
+  const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
+  const authorized = await db.prepare(`SELECT a.id FROM accounts a WHERE a.id = ? AND ${scope.where}`)
+    .bind(params.id, ...scope.params)
+    .first<{ id: string }>();
+  if (!authorized) return errorResponse('Account not found', 404);
+
   const body = await request.json();
   const {
     customerName,
@@ -79,17 +88,50 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     isStolen
   } = body;
 
-  const updates: string[] = [];
-  const args: (string | number)[] = [];
+  if (amountPaid !== undefined) {
+    return errorResponse('amountPaid is ledger-controlled; record a payment through the payments endpoint', 400);
+  }
 
-  if (customerName !== undefined) { updates.push('customer_name = ?'); args.push(customerName); }
-  if (nationalId !== undefined) { updates.push('national_id = ?'); args.push(nationalId); }
-  if (phoneNumber !== undefined) { updates.push('phone_number = ?'); args.push(phoneNumber); }
-  if (dailyRate !== undefined) { updates.push('daily_rate = ?'); args.push(dailyRate); }
-  if (totalLoanAmount !== undefined) { updates.push('total_loan_amount = ?'); args.push(totalLoanAmount); }
-  if (termDays !== undefined) { updates.push('term_days = ?'); args.push(termDays); }
-  if (nextPaymentDue !== undefined) { updates.push('next_payment_due = ?'); args.push(nextPaymentDue); }
-  if (amountPaid !== undefined) { updates.push('amount_paid = ?'); args.push(amountPaid); }
+  const restrictedFinancialEdit = [dailyRate, totalLoanAmount, termDays, nextPaymentDue].some((value) => value !== undefined);
+  if (restrictedFinancialEdit && !canReleaseOrDeleteAccount(locals.dealer.role)) {
+    return errorResponse('Only branch admins and above can change loan terms or due dates', 403);
+  }
+
+  const updates: string[] = [];
+  const args: (string | number | null)[] = [];
+
+  if (customerName !== undefined) {
+    const value = String(customerName).trim();
+    if (value.length < 2 || value.length > 120) return errorResponse('customerName must be between 2 and 120 characters', 400);
+    updates.push('customer_name = ?'); args.push(value);
+  }
+  if (nationalId !== undefined) {
+    const value = String(nationalId).trim().toUpperCase();
+    if (value.length < 4 || value.length > 64) return errorResponse('nationalId must be between 4 and 64 characters', 400);
+    updates.push('national_id = ?'); args.push(value);
+  }
+  if (phoneNumber !== undefined) {
+    const value = String(phoneNumber).trim();
+    if (!/^[0-9+()\-\s]{8,24}$/.test(value)) return errorResponse('phoneNumber must contain 8 to 24 valid phone characters', 400);
+    updates.push('phone_number = ?'); args.push(value);
+  }
+
+  const addSafeInteger = (column: string, value: unknown, fieldName: string, minimum: number) => {
+    if (value === undefined) return null;
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed < minimum) return `${fieldName} must be a whole number and at least ${minimum}`;
+    updates.push(`${column} = ?`); args.push(parsed);
+    return null;
+  };
+  const numericError = addSafeInteger('daily_rate', dailyRate, 'dailyRate', 1)
+    || addSafeInteger('total_loan_amount', totalLoanAmount, 'totalLoanAmount', 1)
+    || addSafeInteger('term_days', termDays, 'termDays', 1)
+    || addSafeInteger('next_payment_due', nextPaymentDue, 'nextPaymentDue', 1);
+  if (numericError) return errorResponse(numericError, 400);
+
+  if (isStolen !== undefined && typeof isStolen !== 'boolean') {
+    return errorResponse('isStolen must be a boolean', 400);
+  }
   const nowMillis = Date.now();
   const nowSeconds = Math.floor(nowMillis / 1000);
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -104,44 +146,48 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     args.push(stolen ? nowMillis - 60 * 60 * 1000 : nowMillis + DAY_MS);
   }
 
-  // Helper to decode Base64 and upload to R2
-  const uploadBase64ToR2 = async (base64Data: string | undefined | null, key: string): Promise<string | null> => {
-    if (!base64Data) return null;
-    try {
-      const r2 = getR2({ platform });
-      const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
-      const binaryString = atob(cleanBase64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      await r2.put(key, bytes, {
-        httpMetadata: { contentType: 'image/jpeg' }
-      });
-      return key;
-    } catch (err) {
-      console.error('Error uploading R2 image:', err);
-      return null;
+  const uploadBase64ToR2 = async (base64Data: unknown, keyPrefix: string): Promise<string | null> => {
+    if (base64Data == null || base64Data === '') return null;
+    if (typeof base64Data !== 'string') throw new Error('KYC image must be a Base64 string or null');
+
+    const match = base64Data.trim().match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/i);
+    const mimeToken = match?.[1]?.toLowerCase() ?? 'jpeg';
+    const cleanBase64 = (match?.[2] ?? base64Data).replace(/\s/g, '');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64) || cleanBase64.length % 4 === 1) {
+      throw new Error('KYC image is not valid Base64 data');
     }
+
+    const binaryString = atob(cleanBase64);
+    if (binaryString.length === 0 || binaryString.length > 5 * 1024 * 1024) {
+      throw new Error('KYC image must be between 1 byte and 5MB');
+    }
+    const bytes = new Uint8Array(binaryString.length);
+    for (let index = 0; index < binaryString.length; index += 1) bytes[index] = binaryString.charCodeAt(index);
+
+    const extension = mimeToken === 'png' ? 'png' : mimeToken === 'webp' ? 'webp' : 'jpg';
+    const contentType = mimeToken === 'png' ? 'image/png' : mimeToken === 'webp' ? 'image/webp' : 'image/jpeg';
+    const key = `${keyPrefix}.${extension}`;
+    await getR2({ platform }).put(key, bytes, { httpMetadata: { contentType } });
+    return key;
   };
 
   const accountId = params.id;
-
-  if (customerPhoto !== undefined) {
-    const customerPhotoPath = customerPhoto ? await uploadBase64ToR2(customerPhoto, `kyc/customer_${accountId}_photo.jpg`) : null;
-    updates.push('customer_photo_path = ?');
-    args.push(customerPhotoPath || '');
-  }
-  if (nationalIdFront !== undefined) {
-    const nationalIdFrontPath = nationalIdFront ? await uploadBase64ToR2(nationalIdFront, `kyc/customer_${accountId}_id_front.jpg`) : null;
-    updates.push('national_id_front_path = ?');
-    args.push(nationalIdFrontPath || '');
-  }
-  if (nationalIdBack !== undefined) {
-    const nationalIdBackPath = nationalIdBack ? await uploadBase64ToR2(nationalIdBack, `kyc/customer_${accountId}_id_back.jpg`) : null;
-    updates.push('national_id_back_path = ?');
-    args.push(nationalIdBackPath || '');
+  try {
+    if (customerPhoto !== undefined) {
+      const path = await uploadBase64ToR2(customerPhoto, `kyc/customer_${accountId}_photo`);
+      updates.push('customer_photo_path = ?'); args.push(path);
+    }
+    if (nationalIdFront !== undefined) {
+      const path = await uploadBase64ToR2(nationalIdFront, `kyc/customer_${accountId}_id_front`);
+      updates.push('national_id_front_path = ?'); args.push(path);
+    }
+    if (nationalIdBack !== undefined) {
+      const path = await uploadBase64ToR2(nationalIdBack, `kyc/customer_${accountId}_id_back`);
+      updates.push('national_id_back_path = ?'); args.push(path);
+    }
+  } catch (error) {
+    console.error('KYC image update failed', error);
+    return errorResponse(error instanceof Error ? error.message : 'Unable to store KYC image', 502);
   }
 
   if (updates.length === 0) {
@@ -151,20 +197,20 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   updates.push('updated_at = ?');
   args.push(nowSeconds);
   args.push(params.id);
-  args.push(locals.dealer.id);
 
-  const db = getDb({ platform });
-  await db.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ? AND dealer_id = ?`).bind(...args).run();
+  await db.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ?`).bind(...args).run();
 
   const row = await db.prepare(`
     SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
     LEFT JOIN plans p ON a.plan_id = p.id
-    WHERE a.id = ? AND a.dealer_id = ?
-  `).bind(params.id, locals.dealer.id).first();
+    WHERE a.id = ?
+  `).bind(params.id).first();
 
-  if (isStolen !== undefined && row) {
+  if (!row) return errorResponse('Account updated but could not be reloaded', 500);
+
+  if (isStolen !== undefined) {
     const fcmToken = String(row.fcm_token ?? '').trim();
     if (fcmToken) {
       const fcmEnv = platform?.env as { FCM_SERVICE_ACCOUNT_EMAIL?: string; FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string; FCM_PROJECT_ID?: string } | undefined;
@@ -219,28 +265,28 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   return json(customer);
 };
 export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
-  if (!locals.dealer) {
-    return errorResponse('Unauthorized', 401);
+  if (!locals.dealer) return errorResponse('Unauthorized', 401);
+  if (!canReleaseOrDeleteAccount(locals.dealer.role)) {
+    return errorResponse('Only branch admins and above can delete customer accounts', 403);
   }
 
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
   const row = await db.prepare(`
-    SELECT id, device_id
-    FROM accounts
-    WHERE id = ? AND dealer_id = ?
-  `).bind(params.id, locals.dealer.id).first<{ id: string; device_id: string }>();
+    SELECT a.id, a.device_id
+    FROM accounts a
+    WHERE a.id = ? AND ${scope.where}
+  `).bind(params.id, ...scope.params).first<{ id: string; device_id: string }>();
 
-  if (!row) {
-    return errorResponse('Account not found', 404);
-  }
+  if (!row) return errorResponse('Account not found', 404);
 
   await db.batch([
     db.prepare('DELETE FROM location_logs WHERE account_id = ?').bind(params.id),
     db.prepare('DELETE FROM provisioning_tokens WHERE account_id = ?').bind(params.id),
     db.prepare('DELETE FROM payments WHERE account_id = ?').bind(params.id),
     db.prepare('DELETE FROM lock_events WHERE account_id = ?').bind(params.id),
-    db.prepare('DELETE FROM accounts WHERE id = ? AND dealer_id = ?').bind(params.id, locals.dealer.id),
-    db.prepare('UPDATE devices SET status = ? WHERE id = ? AND dealer_id = ?').bind('in_stock', row.device_id, locals.dealer.id)
+    db.prepare('DELETE FROM accounts WHERE id = ?').bind(params.id),
+    db.prepare("UPDATE devices SET status = 'in_stock' WHERE id = ?").bind(row.device_id)
   ]);
 
   return json({ success: true, id: params.id, deviceId: row.device_id });

@@ -1,6 +1,7 @@
 import { errorResponse, getDb, getR2 } from '$lib/api/server';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getAccountScopeFilter } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
@@ -13,8 +14,9 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
   }
 
   const db = getDb({ platform });
-  const account = await db.prepare('SELECT customer_photo_path, national_id_front_path, national_id_back_path FROM accounts WHERE id = ? AND dealer_id = ?')
-    .bind(id, locals.dealer.id)
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
+  const account = await db.prepare(`SELECT a.customer_photo_path, a.national_id_front_path, a.national_id_back_path FROM accounts a WHERE a.id = ? AND ${scope.where}`)
+    .bind(id, ...scope.params)
     .first<{ customer_photo_path?: string | null; national_id_front_path?: string | null; national_id_back_path?: string | null }>();
 
   if (!account) {
@@ -42,7 +44,8 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     return new Response(bytes, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000'
+        'Cache-Control': 'private, max-age=300',
+        'X-Content-Type-Options': 'nosniff'
       }
     });
   } catch (err: any) {

@@ -10,6 +10,9 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
 export const PUT: RequestHandler = async ({ locals, platform, request }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
+  if (!['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'].includes(locals.dealer.role)) {
+    return errorResponse('Only administrators can change the device security policy', 403);
+  }
   const body = await request.json();
   const frpAccountIds = parseFrpAccountIds(body.frpAccountIds ?? body.frpAccountIdsCsv ?? '');
   if (frpAccountIds.length > 10) {

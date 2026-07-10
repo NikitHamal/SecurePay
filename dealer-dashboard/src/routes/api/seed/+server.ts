@@ -6,8 +6,13 @@ import { v4 as uuidv4 } from 'uuid';
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+function canUseDemoSeed(locals: App.Locals, platform: App.Platform | undefined): boolean {
+  return platform?.env?.ALLOW_DEMO_SEED === 'true' && locals.dealer?.role === 'SUPER_ADMIN';
+}
+
 export const DELETE: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
+  if (!canUseDemoSeed(locals, platform)) return errorResponse('Demo seeding is disabled', 404);
 
   const db = getDb({ platform });
   const dealerId = locals.dealer.id;
@@ -22,14 +27,14 @@ export const DELETE: RequestHandler = async ({ locals, platform }) => {
   }
 
   await db.prepare('DELETE FROM accounts WHERE dealer_id = ?').bind(dealerId).run();
-  await db.prepare('UPDATE devices SET status = \'in_stock\', dealer_id = NULL WHERE dealer_id = ?').bind(dealerId).run();
+  await db.prepare("UPDATE devices SET status = 'in_stock' WHERE dealer_id = ?").bind(dealerId).run();
 
   return json({ success: true, message: 'All accounts, payments, and device assignments cleared for this dealer' });
 };
 
 export const POST: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
-  if (platform?.env?.ALLOW_DEMO_SEED !== 'true') {
+  if (!canUseDemoSeed(locals, platform)) {
     return errorResponse('Demo seeding is disabled', 404);
   }
 

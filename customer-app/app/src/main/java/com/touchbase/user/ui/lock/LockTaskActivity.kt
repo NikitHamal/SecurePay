@@ -88,6 +88,14 @@ class LockTaskActivity : ComponentActivity() {
 
                 LockTaskScreen(
                     state = state,
+                    onOpenInternet = {
+                        val opened = policyController.openInternetSettings(this@LockTaskActivity)
+                        if (!opened) uiState.value = uiState.value.copy(message = "Unable to open network settings on this phone.")
+                    },
+                    onEmergencyCall = {
+                        val opened = policyController.openEmergencyDialer(this@LockTaskActivity)
+                        if (!opened) uiState.value = uiState.value.copy(message = "Emergency dialer is unavailable on this phone.")
+                    },
                     onSync = {
                         if (!isSyncing) {
                             isSyncing = true

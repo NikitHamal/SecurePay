@@ -3,6 +3,7 @@ package com.touchbase.user.admin
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.util.Base64
 import com.touchbase.user.BuildConfig
 import com.touchbase.user.util.SecureLog
 import java.io.File
@@ -235,7 +236,11 @@ object SecurityChecker {
         for (sig in signatures) {
             val hash = digest.digest(sig.toByteArray())
             val hex = hash.joinToString("") { "%02x".format(it) }
-            if (hex in expectedHashes) return true
+            val base64Url = Base64.encodeToString(
+                hash,
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
+            if (hex in expectedHashes || base64Url in expectedHashes) return true
         }
         return false
     }
@@ -250,11 +255,13 @@ object SecurityChecker {
     private const val TAG = "SecurityChecker"
 
     private val EXPECTED_SIGNING_HASHES: Set<String>
-        get() {
-            val hash = BuildConfig.SIGNING_CERT_HASH
-                .replace(":", "")
-                .trim()
-                .lowercase()
-            return if (hash.isNotBlank()) setOf(hash) else emptySet()
-        }
+        get() = BuildConfig.SIGNING_CERT_HASH
+            .split(',', ';', '\n')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map { value ->
+                val noColons = value.replace(":", "")
+                if (noColons.matches(Regex("^[A-Fa-f0-9]{64}$"))) noColons.lowercase() else value
+            }
+            .toSet()
 }

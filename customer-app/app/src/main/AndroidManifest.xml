@@ -94,6 +94,7 @@
             android:name="com.touchbase.user.ui.lock.LockTaskActivity"
             android:exported="false"
             android:launchMode="singleTask"
+            android:lockTaskMode="if_whitelisted"
             android:screenOrientation="portrait"
             android:showWhenLocked="true"
             android:turnScreenOn="true"

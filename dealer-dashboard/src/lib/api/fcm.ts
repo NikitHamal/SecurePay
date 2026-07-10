@@ -5,9 +5,7 @@ function pemToBinary(pem: string): ArrayBuffer {
     .replace(/\s/g, '');
   const binaryString = atob(b64);
   const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
   return bytes.buffer as ArrayBuffer;
 }
 
@@ -23,7 +21,6 @@ async function signJwt(payload: string, privateKeyPem: string): Promise<string> 
   const header = { alg: 'RS256', typ: 'JWT' };
   const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
   const payloadB64 = base64UrlEncode(new TextEncoder().encode(payload));
-
   const signingInput = `${headerB64}.${payloadB64}`;
 
   const key = await crypto.subtle.importKey(
@@ -33,27 +30,23 @@ async function signJwt(payload: string, privateKeyPem: string): Promise<string> 
     false,
     ['sign']
   );
-
-  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(signingInput));
-  const sigB64 = base64UrlEncode(signature);
-
-  return `${signingInput}.${sigB64}`;
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(signingInput)
+  );
+  return `${signingInput}.${base64UrlEncode(signature)}`;
 }
 
-async function getAccessToken(
-  serviceAccountEmail: string,
-  privateKeyPem: string
-): Promise<string> {
+async function getAccessToken(serviceAccountEmail: string, privateKeyPem: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const jwtPayload = JSON.stringify({
+  const assertion = await signJwt(JSON.stringify({
     iss: serviceAccountEmail,
     scope: 'https://www.googleapis.com/auth/firebase.messaging',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now
-  });
-
-  const assertion = await signJwt(jwtPayload, privateKeyPem);
+  }), privateKeyPem);
 
   const resp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -63,64 +56,61 @@ async function getAccessToken(
       assertion
     })
   });
-
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`FCM OAuth2 failed: ${resp.status} ${text}`);
-  }
-
-  const data = (await resp.json()) as { access_token: string };
+  if (!resp.ok) throw new Error(`FCM OAuth2 failed: ${resp.status} ${(await resp.text()).slice(0, 500)}`);
+  const data = await resp.json() as { access_token?: string };
+  if (!data.access_token) throw new Error('FCM OAuth2 response did not include an access token');
   return data.access_token;
 }
 
 export interface FcmDataMessage {
-  type: 'lock' | 'unlock' | 'sync' | 'stolen';
-  accountId: string;
+  type: 'lock' | 'unlock' | 'sync' | 'stolen' | 'update';
+  accountId?: string;
   isStolen?: string;
+  versionCode?: string;
+  versionName?: string;
 }
 
-export async function sendFcm(
-  fcmToken: string,
-  message: FcmDataMessage,
-  env: {
-    FCM_SERVICE_ACCOUNT_EMAIL?: string;
-    FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
-    FCM_PROJECT_ID?: string;
-  }
-): Promise<void> {
-  const { FCM_SERVICE_ACCOUNT_EMAIL, FCM_SERVICE_ACCOUNT_PRIVATE_KEY, FCM_PROJECT_ID } = env;
+interface FcmEnv {
+  FCM_SERVICE_ACCOUNT_EMAIL?: string;
+  FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
+  FCM_PROJECT_ID?: string;
+}
 
-  if (!FCM_SERVICE_ACCOUNT_EMAIL || !FCM_SERVICE_ACCOUNT_PRIVATE_KEY || !FCM_PROJECT_ID) {
-    return;
-  }
-
-  const accessToken = await getAccessToken(
-    FCM_SERVICE_ACCOUNT_EMAIL,
-    FCM_SERVICE_ACCOUNT_PRIVATE_KEY
+function configured(env: FcmEnv): env is Required<FcmEnv> {
+  return Boolean(
+    env.FCM_SERVICE_ACCOUNT_EMAIL &&
+    env.FCM_SERVICE_ACCOUNT_PRIVATE_KEY &&
+    env.FCM_PROJECT_ID
   );
+}
 
-  const resp = await fetch(
-    `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: {
-          token: fcmToken,
-          data: {
-            type: message.type,
-            accountId: message.accountId
-          }
-        }
-      })
-    }
-  );
+async function sendMessage(target: { token: string } | { topic: string }, message: FcmDataMessage, env: FcmEnv): Promise<boolean> {
+  if (!configured(env)) return false;
+  const accessToken = await getAccessToken(env.FCM_SERVICE_ACCOUNT_EMAIL, env.FCM_SERVICE_ACCOUNT_PRIVATE_KEY);
+  const data = Object.fromEntries(
+    Object.entries(message).filter(([, value]) => typeof value === 'string' && value.length > 0)
+  ) as Record<string, string>;
 
+  const resp = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message: { ...target, data } })
+  });
   if (!resp.ok) {
-    const text = await resp.text();
-    console.error(`FCM send failed: ${resp.status} ${text}`);
+    console.error(`FCM send failed: ${resp.status} ${(await resp.text()).slice(0, 500)}`);
+    return false;
   }
+  return true;
+}
+
+export async function sendFcm(fcmToken: string, message: FcmDataMessage, env: FcmEnv): Promise<void> {
+  await sendMessage({ token: fcmToken }, message, env);
+}
+
+export async function sendFcmTopic(topic: string, message: FcmDataMessage, env: FcmEnv): Promise<boolean> {
+  if (!/^[a-zA-Z0-9-_.~%]{1,900}$/.test(topic)) throw new Error('Invalid FCM topic');
+  return sendMessage({ topic }, message, env);
 }

@@ -4,6 +4,7 @@ import { getDb, computeStatus, errorResponse, releaseFields } from '$lib/api/ser
 import { sendFcm } from '$lib/api/fcm';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
+import { getAccountScopeFilter } from '$lib/auth';
 
 export const POST: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
@@ -12,8 +13,9 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
 
   const accountId = params.id;
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
 
-  const acct = await db.prepare('SELECT * FROM accounts WHERE id = ? AND dealer_id = ?').bind(accountId, locals.dealer.id).first();
+  const acct = await db.prepare(`SELECT a.* FROM accounts a WHERE a.id = ? AND ${scope.where}`).bind(accountId, ...scope.params).first();
 
   if (!acct) {
     return errorResponse('Account not found', 404);

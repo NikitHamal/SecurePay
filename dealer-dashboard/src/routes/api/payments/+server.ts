@@ -4,6 +4,7 @@ import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, re
 import { parsePaymentMethod, paymentMethodStorageValue } from '$lib/payment-method';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
+import { getAccountScopeFilter } from '$lib/auth';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,8 +24,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   const db = getDb({ platform });
-  const account = await db.prepare('SELECT * FROM accounts WHERE id = ? AND dealer_id = ?')
-    .bind(accountId, locals.dealer.id)
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
+  const account = await db.prepare(`SELECT a.* FROM accounts a WHERE a.id = ? AND ${scope.where}`)
+    .bind(accountId, ...scope.params)
     .first();
 
   if (!account) {

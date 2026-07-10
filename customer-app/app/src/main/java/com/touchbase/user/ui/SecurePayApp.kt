@@ -46,8 +46,11 @@ fun SecurePayApp(
     val provisioningToken = remember(context) {
         ProvisioningExtrasStore.provisioningToken(context)
     }
+    val expectedImei = remember(context) {
+        ProvisioningExtrasStore.expectedImei(context)
+    }
     val activationViewModel: ActivationViewModel = viewModel(
-        factory = ActivationViewModel.Factory(repository, provisioningToken)
+        factory = ActivationViewModel.Factory(repository, provisioningToken, expectedImei)
     )
     val activationState by activationViewModel.uiState.collectAsState()
     val pendingActivationCode = remember(context) {

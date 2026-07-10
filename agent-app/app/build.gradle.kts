@@ -4,6 +4,23 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+fun configured(name: String, fallback: String = ""): String =
+    providers.gradleProperty(name)
+        .orElse(providers.environmentVariable(name))
+        .orElse(fallback)
+        .get()
+
+fun buildConfigString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+val apiBaseUrl = configured("TB_API_BASE_URL", "https://securepay-dashboard.pages.dev/api/")
+val hmacSecret = configured("TB_HMAC_SECRET")
+val signingCertHash = configured("TB_SIGNING_CERT_HASH")
+val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+if (releaseRequested && (hmacSecret.isBlank() || signingCertHash.isBlank())) {
+    throw GradleException("Release build requires TB_HMAC_SECRET and TB_SIGNING_CERT_HASH")
+}
+
 android {
     namespace = "com.touchbase.agent"
     compileSdk = 35
@@ -12,8 +29,8 @@ android {
         applicationId = "com.touchbase.agent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.1.2"
+        versionCode = 6
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,16 +40,17 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.66:5173/api/\"")
-            buildConfigField("String", "HMAC_SECRET", "\"dev-hmac-secret-change-in-release\"")
-            buildConfigField("String", "SIGNING_CERT_HASH", "\"\"")
+            val debugUrl = configured("TB_DEBUG_API_BASE_URL", "http://10.0.2.2:5173/api/")
+            buildConfigField("String", "API_BASE_URL", buildConfigString(debugUrl))
+            buildConfigField("String", "HMAC_SECRET", buildConfigString(hmacSecret))
+            buildConfigField("String", "SIGNING_CERT_HASH", buildConfigString(signingCertHash))
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            buildConfigField("String", "API_BASE_URL", "\"https://securepay-dashboard.pages.dev/api/\"")
-            buildConfigField("String", "HMAC_SECRET", "\"${System.getenv("HMAC_SECRET") ?: ""}\"")
-            buildConfigField("String", "SIGNING_CERT_HASH", "\"${System.getenv("SIGNING_CERT_HASH") ?: ""}\"")
+            buildConfigField("String", "API_BASE_URL", buildConfigString(apiBaseUrl))
+            buildConfigField("String", "HMAC_SECRET", buildConfigString(hmacSecret))
+            buildConfigField("String", "SIGNING_CERT_HASH", buildConfigString(signingCertHash))
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

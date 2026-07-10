@@ -44,13 +44,47 @@ export function parseFrpAccountIds(raw: unknown): string[] {
 
 export async function getDealerSecurityPolicy(event: { platform?: App.Platform | null }, dealerId: string): Promise<DeviceSecurityPolicyPayload> {
   const db = getDb(event);
-  const row = await db.prepare('SELECT frp_account_ids, security_policy_updated_at FROM dealers WHERE id = ?')
-    .bind(dealerId)
-    .first<{ frp_account_ids?: string | null; security_policy_updated_at?: number | null }>();
-  const fromDb = parseFrpAccountIds(row?.frp_account_ids);
+  const dealer = await db.prepare(`
+    SELECT d.id, d.role, d.frp_account_ids, d.security_policy_updated_at,
+           b.admin_id AS branch_admin_id, a.owner_id AS agency_owner_id
+    FROM dealers d
+    LEFT JOIN branches b ON b.id = d.branch_id
+    LEFT JOIN agencies a ON a.id = d.agency_id
+    WHERE d.id = ?
+  `).bind(dealerId).first<{
+    id: string;
+    role: string;
+    frp_account_ids?: string | null;
+    security_policy_updated_at?: number | null;
+    branch_admin_id?: string | null;
+    agency_owner_id?: string | null;
+  }>();
+
+  const candidates = [
+    dealer?.role === 'AGENT' ? dealer.branch_admin_id : null,
+    dealer?.role === 'AGENT' || dealer?.role === 'BRANCH_ADMIN' ? dealer?.agency_owner_id : null,
+    dealer?.id ?? dealerId
+  ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
+
+  let selectedIds: string[] = [];
+  let selectedUpdatedAt = 0;
+  for (const candidateId of candidates) {
+    const row = candidateId === dealer?.id
+      ? dealer
+      : await db.prepare('SELECT frp_account_ids, security_policy_updated_at FROM dealers WHERE id = ?')
+          .bind(candidateId)
+          .first<{ frp_account_ids?: string | null; security_policy_updated_at?: number | null }>();
+    const ids = parseFrpAccountIds(row?.frp_account_ids);
+    if (ids.length > 0) {
+      selectedIds = ids;
+      selectedUpdatedAt = Number(row?.security_policy_updated_at ?? 0);
+      break;
+    }
+  }
+
   const fromEnv = parseFrpAccountIds(event.platform?.env?.FRP_ACCOUNT_IDS ?? '');
-  const frpAccountIds = fromDb.length > 0 ? fromDb : fromEnv;
-  const version = Number(row?.security_policy_updated_at ?? 0) * 1000 || Date.now();
+  const frpAccountIds = selectedIds.length > 0 ? selectedIds : fromEnv;
+  const version = selectedUpdatedAt * 1000 || Date.now();
   return {
     version,
     frpEnabled: frpAccountIds.length > 0,
@@ -177,6 +211,11 @@ function createMockR2(): any {
         },
         text: async () => data.toString('utf-8')
       };
+    },
+    async delete(key: string) {
+      const safeKey = key.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const filePath = path.join(baseDir, safeKey);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
   };
 }

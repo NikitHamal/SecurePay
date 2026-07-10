@@ -43,6 +43,23 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     });
   }
 
+  // The app-level bootstrap HMAC is distributed inside the APK and therefore
+  // must never be treated as authorization to disclose customer data or a
+  // per-device credential. It is only enough to discover whether inventory is enrolled.
+  if (locals.hmacScope !== 'device') {
+    return json({
+      enrolled: true,
+      device: {
+        id: device.id,
+        imei: device.imei,
+        model: device.model,
+        status: device.status
+      },
+      apiSecret: '',
+      serverTime: Date.now()
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   const nowSec = Math.floor(Date.now() / 1000);
   let apiSecret = String(account.device_hmac_secret ?? '').trim();
   if (apiSecret.length < 32) {

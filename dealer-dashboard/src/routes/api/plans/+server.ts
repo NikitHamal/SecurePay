@@ -1,8 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/api/server';
+import { getDb, errorResponse } from '$lib/api/server';
 
-export const GET: RequestHandler = async ({ platform }) => {
+export const GET: RequestHandler = async ({ locals, platform }) => {
+  if (!locals.dealer) return errorResponse('Unauthorized', 401);
+
   const db = getDb({ platform });
   const result = await db.prepare('SELECT * FROM plans ORDER BY term_days ASC').all();
 
@@ -15,5 +17,5 @@ export const GET: RequestHandler = async ({ platform }) => {
     minDownPayment: Number(row.min_down_payment)
   }));
 
-  return json(plans);
+  return json(plans, { headers: { 'Cache-Control': 'private, no-store' } });
 };

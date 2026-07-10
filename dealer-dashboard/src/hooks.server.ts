@@ -3,8 +3,9 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { verifyToken } from '$lib/auth';
 import { verifyHmacSignature, getHmacSecret } from '$lib/hmac';
 
-const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update', '/api/device/fcm-token', '/api/device/location'];
-const GLOBAL_DEVICE_PATHS = ['/api/device/check', '/api/device/activate', '/api/device/app-update'];
+const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update', '/api/device/fcm-token', '/api/device/location', '/api/device/provisioned'];
+const GLOBAL_DEVICE_PATHS = ['/api/device/check', '/api/device/activate', '/api/device/app-update', '/api/device/provisioned'];
+const GLOBAL_LOG_PATH = '/api/device/logs';
 
 const LOGIN_LIMIT = 10;
 const LOGIN_WINDOW = 3600;
@@ -85,7 +86,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  if (DEVICE_PATHS.some((p) => path.startsWith(p))) {
+  const requiresDeviceHmac = DEVICE_PATHS.some((p) => path.startsWith(p)) ||
+    (path === GLOBAL_LOG_PATH && event.request.method === 'POST');
+
+  if (requiresDeviceHmac) {
     const signature = event.request.headers.get('x-signature');
     const timestamp = event.request.headers.get('x-timestamp');
     const nonce = event.request.headers.get('x-nonce');
@@ -125,7 +129,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       if (!valid) return jsonError('Invalid device HMAC signature', 401);
       event.locals.hmacScope = 'device';
     } else {
-      const allowGlobal = GLOBAL_DEVICE_PATHS.some((p) => path.startsWith(p));
+      const allowGlobal = GLOBAL_DEVICE_PATHS.some((p) => path.startsWith(p)) || path === GLOBAL_LOG_PATH;
       if (!allowGlobal) return jsonError('Device credential required', 401);
       valid = await verifyHmacSignature({
         signature,
@@ -156,21 +160,34 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   const authHeader = event.request.headers.get('authorization');
-  let token = authHeader?.replace('Bearer ', '');
-  if (!token) {
-    token = requestUrl.searchParams.get('token') || undefined;
-  }
+  const token = authHeader?.replace(/^Bearer\s+/i, '') || event.cookies.get('tb_session') || undefined;
 
-  if (token && event.platform?.env?.JWT_SECRET) {
-    const dealer = verifyToken(token, event.platform.env.JWT_SECRET);
-    if (dealer) {
-      event.locals.dealer = {
-        id: dealer.sub,
-        name: dealer.name,
-        role: dealer.role || 'SUPER_ADMIN',
-        agencyId: dealer.agencyId || null,
-        branchId: dealer.branchId || null
-      };
+  if (token && event.platform?.env?.JWT_SECRET && path.startsWith('/api/')) {
+    const tokenDealer = verifyToken(token, event.platform.env.JWT_SECRET);
+    if (tokenDealer && db) {
+      // Resolve authority from the current database row, not from stale JWT claims.
+      // This makes account disablement and role/scope changes effective immediately.
+      const currentDealer = await db.prepare(`
+        SELECT id, name, role, agency_id, branch_id
+        FROM dealers
+        WHERE id = ? AND is_approved = 1
+      `).bind(tokenDealer.sub).first<{
+        id: string;
+        name: string;
+        role: string;
+        agency_id?: string | null;
+        branch_id?: string | null;
+      }>();
+      const allowedRoles = new Set(['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN', 'AGENT']);
+      if (currentDealer && allowedRoles.has(currentDealer.role)) {
+        event.locals.dealer = {
+          id: currentDealer.id,
+          name: currentDealer.name,
+          role: currentDealer.role as 'SUPER_ADMIN' | 'AGENCY_OWNER' | 'BRANCH_ADMIN' | 'AGENT',
+          agencyId: currentDealer.agency_id || null,
+          branchId: currentDealer.branch_id || null
+        };
+      }
     }
   }
 

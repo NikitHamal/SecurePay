@@ -10,6 +10,7 @@ import {
   readApkMeta,
   getDealerSecurityPolicy
 } from '$lib/api/server';
+import { getAccountScopeFilter, getDealerScopeFilter } from '$lib/auth';
 
 const TOKEN_TTL_SEC = 24 * 60 * 60;
 
@@ -41,18 +42,25 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   const db = getDb({ platform });
+  const dealerScope = getDealerScopeFilter(locals.dealer, 'owner');
+  const accountScope = getAccountScopeFilter(locals.dealer, 'a');
 
-  const device = await db.prepare(
-    'SELECT id, imei, model, status FROM devices WHERE imei = ? AND dealer_id = ?'
-  ).bind(imei, locals.dealer.id).first();
+  const device = await db.prepare(`
+    SELECT d.id, d.imei, d.model, d.status
+    FROM devices d
+    JOIN dealers owner ON owner.id = d.dealer_id
+    WHERE d.imei = ? AND ${dealerScope.where}
+  `).bind(imei, ...dealerScope.params).first();
 
   if (!device) {
     return errorResponse('Device not found in your inventory', 404);
   }
 
-  const account = await db.prepare(
-    'SELECT id, customer_name FROM accounts WHERE device_id = ? AND dealer_id = ?'
-  ).bind(device.id as string, locals.dealer.id).first();
+  const account = await db.prepare(`
+    SELECT a.id, a.customer_name
+    FROM accounts a
+    WHERE a.device_id = ? AND ${accountScope.where}
+  `).bind(device.id as string, ...accountScope.params).first();
 
   if (!account) {
     return errorResponse(

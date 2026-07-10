@@ -2,21 +2,17 @@ import type { Customer, KpiSummary, LedgerEntry, PaymentMethod } from '$lib/type
 
 const API_BASE = '/api';
 
-let authToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('securepay_token') : null;
+let authToken: string | null = null;
 
 
-export function setToken(token: string): void {
-  authToken = token;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('securepay_token', token);
-  }
+export function setToken(token: string | null | undefined): void {
+  // Browser sessions use the HttpOnly SameSite cookie. Keep bearer tokens only
+  // in memory for non-browser/legacy callers and remove any previously persisted copy.
+  authToken = token || null;
+  if (typeof window !== 'undefined') localStorage.removeItem('securepay_token');
 }
 
 export function getToken(): string | null {
-  if (authToken) return authToken;
-  if (typeof window !== 'undefined') {
-    authToken = localStorage.getItem('securepay_token');
-  }
   return authToken;
 }
 
@@ -24,6 +20,14 @@ export function clearToken(): void {
   authToken = null;
   if (typeof window !== 'undefined') {
     localStorage.removeItem('securepay_token');
+    localStorage.removeItem('securepay_dealer');
+  }
+}
+
+function handleUnauthorized(): void {
+  clearToken();
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.assign('/login');
   }
 }
 
@@ -42,7 +46,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 401) {
-      clearToken();
+      handleUnauthorized();
     }
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body.error || `Request failed: ${res.status}`);
@@ -57,7 +61,7 @@ export async function apiClient(url: string, options: RequestInit = {}): Promise
     headers: { ...headers(), ...(options.headers as Record<string, string> || {}) }
   });
   if (res.status === 401) {
-    clearToken();
+    handleUnauthorized();
   }
   return res;
 }
@@ -69,10 +73,10 @@ export function computeStatus(nextPaymentDueEpochMillis: number, now = Date.now(
   return 'ACTIVE';
 }
 
-export async function login(email: string, password: string): Promise<{ token: string; dealer: { id: string; name: string; email: string; role: string; agencyId?: string | null; branchId?: string | null } }> {
-  const result = await request<{ token: string; dealer: { id: string; name: string; email: string; role: string; agencyId?: string | null; branchId?: string | null } }>('/auth/login', {
+export async function login(email: string, password: string): Promise<{ token?: string; dealer: { id: string; name: string; email: string; role: string; agencyId?: string | null; branchId?: string | null } }> {
+  const result = await request<{ token?: string; dealer: { id: string; name: string; email: string; role: string; agencyId?: string | null; branchId?: string | null } }>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password, client: 'web' })
   });
   setToken(result.token);
   return result;

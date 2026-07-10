@@ -1,0 +1,5 @@
+# Never commit real values. Copy to local.properties or export as environment variables.
+TB_DEBUG_API_BASE_URL=http://10.0.2.2:5173/api/
+TB_API_BASE_URL=https://your-dashboard.example/api/
+TB_HMAC_SECRET=replace-with-rotated-bootstrap-secret
+TB_SIGNING_CERT_HASH=sha256-cert-digest-hex-or-base64url

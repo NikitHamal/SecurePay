@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -59,15 +61,22 @@ class AppUpdateWorker(
         private const val TAG = "AppUpdateWorker"
         private const val WORK_NAME = "securepay_app_update"
 
+        fun runNow(context: Context) {
+            val request = OneTimeWorkRequestBuilder<AppUpdateWorker>()
+                .setConstraints(networkConstraints())
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "${WORK_NAME}_immediate",
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
+        }
+
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<AppUpdateWorker>(
                 12, TimeUnit.HOURS,
                 1, TimeUnit.HOURS
-            ).setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            ).build()
+            ).setConstraints(networkConstraints()).build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
@@ -75,5 +84,9 @@ class AppUpdateWorker(
                 request
             )
         }
+
+        private fun networkConstraints(): Constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
     }
 }

@@ -7,7 +7,7 @@
   import Map from '$lib/components/ui/Map.svelte';
   import { fade } from 'svelte/transition';
   import { onDestroy } from 'svelte';
-  import { getAccountLocations, getToken } from '$lib/api/client';
+  import { getAccountLocations } from '$lib/api/client';
 
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
@@ -184,7 +184,7 @@
         <div class="flex items-center gap-3 min-w-0">
           {#if customer.customerPhotoPath}
             <img 
-              src="/api/accounts/{customer.id}/photos/photo?token={getToken()}" 
+              src="/api/accounts/{customer.id}/photos/photo" 
               alt={customer.customerName} 
               class="h-12 w-12 shrink-0 rounded-xl object-cover border border-edge"
             />
@@ -302,29 +302,29 @@
           <div class="grid grid-cols-1 gap-3 text-sm">
             {#if editing}
               <div>
-                <label class="text-2xs text-ink-muted block mb-1">Customer name</label>
-                <input type="text" class="input w-full" bind:value={editName} />
+                <label class="text-2xs text-ink-muted block mb-1" for="edit-customer-name">Customer name</label>
+                <input id="edit-customer-name" type="text" class="input w-full" bind:value={editName} />
               </div>
               <div>
-                <label class="text-2xs text-ink-muted block mb-1">National ID</label>
-                <input type="text" class="input w-full" bind:value={editNationalId} />
+                <label class="text-2xs text-ink-muted block mb-1" for="edit-national-id">National ID</label>
+                <input id="edit-national-id" type="text" class="input w-full" bind:value={editNationalId} />
               </div>
               <div>
-                <label class="text-2xs text-ink-muted block mb-1">Phone number</label>
-                <input type="text" class="input w-full" bind:value={editPhone} />
+                <label class="text-2xs text-ink-muted block mb-1" for="edit-phone">Phone number</label>
+                <input id="edit-phone" type="text" class="input w-full" bind:value={editPhone} />
               </div>
               <div class="grid grid-cols-3 gap-2">
                 <div>
-                  <label class="text-2xs text-ink-muted block mb-1">Daily rate (GHS)</label>
-                  <input type="number" class="input w-full" bind:value={editDailyRate} />
+                  <label class="text-2xs text-ink-muted block mb-1" for="edit-daily-rate">Daily rate (GHS)</label>
+                  <input id="edit-daily-rate" type="number" class="input w-full" bind:value={editDailyRate} />
                 </div>
                 <div>
-                  <label class="text-2xs text-ink-muted block mb-1">Total loan (GHS)</label>
-                  <input type="number" class="input w-full" bind:value={editTotalLoan} />
+                  <label class="text-2xs text-ink-muted block mb-1" for="edit-total-loan">Total loan (GHS)</label>
+                  <input id="edit-total-loan" type="number" class="input w-full" bind:value={editTotalLoan} />
                 </div>
                 <div>
-                  <label class="text-2xs text-ink-muted block mb-1">Term (days)</label>
-                  <input type="number" class="input w-full" bind:value={editTermDays} />
+                  <label class="text-2xs text-ink-muted block mb-1" for="edit-term-days">Term (days)</label>
+                  <input id="edit-term-days" type="number" class="input w-full" bind:value={editTermDays} />
                 </div>
               </div>
               <div class="mt-2 flex gap-2">
@@ -429,9 +429,9 @@
             <div class="mt-4 flex flex-col gap-4">
               {#if customer.customerPhotoPath}
                 <div class="flex items-center gap-4">
-                  <a href="/api/accounts/{customer.id}/photos/photo?token={getToken()}" target="_blank" class="block shrink-0 rounded-full border border-edge shadow-sm overflow-hidden cursor-zoom-in">
+                  <a href="/api/accounts/{customer.id}/photos/photo" target="_blank" class="block shrink-0 rounded-full border border-edge shadow-sm overflow-hidden cursor-zoom-in">
                     <img 
-                      src="/api/accounts/{customer.id}/photos/photo?token={getToken()}" 
+                      src="/api/accounts/{customer.id}/photos/photo" 
                       alt="Customer Selfie" 
                       class="h-16 w-16 object-cover"
                     />
@@ -448,12 +448,12 @@
                   <div class="flex flex-col gap-1.5">
                     <span class="text-2xs font-semibold text-ink-secondary">ID Document Front</span>
                     <a 
-                      href="/api/accounts/{customer.id}/photos/id_front?token={getToken()}" 
+                      href="/api/accounts/{customer.id}/photos/id_front" 
                       target="_blank" 
                       class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
                     >
                       <img 
-                        src="/api/accounts/{customer.id}/photos/id_front?token={getToken()}" 
+                        src="/api/accounts/{customer.id}/photos/id_front" 
                         alt="ID Card Front" 
                         class="h-24 w-full object-cover hover:scale-105 transition duration-200"
                       />
@@ -465,12 +465,12 @@
                   <div class="flex flex-col gap-1.5">
                     <span class="text-2xs font-semibold text-ink-secondary">ID Document Back</span>
                     <a 
-                      href="/api/accounts/{customer.id}/photos/id_back?token={getToken()}" 
+                      href="/api/accounts/{customer.id}/photos/id_back" 
                       target="_blank" 
                       class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
                     >
                       <img 
-                        src="/api/accounts/{customer.id}/photos/id_back?token={getToken()}" 
+                        src="/api/accounts/{customer.id}/photos/id_back" 
                         alt="ID Card Back" 
                         class="h-24 w-full object-cover hover:scale-105 transition duration-200"
                       />

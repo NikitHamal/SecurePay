@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getAccountScopeFilter } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
 
-  const dealerId = locals.dealer.id;
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
   const now = Date.now();
 
   const accountResult = await db.prepare(`
@@ -16,8 +17,8 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
     FROM accounts a
     JOIN devices d ON a.device_id = d.id
     LEFT JOIN plans p ON a.plan_id = p.id
-    WHERE a.dealer_id = ?
-  `).bind(dealerId).all();
+    WHERE ${scope.where}
+  `).bind(...scope.params).all();
 
   let activeCount = 0;
   let lockedCount = 0;
@@ -47,8 +48,8 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
     SELECT COALESCE(SUM(p.amount), 0) as total
     FROM payments p
     JOIN accounts a ON p.account_id = a.id
-    WHERE a.dealer_id = ? AND p.created_at >= ?
-  `).bind(dealerId, todayStartSec).first<{ total: number }>();
+    WHERE ${scope.where} AND p.created_at >= ?
+  `).bind(...scope.params, todayStartSec).first<{ total: number }>();
 
   const collectedToday = Number(payResult?.total ?? 0);
 
@@ -59,10 +60,10 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
       COALESCE(SUM(p.amount), 0) as total
     FROM payments p
     JOIN accounts a ON p.account_id = a.id
-    WHERE a.dealer_id = ? AND p.created_at >= ?
+    WHERE ${scope.where} AND p.created_at >= ?
     GROUP BY day_num
     ORDER BY day_num
-  `).bind(dealerId, sevenDaysAgo).all();
+  `).bind(...scope.params, sevenDaysAgo).all();
 
   const dayMap = new Map<number, number>();
   for (const row of dayRows.results) {

@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getAccountScopeFilter } from '$lib/auth';
 import { getDb, errorResponse } from '$lib/api/server';
 
 type AccountLocationRow = {
@@ -36,13 +37,14 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
   }
 
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
 
   const account = await db.prepare(`
-    SELECT id, is_stolen
-      FROM accounts
-     WHERE id = ? AND dealer_id = ?
+    SELECT a.id, a.is_stolen
+      FROM accounts a
+     WHERE a.id = ? AND ${scope.where}
      LIMIT 1
-  `).bind(accountId, locals.dealer.id).first<AccountLocationRow>();
+  `).bind(accountId, ...scope.params).first<AccountLocationRow>();
 
   if (!account) {
     return errorResponse('Account not found', 404);

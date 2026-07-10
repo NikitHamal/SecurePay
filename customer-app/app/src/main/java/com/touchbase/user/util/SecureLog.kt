@@ -2,14 +2,18 @@ package com.touchbase.user.util
 
 import android.os.Build
 import android.util.Log
+import com.touchbase.user.BuildConfig
+import com.touchbase.user.admin.SecurityChecker
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.UUID
 import kotlin.concurrent.thread
 
 object SecureLog {
 
-    private const val REMOTE_ENDPOINT = "https://securepay-dashboard.pages.dev/api/device/logs"
+    private val remoteEndpoint: String
+        get() = BuildConfig.API_BASE_URL.trimEnd('/') + "/device/logs"
 
     fun d(tag: String, msg: String) {
         Log.d(tag, msg)
@@ -80,7 +84,10 @@ object SecureLog {
             while (attempt < maxAttempts) {
                 attempt++
                 val success = runCatching {
-                    val url = URL(REMOTE_ENDPOINT)
+                    val secret = BuildConfig.HMAC_SECRET
+                    require(secret.isNotBlank()) { "HMAC secret is not configured" }
+
+                    val url = URL(remoteEndpoint)
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
@@ -94,8 +101,19 @@ object SecureLog {
                         .replace("\r", "\\r")
                         .replace("\t", "\\t")
                     val escapedTag = tag.replace("\"", "\\\"")
-
                     val json = """{"tag":"$escapedTag","message":"$escapedMsg","level":"$level"}"""
+
+                    val timestamp = System.currentTimeMillis().toString()
+                    val nonce = UUID.randomUUID().toString()
+                    val bodyHash = SecurityChecker.generateHmac(secret, json)
+                    val path = url.path + (url.query?.let { "?$it" } ?: "")
+                    val signature = SecurityChecker.generateHmac(
+                        secret,
+                        "POST\n$path\n$timestamp\n$nonce\n$bodyHash"
+                    )
+                    conn.setRequestProperty("X-Signature", signature)
+                    conn.setRequestProperty("X-Timestamp", timestamp)
+                    conn.setRequestProperty("X-Nonce", nonce)
 
                     OutputStreamWriter(conn.outputStream, "UTF-8").use { writer ->
                         writer.write(json)

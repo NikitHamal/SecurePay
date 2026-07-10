@@ -28,6 +28,8 @@ declare global {
         DIDIT_API_KEY?: string;
         DIDIT_WEBHOOK_SECRET?: string;
         DIDIT_WORKFLOW_ID?: string;
+        DIDIT_CALLBACK_URL?: string;
+        APP_BUILD_VERSION?: string;
       };
     }
   }

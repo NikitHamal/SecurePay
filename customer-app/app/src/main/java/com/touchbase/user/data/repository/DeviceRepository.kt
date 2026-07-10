@@ -45,16 +45,7 @@ class DeviceRepository(
     suspend fun checkAndRegister(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try {
             val requestTime = System.currentTimeMillis()
-            val response = if (tokenManager.apiSecret == null && !tokenManager.accountId.isNullOrBlank()) {
-                // Legacy self-heal path: do not send accountId when signing with
-                // the global secret, otherwise the server expects the per-device
-                // secret and correctly returns HTTP 401.
-                com.touchbase.user.data.remote.ApiModule
-                    .provideApi(BuildConfig.HMAC_SECRET, "")
-                    .deviceCheck(imei, null)
-            } else {
-                api.deviceCheck(imei, tokenManager.accountId)
-            }
+            val response = api.deviceCheck(imei, tokenManager.accountId)
             updateServerTimeOffset(requestTime, response.serverTime)
             tokenManager.saveSecurityPolicy(response.securityPolicy)
             if (response.enrolled && response.account != null) {
@@ -84,14 +75,16 @@ class DeviceRepository(
 
     suspend fun activate(
         activationCode: String,
-        provisioningToken: String
+        provisioningToken: String,
+        expectedImei: String
     ): Result<ActivateResponse> = withContext(Dispatchers.IO) {
         try {
             val requestTime = System.currentTimeMillis()
             val response = api.activate(
                 mapOf(
                     "activationCode" to activationCode,
-                    "provisioningToken" to provisioningToken
+                    "provisioningToken" to provisioningToken,
+                    "imei" to expectedImei
                 )
             )
             updateServerTimeOffset(requestTime, response.serverTime)
@@ -229,31 +222,8 @@ class DeviceRepository(
             api = com.touchbase.user.data.remote.ApiModule.provideApi(existingSecret, accountId)
             return true
         }
-
-        if (imei.isBlank()) return false
-
-        return runCatching {
-            val response = com.touchbase.user.data.remote.ApiModule
-                .provideApi(BuildConfig.HMAC_SECRET, "")
-                .deviceCheck(imei, null)
-            val account = response.account ?: return@runCatching false
-            val recoveredSecret = response.apiSecret.trim()
-            if (recoveredSecret.length < 32) return@runCatching false
-
-            tokenManager.saveDevice(account.id.ifBlank { accountId }, imei, recoveredSecret)
-            tokenManager.saveSecurityPolicy(response.securityPolicy)
-            tokenManager.saveCachedStatus(
-                nextPaymentDue = account.nextPaymentDue,
-                lockedByDealer = account.status.equals("LOCKED", ignoreCase = true) || account.status.equals("STOLEN", ignoreCase = true),
-                releaseApproved = account.releaseApproved,
-                isStolen = account.isStolen
-            )
-            api = com.touchbase.user.data.remote.ApiModule.provideApi(recoveredSecret, account.id.ifBlank { accountId })
-            true
-        }.getOrElse {
-            SecureLog.w(TAG, "Could not recover per-device API secret: ${it.message}")
-            false
-        }
+        SecureLog.w(TAG, "Per-device credential is missing for $imei; use activation recovery or reprovision the phone")
+        return false
     }
 
     private fun updateServerTimeOffset(requestSentAt: Long, serverTime: Long) {

@@ -7,13 +7,7 @@ data class DeviceCheckResponse(
     val enrolled: Boolean = false,
     val device: DeviceInfo? = null,
     val account: AccountBrief? = null,
-    /**
-     * Per-account device API secret.
-     *
-     * This is returned by /api/device/check so already-provisioned phones that
-     * were installed before per-device HMAC storage can self-heal instead of
-     * repeatedly failing workers with HTTP 401.
-     */
+    /** Per-device API secret; populated only for device-authenticated responses. */
     val apiSecret: String = "",
     val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy(),
     val serverTime: Long = 0L

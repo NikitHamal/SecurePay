@@ -2,56 +2,41 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, generateToken } from '$lib/api/server';
 
-function shortenFloats(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(shortenFloats);
-  if (v && typeof v === 'object') {
-    return Object.fromEntries(
-      Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, shortenFloats(x)]),
-    );
+function normalizeNumbers(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeNumbers);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, normalizeNumbers(v)]));
   }
-  if (typeof v === 'number' && !Number.isInteger(v) && v % 1 === 0) return Math.trunc(v);
-  return v;
+  if (typeof value === 'number' && Number.isFinite(value) && value % 1 === 0) return Math.trunc(value);
+  return value;
 }
 
-function sortKeys(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(sortKeys);
-  if (v && typeof v === 'object') {
-    return Object.keys(v as object)
-      .sort()
-      .reduce<Record<string, unknown>>((acc, k) => {
-        acc[k] = sortKeys((v as Record<string, unknown>)[k]);
-        return acc;
-      }, {});
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value && typeof value === 'object') {
+    return Object.keys(value as object).sort().reduce<Record<string, unknown>>((out, key) => {
+      out[key] = sortKeys((value as Record<string, unknown>)[key]);
+      return out;
+    }, {});
   }
-  return v;
+  return value;
 }
 
-function hexToUint8Array(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-  }
+function hexToBytes(hex: string): Uint8Array | null {
+  if (!/^[a-fA-F0-9]{64}$/.test(hex)) return null;
+  const bytes = new Uint8Array(32);
+  for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16);
   return bytes;
 }
 
-async function verifySignature(body: string, signature: string, secret: string): Promise<boolean> {
+async function verifySignature(rawBody: string, signature: string, secret: string): Promise<boolean> {
   try {
+    const signatureBytes = hexToBytes(signature);
+    if (!signatureBytes) return false;
+    const canonical = JSON.stringify(sortKeys(normalizeNumbers(JSON.parse(rawBody))));
     const encoder = new TextEncoder();
-    const parsed = JSON.parse(body);
-    const canonical = JSON.stringify(sortKeys(shortenFloats(parsed)));
-
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-
-    const sigBytes = hexToUint8Array(signature);
-    const dataBytes = encoder.encode(canonical);
-
-    return await crypto.subtle.verify('HMAC', key, sigBytes as BufferSource, dataBytes);
+    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    return crypto.subtle.verify('HMAC', key, signatureBytes as BufferSource, encoder.encode(canonical));
   } catch {
     return false;
   }
@@ -63,144 +48,94 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   const timestamp = Number(request.headers.get('x-timestamp'));
   const raw = await request.text();
 
-  if (!secret || !signature) {
-    return new Response(JSON.stringify({ error: 'Missing signature or secret' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  if (!secret || !signature) return json({ error: 'Missing webhook signature' }, { status: 401 });
+  if (!Number.isFinite(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - timestamp) > 300) {
+    return json({ error: 'Stale webhook' }, { status: 401 });
+  }
+  if (!(await verifySignature(raw, signature, secret))) {
+    return json({ error: 'Invalid webhook signature' }, { status: 401 });
   }
 
-  if (!timestamp || Math.abs(Date.now() / 1000 - timestamp) > 300) {
-    return new Response('stale', { status: 401 });
-  }
-
-  const isValid = await verifySignature(raw, signature, secret);
-  if (!isValid) {
-    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  let parsed: any;
+  let payload: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw);
+    payload = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ error: 'Invalid JSON' }, { status: 400 });
   }
+
+  const sessionId = String(payload.session_id ?? '').trim();
+  const accountId = String(payload.vendor_data ?? '').trim();
+  const status = String(payload.status ?? '').trim();
+  const webhookType = String(payload.webhook_type ?? 'unknown').trim();
+  const eventId = String(payload.event_id ?? `${sessionId}:${status}:${timestamp}`).trim();
+  if (!sessionId || !accountId) return json({ received: true, ignored: 'missing session or vendor data' });
 
   const db = getDb({ platform });
+  const account = await db.prepare(`
+    SELECT id, customer_name, enrolled_by, branch_id, agency_id, didit_session_id
+    FROM accounts
+    WHERE id = ?
+  `).bind(accountId).first<{
+    id: string;
+    customer_name: string;
+    enrolled_by: string | null;
+    branch_id: string | null;
+    agency_id: string | null;
+    didit_session_id: string | null;
+  }>();
+  if (!account) return json({ received: true, ignored: 'unknown account' });
+  if (account.didit_session_id && account.didit_session_id !== sessionId) {
+    return json({ received: true, ignored: 'session mismatch' });
+  }
+
   const now = Math.floor(Date.now() / 1000);
+  const dedupe = await db.prepare(`
+    INSERT OR IGNORE INTO didit_webhook_events
+      (event_id, session_id, account_id, webhook_type, status, received_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(eventId, sessionId, accountId, webhookType, status, now).run();
+  if (Number(dedupe.meta.changes ?? 0) !== 1) return json({ received: true, duplicate: true });
 
-  const webhookType = parsed.webhook_type;
-  const sessionId = parsed.session_id;
-  const status = parsed.status;
-  const vendorData = parsed.vendor_data;
-  const eventId = parsed.event_id;
-  const accountId = vendorData;
+  const normalizedStatus = status.toLowerCase();
+  const approved = normalizedStatus === 'approved';
+  const declined = normalizedStatus === 'declined' || normalizedStatus === 'kyc expired';
+  const decision = payload.decision ? JSON.stringify(payload.decision) : null;
 
-  if (!sessionId || !accountId) {
-    return json({ received: true, note: 'Missing session_id or vendor_data' });
-  }
+  await db.prepare(`
+    UPDATE accounts
+    SET ghana_card_verified = ?,
+        ghana_card_status = ?,
+        ghana_card_verified_at = CASE WHEN ? = 1 THEN ? ELSE ghana_card_verified_at END,
+        didit_session_id = ?,
+        didit_decision = COALESCE(?, didit_decision),
+        updated_at = ?
+    WHERE id = ?
+  `).bind(approved ? 1 : (declined ? 0 : Number(false)), status || 'Unknown', approved ? 1 : 0, now, sessionId, decision, now, accountId).run();
 
-  if (eventId) {
-    const existing = await db.prepare(
-      'SELECT 1 FROM lock_events WHERE id = ? LIMIT 1'
-    ).bind(`WH-${eventId}`).first();
-    if (existing) return json({ received: true, note: 'duplicate' });
-    await db.prepare(
-      'INSERT OR IGNORE INTO lock_events (id, account_id, event_type, triggered_by, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(`WH-${eventId}`, accountId, `didit_${webhookType ?? 'unknown'}`, 'system', now).run();
-  }
+  if (approved || declined) {
+    const recipients = await db.prepare(`
+      SELECT id FROM dealers
+      WHERE role = 'SUPER_ADMIN'
+         OR id = ?
+         OR (role = 'BRANCH_ADMIN' AND branch_id = ?)
+         OR (role = 'AGENCY_OWNER' AND agency_id = ?)
+    `).bind(account.enrolled_by ?? '', account.branch_id ?? '', account.agency_id ?? '').all();
 
-  switch (status) {
-    case 'Approved': {
-      const decision = parsed.decision;
+    for (const recipient of recipients.results) {
       await db.prepare(`
-        UPDATE accounts SET
-          ghana_card_verified = 1,
-          ghana_card_status = ?,
-          ghana_card_verified_at = ?,
-          didit_session_id = ?,
-          didit_decision = ?,
-          updated_at = ?
-        WHERE id = ?
-      `).bind(status, now, sessionId, decision ? JSON.stringify(decision) : null, now, accountId).run();
-
-      const account = await db.prepare('SELECT customer_name, enrolled_by FROM accounts WHERE id = ?')
-        .bind(accountId).first();
-      if (account) {
-        const recipients = await db.prepare(`
-          SELECT id FROM dealers WHERE id = ? OR role = 'SUPER_ADMIN'
-        `).bind(account.enrolled_by as string).all();
-        for (const r of recipients.results) {
-          await db.prepare(`
-            INSERT INTO notifications (id, recipient_id, type, title, message, related_entity_type, related_entity_id, created_at)
-            VALUES (?, ?, 'KYC_VERIFIED', 'Identity Verified', ?, 'account', ?, ?)
-          `).bind(`NOTIF-${generateToken(4).toUpperCase()}`, r.id as string,
-            `Customer ${account.customer_name as string} identity verification approved`, accountId, now).run();
-        }
-      }
-      break;
+        INSERT INTO notifications
+          (id, recipient_id, type, title, message, related_entity_type, related_entity_id, created_at)
+        VALUES (?, ?, ?, ?, ?, 'account', ?, ?)
+      `).bind(
+        `NOTIF-${generateToken(6).toUpperCase()}`,
+        String(recipient.id),
+        approved ? 'KYC_VERIFIED' : 'KYC_DECLINED',
+        approved ? 'Identity verified' : 'Identity verification needs attention',
+        `${account.customer_name} verification status: ${status}`,
+        accountId,
+        now
+      ).run();
     }
-
-    case 'Declined': {
-      await db.prepare(`
-        UPDATE accounts SET
-          ghana_card_verified = 0,
-          ghana_card_status = ?,
-          didit_session_id = ?,
-          updated_at = ?
-        WHERE id = ?
-      `).bind(status, sessionId, now, accountId).run();
-      break;
-    }
-
-    case 'In Review': {
-      await db.prepare(`
-        UPDATE accounts SET
-          ghana_card_status = ?,
-          didit_session_id = ?,
-          updated_at = ?
-        WHERE id = ?
-      `).bind(status, sessionId, now, accountId).run();
-      break;
-    }
-
-    case 'Resubmitted': {
-      await db.prepare(`
-        UPDATE accounts SET
-          ghana_card_status = ?,
-          didit_session_id = ?,
-          updated_at = ?
-        WHERE id = ?
-      `).bind(status, sessionId, now, accountId).run();
-      break;
-    }
-
-    case 'Kyc Expired': {
-      await db.prepare(`
-        UPDATE accounts SET
-          ghana_card_verified = 0,
-          ghana_card_status = ?,
-          updated_at = ?
-        WHERE id = ?
-      `).bind(status, now, accountId).run();
-      break;
-    }
-
-    case 'Abandoned': {
-      await db.prepare(`
-        UPDATE accounts SET ghana_card_status = ?, updated_at = ? WHERE id = ?
-      `).bind(status, now, accountId).run();
-      break;
-    }
-
-    default:
-      break;
   }
 
   return json({ received: true, accountId, status });

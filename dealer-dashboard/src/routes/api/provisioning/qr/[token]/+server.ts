@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
+import { getAccountScopeFilter } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ params, locals, platform }) => {
   if (!locals.dealer) {
@@ -13,6 +14,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
   }
 
   const db = getDb({ platform });
+  const scope = getAccountScopeFilter(locals.dealer, 'a');
 
   const row = await db.prepare(
     `SELECT t.id, t.activation_code, t.status, t.created_at, t.expires_at, t.provisioned_at, t.activated_at,
@@ -20,8 +22,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
        FROM provisioning_tokens t
        JOIN accounts a ON t.account_id = a.id
        JOIN devices d ON t.device_id = d.id
-      WHERE t.id = ? AND t.dealer_id = ?`
-  ).bind(token, locals.dealer.id).first();
+      WHERE t.id = ? AND ${scope.where}`
+  ).bind(token, ...scope.params).first();
 
   if (!row) {
     return errorResponse('Provisioning token not found', 404);

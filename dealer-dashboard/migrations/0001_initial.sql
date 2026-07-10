@@ -117,6 +117,4 @@ INSERT OR IGNORE INTO plans (id, name, term_days, total_amount, daily_rate, min_
   ('plan-standard-180','Standard 180',180, 2400000, 13333,  600000),
   ('plan-premium-365','Premium 365', 365, 4500000, 12329, 1000000);
 
--- Seed demo dealer (password: "dealer123" — bcrypt hash)
-INSERT OR IGNORE INTO dealers (id, name, email, phone, password) VALUES
-  ('dealer-demo-001', 'Demo Dealer', 'dealer@securepay.io', '+233200000001', '$2b$10$PXxK0hfGIKWvEk3C62eJqOHMRHeM1TODgc3QoevbSYS8jTlbulrb.');
+-- No default administrator is seeded. Use scripts/create-super-admin.mjs during deployment.

@@ -10,8 +10,10 @@ export interface Dealer {
   branchId?: string | null;
 }
 
-const initialDealer = typeof window !== 'undefined' && localStorage.getItem('securepay_token')
+const initialDealer = typeof window !== 'undefined'
   ? (() => {
+      // The JWT lives only in an HttpOnly cookie. This non-sensitive profile cache
+      // is used to render navigation until the first authenticated API request.
       const stored = localStorage.getItem('securepay_dealer');
       if (stored) {
         try {

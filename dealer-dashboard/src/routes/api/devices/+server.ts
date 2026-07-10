@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
+import { getDealerScopeFilter } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) {
@@ -9,13 +10,15 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
   }
 
   const db = getDb({ platform });
+  const scope = getDealerScopeFilter(locals.dealer, 'owner');
   const result = await db.prepare(`
     SELECT d.*, a.customer_name, a.created_at as sold_at
     FROM devices d
+    JOIN dealers owner ON owner.id = d.dealer_id
     LEFT JOIN accounts a ON d.id = a.device_id
-    WHERE d.dealer_id = ?
+    WHERE ${scope.where}
     ORDER BY d.created_at DESC
-  `).bind(locals.dealer.id).all();
+  `).bind(...scope.params).all();
 
   const devices = result.results.map((row) => ({
     id: row.id as string,

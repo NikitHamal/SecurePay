@@ -1,6 +1,6 @@
 -- Create device_logs table for remote diagnostics from customer DPC app.
--- The /api/device/logs endpoint is intentionally open (no HMAC) so that
--- unactivated devices can send provisioning-stage diagnostics.
+-- POST /api/device/logs is authenticated with the deployment HMAC so that
+-- unactivated devices can send provisioning-stage diagnostics without exposing a public write endpoint.
 
 CREATE TABLE IF NOT EXISTS device_logs (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,

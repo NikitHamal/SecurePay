@@ -2,6 +2,7 @@ package com.touchbase.user.worker
 
 import android.content.Intent
 import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.touchbase.user.data.remote.ApiModule
@@ -19,6 +20,8 @@ class FcmService : FirebaseMessagingService() {
         super.onNewToken(token)
         Log.d(TAG, "New FCM token received")
         tokenHolder = token
+        FirebaseMessaging.getInstance().subscribeToTopic(UPDATE_TOPIC)
+            .addOnFailureListener { Log.w(TAG, "Update topic subscription failed after token refresh", it) }
 
         val tokenManager = runCatching { DeviceTokenManager(this) }.getOrNull() ?: return
         tokenManager.saveFcmToken(token)
@@ -56,6 +59,9 @@ class FcmService : FirebaseMessagingService() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 }
                 startActivity(intent)
+            }
+            "update" -> {
+                AppUpdateWorker.runNow(this)
             }
             "unlock", "sync" -> {
                 if (type == "unlock") TrackingService.stop(this)
@@ -107,6 +113,7 @@ class FcmService : FirebaseMessagingService() {
 
     companion object {
         private const val TAG = "FcmService"
+        private const val UPDATE_TOPIC = "tb-customer-updates"
 
         @Volatile
         var tokenHolder: String? = null
