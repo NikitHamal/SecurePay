@@ -179,13 +179,8 @@ class DevicePolicyController(context: Context) {
 
     /** Opens the platform emergency dialer without granting normal phone access. */
     fun openEmergencyDialer(activity: Activity, number: String = EMERGENCY_NUMBER): Boolean {
-        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val telecom = appContext.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
-            telecom?.createLaunchEmergencyDialerIntent(number)
-                ?: Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
-        } else {
-            Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
-        }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
         return runCatching {
             activity.startActivity(intent)
