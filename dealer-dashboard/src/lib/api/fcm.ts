@@ -63,11 +63,13 @@ async function getAccessToken(serviceAccountEmail: string, privateKeyPem: string
 }
 
 export interface FcmDataMessage {
-  type: 'lock' | 'unlock' | 'sync' | 'stolen' | 'update';
+  type: 'lock' | 'unlock' | 'sync' | 'stolen' | 'update' | 'notification';
   accountId?: string;
   isStolen?: string;
   versionCode?: string;
   versionName?: string;
+  title?: string;
+  body?: string;
 }
 
 interface FcmEnv {

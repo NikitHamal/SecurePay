@@ -83,14 +83,18 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     const db = getDb({ platform });
 
     const account = await db.prepare(`
-      SELECT a.id
+      SELECT a.id, a.is_stolen
         FROM accounts a
         JOIN devices d ON d.id = a.device_id
        WHERE a.id = ? AND d.imei = ?
-    `).bind(accountId, imei).first<{ id: string }>();
+    `).bind(accountId, imei).first<{ id: string; is_stolen: number }>();
 
     if (!account) {
       return errorResponse('Device account not found', 404);
+    }
+
+    if (!account.is_stolen) {
+      return errorResponse('Device is not flagged as stolen; location reporting rejected', 403);
     }
 
     const stmt = db.prepare(`

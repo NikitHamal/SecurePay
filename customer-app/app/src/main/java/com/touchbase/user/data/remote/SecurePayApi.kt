@@ -64,4 +64,7 @@ interface SecurePayApi {
         @Query("accountId") accountId: String,
         @Query("imei") imei: String
     ): AppUpdateResponse
+
+    @POST("device/sync-report")
+    suspend fun syncReport(@Body body: Map<String, @JvmSuppressWildcards String>): retrofit2.Response<Unit>
 }

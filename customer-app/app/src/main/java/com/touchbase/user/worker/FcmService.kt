@@ -1,10 +1,15 @@
 package com.touchbase.user.worker
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.touchbase.user.BuildConfig
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.DeviceAuthRecovery
@@ -63,8 +68,8 @@ class FcmService : FirebaseMessagingService() {
             "update" -> {
                 AppUpdateWorker.runNow(this)
             }
-            "unlock", "sync" -> {
-                if (type == "unlock") TrackingService.stop(this)
+            "unlock" -> {
+                TrackingService.stop(this)
                 CoroutineScope(Dispatchers.IO).launch {
                     runCatching {
                         val tokenManager = DeviceTokenManager(this@FcmService)
@@ -80,12 +85,35 @@ class FcmService : FirebaseMessagingService() {
                             )
                         )
                     }.onSuccess {
-                        if (type == "unlock") {
-                            val intent = MainActivity.newLaunchIntent(this@FcmService)
-                            startActivity(intent)
-                        }
+                        val intent = MainActivity.newLaunchIntent(this@FcmService)
+                        startActivity(intent)
                     }
                 }
+            }
+            "sync" -> {
+                CoroutineScope(Dispatchers.IO).launch {
+                    runCatching {
+                        val tokenManager = DeviceTokenManager(this@FcmService)
+                        val signingSecret = tokenManager.apiSecret
+                            ?: DeviceAuthRecovery.ensureDeviceApiSecret(this@FcmService, tokenManager)
+                            ?: return@runCatching
+                        val deviceId = tokenManager.accountId ?: tokenManager.imei.orEmpty()
+                        val api = ApiModule.provideApi(signingSecret, deviceId)
+                        api.syncReport(
+                            mapOf(
+                                "accountId" to (tokenManager.accountId ?: ""),
+                                "imei" to (tokenManager.imei ?: ""),
+                                "appVersion" to "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                                "batteryLevel" to "${getBatteryLevel()}"
+                            )
+                        )
+                    }
+                }
+            }
+            "notification" -> {
+                val title = data["title"] ?: "SecurePay"
+                val body = data["body"] ?: "You have a new message from your dealer"
+                showLocalNotification(title, body)
             }
         }
     }
@@ -109,6 +137,41 @@ class FcmService : FirebaseMessagingService() {
                 )
             }
         }
+    }
+
+    private fun getBatteryLevel(): Int {
+        return runCatching {
+            val intent = registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = intent?.getIntExtra("level", -1) ?: -1
+            val scale = intent?.getIntExtra("scale", 100) ?: 100
+            if (level < 0 || scale <= 0) -1
+            else (level * 100 / scale)
+        }.getOrDefault(-1)
+    }
+
+    private fun showLocalNotification(title: String, body: String) {
+        val channelId = "securepay_admin_alerts"
+        val manager = getSystemService(android.app.NotificationManager::class.java)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId, "Admin Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications sent by your dealer"
+            }
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        manager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
     companion object {
