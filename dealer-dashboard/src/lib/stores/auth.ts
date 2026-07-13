@@ -10,21 +10,22 @@ export interface Dealer {
   branchId?: string | null;
 }
 
-const initialDealer = typeof window !== 'undefined'
-  ? (() => {
-      // The JWT lives only in an HttpOnly cookie. This non-sensitive profile cache
-      // is used to render navigation until the first authenticated API request.
-      const stored = localStorage.getItem('securepay_dealer');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return null;
-        }
+let initialDealer: Dealer | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    const stored = localStorage.getItem('securepay_dealer');
+    if (stored) {
+      try {
+        initialDealer = JSON.parse(stored);
+      } catch {
+        initialDealer = null;
       }
-      return null;
-    })()
-  : null;
+    }
+  } catch {
+    // localStorage unavailable (private browsing, sandboxed iframe, etc.)
+    initialDealer = null;
+  }
+}
 
 export const dealer: Writable<Dealer | null> = writable(initialDealer);
 export const isAuthenticated: Readable<boolean> = derived(dealer, ($dealer) => $dealer !== null);
@@ -53,10 +54,14 @@ export function initAuth(): void {
 
 dealer.subscribe((d) => {
   if (typeof window !== 'undefined') {
-    if (d) {
-      localStorage.setItem('securepay_dealer', JSON.stringify(d));
-    } else {
-      localStorage.removeItem('securepay_dealer');
+    try {
+      if (d) {
+        localStorage.setItem('securepay_dealer', JSON.stringify(d));
+      } else {
+        localStorage.removeItem('securepay_dealer');
+      }
+    } catch {
+      // localStorage unavailable, skip persisting dealer profile
     }
   }
 });
