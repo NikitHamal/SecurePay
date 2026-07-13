@@ -3,8 +3,8 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { verifyToken } from '$lib/auth';
 import { verifyHmacSignature, getHmacSecret } from '$lib/hmac';
 
-const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update', '/api/device/fcm-token', '/api/device/location', '/api/device/provisioned'];
-const GLOBAL_DEVICE_PATHS = ['/api/device/check', '/api/device/activate', '/api/device/app-update', '/api/device/provisioned'];
+const DEVICE_PATHS = ['/api/device/check', '/api/device/heartbeat', '/api/device/payments', '/api/device/account', '/api/device/activate', '/api/device/release-complete', '/api/device/app-update', '/api/device/fcm-token', '/api/device/location', '/api/device/provisioned', '/api/device/customer-login'];
+const GLOBAL_DEVICE_PATHS = ['/api/device/check', '/api/device/activate', '/api/device/app-update', '/api/device/provisioned', '/api/device/customer-login'];
 const GLOBAL_LOG_PATH = '/api/device/logs';
 
 const LOGIN_LIMIT = 10;
@@ -70,9 +70,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   const db = event.platform?.env?.DB;
 
-  if (db && path === '/api/auth/login' && event.request.method === 'POST') {
+  if (db && (path === '/api/auth/login' || path === '/api/device/customer-login') && event.request.method === 'POST') {
     const ip = event.request.headers.get('cf-connecting-ip') || 'unknown';
-    const allowed = await checkRateLimit(db, `login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW);
+    const prefix = path === '/api/device/customer-login' ? 'customer-login' : 'login';
+    const allowed = await checkRateLimit(db, `${prefix}:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW);
     if (!allowed) {
       return jsonError('Too many login attempts. Try again in 1 hour.', 429);
     }

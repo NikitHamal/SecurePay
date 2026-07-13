@@ -68,6 +68,7 @@ import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.formatCentsAsCurrency
 import com.touchbase.user.ui.DeviceUiState
+import com.touchbase.user.ui.components.CustomerBottomBar
 import com.touchbase.user.ui.theme.Amber
 import com.touchbase.user.ui.theme.Charcoal
 import com.touchbase.user.ui.theme.CharcoalElevated
@@ -87,6 +88,7 @@ fun DashboardScreen(
     onMessageShown: () -> Unit,
     onViewPayments: () -> Unit,
     onCheckUpdates: () -> Unit,
+    onMore: () -> Unit,
     securityReport: SecurityChecker.SecurityReport? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -101,6 +103,14 @@ fun DashboardScreen(
     Scaffold(
         containerColor = Charcoal,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            CustomerBottomBar(
+                selected = "home",
+                onHome = {},
+                onPayments = onViewPayments,
+                onMore = onMore
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {

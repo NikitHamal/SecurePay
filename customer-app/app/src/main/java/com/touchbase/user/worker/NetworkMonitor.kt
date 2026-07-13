@@ -12,12 +12,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class NetworkMonitor(private val context: Context) {
 
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var isRegistered = false
+    private val heartbeatInFlight = AtomicBoolean(false)
+    private val lastHeartbeatAt = AtomicLong(0L)
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -66,20 +71,35 @@ class NetworkMonitor(private val context: Context) {
         val tokenManager = DeviceTokenManager(context)
         if (!tokenManager.isRegistered) return
 
-        val app = context.applicationContext as? com.touchbase.user.SecurePayApplication ?: return
+        val now = android.os.SystemClock.elapsedRealtime()
+        val previous = lastHeartbeatAt.get()
+        if (now - previous < MIN_TRIGGER_INTERVAL_MS) return
+        if (!lastHeartbeatAt.compareAndSet(previous, now)) return
+        if (!heartbeatInFlight.compareAndSet(false, true)) return
+
+        val app = context.applicationContext as? com.touchbase.user.SecurePayApplication
+        if (app == null) {
+            heartbeatInFlight.set(false)
+            return
+        }
         val repository = app.deviceRepository
 
         scope.launch {
             try {
-                repository.heartbeat()
-                SecureLog.i(TAG, "Connectivity-restored heartbeat succeeded")
-            } catch (e: Exception) {
-                SecureLog.w(TAG, "Connectivity-restored heartbeat failed: ${e.message}")
+                val result = repository.heartbeat()
+                if (result.isSuccess) {
+                    SecureLog.i(TAG, "Connectivity-restored heartbeat succeeded")
+                } else {
+                    SecureLog.w(TAG, "Connectivity-restored heartbeat failed: ${result.exceptionOrNull()?.message}")
+                }
+            } finally {
+                heartbeatInFlight.set(false)
             }
         }
     }
 
     companion object {
         private const val TAG = "NetworkMonitor"
+        private const val MIN_TRIGGER_INTERVAL_MS = 20_000L
     }
 }

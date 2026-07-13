@@ -40,6 +40,12 @@ on:
         required: false
       FCM_APPLICATION_ID:
         required: false
+      SUPPORT_PHONE:
+        required: false
+      SUPPORT_WHATSAPP:
+        required: false
+      SUPPORT_EMAIL:
+        required: false
 
 jobs:
   build:
@@ -108,10 +114,13 @@ jobs:
         env:
           TB_HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
           TB_SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
-          FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
-          FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
-          FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
-          FCM_APPLICATION_ID: ${{ secrets.FCM_APPLICATION_ID }}
+          TB_FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+          TB_FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
+          TB_FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
+          TB_FCM_APPLICATION_ID: ${{ secrets.FCM_APPLICATION_ID }}
+          TB_SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
+          TB_SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
+          TB_SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
         run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
 
       - name: Sign release APK & AAB
@@ -125,7 +134,7 @@ jobs:
           set -euo pipefail
           APKSIGNER="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
           ZIPALIGN="$ANDROID_HOME/build-tools/${BUILD_TOOLS_VERSION}/zipalign"
-          
+
           # Sign APK
           IN_APK="${{ inputs.module }}/app/build/outputs/apk/release/app-release-unsigned.apk"
           ALIGNED_APK="${{ inputs.module }}/app/build/outputs/apk/release/app-release-aligned.apk"
@@ -138,7 +147,7 @@ jobs:
             --key-pass "pass:$KEY_PASS" \
             --out "$OUT_APK" "$ALIGNED_APK"
           "$APKSIGNER" verify --verbose --print-certs "$OUT_APK"
-          
+
           # Sign AAB
           IN_AAB="$(ls ${{ inputs.module }}/app/build/outputs/bundle/release/*.aab)"
           OUT_AAB="${{ inputs.module }}/app/build/outputs/bundle/release/app-release-signed.aab"
@@ -148,7 +157,7 @@ jobs:
             -keypass "$KEY_PASS" \
             "$OUT_AAB" "$ALIAS"
           jarsigner -verify "$OUT_AAB"
-          
+
           echo "file=$OUT_APK" >> "$GITHUB_OUTPUT"
           echo "aab=$OUT_AAB" >> "$GITHUB_OUTPUT"
 

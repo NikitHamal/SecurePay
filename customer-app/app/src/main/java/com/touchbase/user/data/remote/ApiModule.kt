@@ -15,6 +15,7 @@ object ApiModule {
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
+        explicitNulls = false
     }
 
     private var cachedApi: SecurePayApi? = null

@@ -34,6 +34,7 @@ export interface Customer {
   enrolledBy?: string | null;
   ghanaCardVerified?: boolean;
   ghanaCardStatus?: string | null;
+  initialCredentials?: { accountNumber: string; temporaryPin: string };
 }
 
 

@@ -20,4 +20,6 @@ sealed class Screen(val route: String) {
         fun createRoute(imei: String = "") = "provisioning?imei=${Uri.encode(imei)}"
     }
     data object Settings : Screen("settings")
+    data object More : Screen("more")
+    data object ContactUs : Screen("contact-us")
 }

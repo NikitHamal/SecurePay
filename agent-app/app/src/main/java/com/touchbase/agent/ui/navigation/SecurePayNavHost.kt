@@ -34,6 +34,8 @@ import com.touchbase.agent.ui.customers.CustomersScreen
 import com.touchbase.agent.ui.provisioning.ProvisioningScreen
 import com.touchbase.agent.ui.provisioning.ProvisioningViewModel
 import com.touchbase.agent.ui.tracking.TrackingMapScreen
+import com.touchbase.agent.ui.more.MoreScreen
+import com.touchbase.agent.ui.more.ContactUsScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -92,6 +94,7 @@ fun SecurePayNavHost(
                 onNavigateToEnrollment = { navController.navigate(Screen.Enrollment.route) },
                 onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
                 onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
+                onNavigateToMore = { navigateToTab(Screen.More.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
@@ -123,6 +126,7 @@ fun SecurePayNavHost(
                 onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
                 onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
                 onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
+                onNavigateToMore = { navigateToTab(Screen.More.route) },
                 onCustomerClick = { accountId ->
                     navController.navigate(Screen.CustomerDetail.createRoute(accountId))
                 }
@@ -194,7 +198,8 @@ fun SecurePayNavHost(
                 repository = repository,
                 onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
                 onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
-                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) }
+                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
+                onNavigateToMore = { navigateToTab(Screen.More.route) }
             )
         }
 
@@ -204,8 +209,33 @@ fun SecurePayNavHost(
                 onBack = { navController.popBackStack() },
                 onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
                 onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
-                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) }
+                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
+                onNavigateToMore = { navigateToTab(Screen.More.route) }
             )
+        }
+
+        composable(Screen.More.route) {
+            val scope = rememberCoroutineScope()
+            MoreScreen(
+                onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
+                onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
+                onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
+                onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
+                onNavigateToTheme = { navController.navigate(Screen.Settings.route) },
+                onNavigateToContact = { navController.navigate(Screen.ContactUs.route) },
+                onLogout = {
+                    scope.launch {
+                        repository.logout()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.ContactUs.route) {
+            ContactUsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

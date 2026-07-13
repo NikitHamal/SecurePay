@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material3.Icon
@@ -20,6 +21,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,7 @@ fun SecurePayBottomNavBar(
     onCustomersClick: () -> Unit,
     onInventoryClick: () -> Unit,
     onLedgerClick: () -> Unit,
+    onMoreClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
@@ -49,17 +52,14 @@ fun SecurePayBottomNavBar(
     val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
 
     val items = listOf(
-        TabItem("Dashboard", Icons.Outlined.Home, onHomeClick),
+        TabItem("Home", Icons.Outlined.Home, onHomeClick),
         TabItem("Customers", Icons.Outlined.People, onCustomersClick),
-        TabItem("Inventory", Icons.Outlined.Inbox, onInventoryClick),
-        TabItem("Ledger", Icons.Outlined.Receipt, onLedgerClick)
+        TabItem("Stock", Icons.Outlined.Inbox, onInventoryClick),
+        TabItem("Ledger", Icons.Outlined.Receipt, onLedgerClick),
+        TabItem("More", Icons.Outlined.MoreHoriz, onMoreClick)
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-    ) {
+    Box(modifier = modifier.fillMaxWidth().navigationBarsPadding()) {
         Surface(
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             color = containerColor,
@@ -69,7 +69,7 @@ fun SecurePayBottomNavBar(
             NavigationBar(
                 containerColor = Color.Transparent,
                 tonalElevation = 0.dp,
-                modifier = Modifier.height(72.dp)
+                modifier = Modifier.height(76.dp)
             ) {
                 items.forEachIndexed { index, item ->
                     val selected = index == selectedTab
@@ -77,32 +77,30 @@ fun SecurePayBottomNavBar(
                         selected = selected,
                         onClick = item.onClick,
                         icon = {
-                            if (selected) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(indicatorColor, RoundedCornerShape(16.dp))
-                                        .padding(horizontal = 20.dp, vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = item.icon,
-                                        contentDescription = item.label,
-                                        modifier = Modifier.size(24.dp),
-                                        tint = selectedIconColor
-                                    )
-                                }
-                            } else {
+                            Box(
+                                modifier = if (selected) {
+                                    Modifier.background(indicatorColor, RoundedCornerShape(14.dp))
+                                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                                } else {
+                                    Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                                },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = item.label,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = unselectedIconColor
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (selected) selectedIconColor else unselectedIconColor
                                 )
                             }
                         },
-                        label = null,
-                        alwaysShowLabel = false,
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+                        label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color.Transparent,
+                            selectedTextColor = selectedIconColor,
+                            unselectedTextColor = unselectedIconColor
+                        )
                     )
                 }
             }

@@ -219,7 +219,7 @@ class EnrollmentViewModel(
 
         viewModelScope.launch {
             if (repository == null) {
-                _uiState.update { it.copy(submission = SubmissionState.Success("LOCAL_PREVIEW_ENROLLMENT_ID")) }
+                _uiState.update { it.copy(submission = SubmissionState.Success("LOCAL_PREVIEW_ENROLLMENT_ID", "0240000000", "12345678")) }
                 return@launch
             }
             val plan = state.selectedPlan
@@ -242,7 +242,13 @@ class EnrollmentViewModel(
             _uiState.update { current ->
                 current.copy(
                     submission = result.fold(
-                        onSuccess = { SubmissionState.Success(it.id) },
+                        onSuccess = { account ->
+                            SubmissionState.Success(
+                                enrollmentId = account.id,
+                                accountNumber = account.initialCredentials?.accountNumber.orEmpty(),
+                                temporaryPin = account.initialCredentials?.temporaryPin.orEmpty()
+                            )
+                        },
                         onFailure = { SubmissionState.Error(it.message ?: "Enrollment failed") }
                     )
                 )

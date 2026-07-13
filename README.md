@@ -38,6 +38,9 @@ TB_DEBUG_API_BASE_URL=http://10.0.2.2:5173/api/
 TB_API_BASE_URL=https://your-dashboard.example/api/
 TB_HMAC_SECRET=replace-with-rotated-bootstrap-secret
 TB_SIGNING_CERT_HASH=sha256-cert-digest-hex-or-base64url
+TB_SUPPORT_PHONE=+233XXXXXXXXX
+TB_SUPPORT_WHATSAPP=233XXXXXXXXX
+TB_SUPPORT_EMAIL=support@example.com
 ```
 
 ### Customer app
@@ -49,9 +52,14 @@ TB_FCM_PROJECT_ID=your-firebase-project
 TB_FCM_API_KEY=your-firebase-web-api-key
 TB_FCM_SENDER_ID=your-sender-id
 TB_FCM_APPLICATION_ID=your-android-app-id
+TB_SUPPORT_PHONE=+233XXXXXXXXX
+TB_SUPPORT_WHATSAPP=233XXXXXXXXX
+TB_SUPPORT_EMAIL=support@example.com
 ```
 
 `TB_HMAC_SECRET` is only the bootstrap secret. Successful activation requires the original provisioning token, six-digit code and exact 15-digit IMEI, then returns a distinct per-device secret used for registered device traffic.
+
+Customer recovery login is bound to the registered phone-number account, a server-hashed PIN and the exact inventory IMEI. The dealer sees a temporary PIN once during enrollment and can rotate it from the customer detail screen. Recovery login is available only after the DPC has been provisioned on that same device again.
 
 ## Build
 
@@ -100,4 +108,4 @@ The script refuses incomplete arguments, verifies that ADB sees exactly one devi
 
 All 109 Kotlin source files and 6 Gradle Kotlin DSL files were scanned for syntax diagnostics, and the backend was type-checked/built during the production pass. Android APK compilation and physical-device behavior still require Android Studio/CI and real-device testing; they were not possible in the audit container.
 
-Start with `../PRODUCTION_AUDIT_2026-07-10.md` and `../DEPLOYMENT_RUNBOOK.md`.
+Start with `../PRODUCTION_AUDIT_2026-07-13.md`, `../RELEASE_CHECKLIST_48H.md` and `../DEPLOYMENT_RUNBOOK.md`.

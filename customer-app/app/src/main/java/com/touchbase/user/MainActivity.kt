@@ -18,7 +18,6 @@ import com.touchbase.user.ui.SecurePayApp
 import com.touchbase.user.ui.activation.NotProvisionedScreen
 import com.touchbase.user.ui.lock.LockTaskActivity
 import com.touchbase.user.ui.theme.SecurePayTheme
-import com.touchbase.user.util.BatteryOptimizationHelper
 import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.AppUpdateWorker
 import com.touchbase.user.worker.TrackingWorker
@@ -155,7 +154,6 @@ class MainActivity : ComponentActivity() {
         runCatching { AppUpdateWorker.schedule(this) }
         runCatching { TrackingWorker.schedule(this) }
         networkMonitor?.let { runCatching { it.startMonitoring() } }
-        runCatching { BatteryOptimizationHelper.requestIfRegistered(this) }
 
         val repository = runCatching {
             (application as SecurePayApplication).deviceRepository

@@ -140,6 +140,8 @@ fun EnrollmentWizardScreen(
             if (submission is SubmissionState.Success) {
                 EnrollmentSuccess(
                     enrollmentId = submission.enrollmentId,
+                    accountNumber = submission.accountNumber,
+                    temporaryPin = submission.temporaryPin,
                     imei = state.draft.imei,
                     onDone = onComplete,
                     onProvision = { onProvisionDevice(state.draft.imei) },
@@ -258,6 +260,8 @@ private fun WizardControls(
 @Composable
 private fun EnrollmentSuccess(
     enrollmentId: String,
+    accountNumber: String,
+    temporaryPin: String,
     imei: String,
     onDone: () -> Unit,
     onProvision: () -> Unit,
@@ -284,6 +288,18 @@ private fun EnrollmentSuccess(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (accountNumber.isNotBlank() && temporaryPin.isNotBlank()) {
+            Text(
+                text = "Customer login\nAccount: $accountNumber\nTemporary PIN: $temporaryPin",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Give these details only to the verified customer. The PIN cannot be viewed again unless it is reset.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Button(
             onClick = onProvision,
             enabled = imei.length == 15,

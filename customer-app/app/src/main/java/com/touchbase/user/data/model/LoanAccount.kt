@@ -3,6 +3,13 @@ package com.touchbase.user.data.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class CustomerLoginRequest(
+    val accountNumber: String,
+    val pin: String,
+    val imei: String
+)
+
+@Serializable
 data class DeviceCheckResponse(
     val enrolled: Boolean = false,
     val device: DeviceInfo? = null,

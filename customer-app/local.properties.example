@@ -7,3 +7,6 @@ TB_FCM_PROJECT_ID=your-firebase-project
 TB_FCM_API_KEY=your-firebase-web-api-key
 TB_FCM_SENDER_ID=your-sender-id
 TB_FCM_APPLICATION_ID=your-android-app-id
+TB_SUPPORT_PHONE=+233XXXXXXXXX
+TB_SUPPORT_WHATSAPP=233XXXXXXXXX
+TB_SUPPORT_EMAIL=support@example.com

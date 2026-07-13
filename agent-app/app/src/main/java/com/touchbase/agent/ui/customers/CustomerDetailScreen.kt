@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,6 +59,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -81,6 +83,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.data.model.Account
 import com.touchbase.agent.data.model.AccountStatus
+import com.touchbase.agent.data.model.CustomerCredentials
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
@@ -88,6 +91,7 @@ import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.ui.enrollment.steps.KycPhotoSelector
 import kotlinx.coroutines.launch
 
+import com.touchbase.agent.data.model.UpdateAccountRequest
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerDetailScreen(
@@ -103,6 +107,7 @@ fun CustomerDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
     var actionInProgress by remember { mutableStateOf(false) }
+    var customerCredentials by remember { mutableStateOf<CustomerCredentials?>(null) }
     var showPaymentSheet by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
@@ -185,23 +190,27 @@ fun CustomerDetailScreen(
         val acc = account ?: return
         isSaving = true
         scope.launch {
-            val updates = mutableMapOf<String, Any>()
-            if (editName.trim() != acc.customerName) updates["customerName"] = editName.trim()
-            if (editNationalId.trim() != acc.nationalId) updates["nationalId"] = editNationalId.trim()
-            if (editPhone.trim() != acc.phoneNumber) updates["phoneNumber"] = editPhone.trim()
             val newDaily = editDailyRate.toDoubleOrNull()?.let { Math.round(it * 100.0).toInt() } ?: acc.dailyRate
-            if (newDaily != acc.dailyRate) updates["dailyRate"] = newDaily
             val newTotal = editTotalLoan.toDoubleOrNull()?.let { Math.round(it * 100.0).toInt() } ?: acc.totalLoanAmount
-            if (newTotal != acc.totalLoanAmount) updates["totalLoanAmount"] = newTotal
             val newTerm = editTermDays.toIntOrNull() ?: acc.termDays
-            if (newTerm != acc.termDays) updates["termDays"] = newTerm
-
-            if (editCustomerPhoto != null) updates["customerPhoto"] = editCustomerPhoto!!
-            if (editNationalIdFront != null) updates["nationalIdFront"] = editNationalIdFront!!
-            if (editNationalIdBack != null) updates["nationalIdBack"] = editNationalIdBack!!
-
-            if (updates.isNotEmpty()) {
-                repository?.updateAccount(acc.id, updates)
+            val request = UpdateAccountRequest(
+                customerName = editName.trim().takeIf { it != acc.customerName },
+                nationalId = editNationalId.trim().takeIf { it != acc.nationalId },
+                phoneNumber = editPhone.trim().takeIf { it != acc.phoneNumber },
+                dailyRate = newDaily.takeIf { it != acc.dailyRate },
+                totalLoanAmount = newTotal.takeIf { it != acc.totalLoanAmount },
+                termDays = newTerm.takeIf { it != acc.termDays },
+                customerPhoto = editCustomerPhoto,
+                nationalIdFront = editNationalIdFront,
+                nationalIdBack = editNationalIdBack
+            )
+            val hasChanges = listOf(
+                request.customerName, request.nationalId, request.phoneNumber,
+                request.dailyRate, request.totalLoanAmount, request.termDays,
+                request.customerPhoto, request.nationalIdFront, request.nationalIdBack
+            ).any { it != null }
+            if (hasChanges) {
+                repository?.updateAccount(acc.id, request)
             }
             editCustomerPhoto = null
             editNationalIdFront = null
@@ -246,6 +255,23 @@ fun CustomerDetailScreen(
         } else {
             idBackBitmap = null
         }
+    }
+
+    customerCredentials?.let { credentials ->
+        AlertDialog(
+            onDismissRequest = { customerCredentials = null },
+            title = { Text("Customer login credentials") },
+            text = {
+                Text(
+                    "Account number: ${credentials.accountNumber}\n" +
+                        "Temporary PIN: ${credentials.temporaryPin}\n\n" +
+                        "Give these details only to the verified customer. Resetting the PIN invalidates the previous one."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { customerCredentials = null }) { Text("Done") }
+            }
+        )
     }
 
     Scaffold(
@@ -727,6 +753,29 @@ fun CustomerDetailScreen(
             OutlinedButton(
                 onClick = {
                     actionInProgress = true
+                    actionMessage = null
+                    scope.launch {
+                        val result = repository?.resetCustomerPin(acc.id)
+                        result?.fold(
+                            onSuccess = { customerCredentials = it },
+                            onFailure = { actionMessage = it.message ?: "Unable to reset customer PIN" }
+                        ) ?: run { actionMessage = "Repository unavailable" }
+                        actionInProgress = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                enabled = !actionInProgress && !isEditing,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(360.dp)
+            ) {
+                Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                ButtonText("Reset customer login PIN")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    actionInProgress = true
                     scope.launch {
                         repository?.approveRelease(acc.id, acc.remainingBalance > 0)
                         actionInProgress = false
@@ -758,7 +807,7 @@ fun CustomerDetailScreen(
                         actionMessage = null
                         val targetStolen = !acc.isStolen
                         scope.launch {
-                            val result = repository?.updateAccount(acc.id, mapOf("isStolen" to targetStolen))
+                            val result = repository?.updateAccount(acc.id, UpdateAccountRequest(isStolen = targetStolen))
                             result?.fold(
                                 onSuccess = { updated ->
                                     account = updated

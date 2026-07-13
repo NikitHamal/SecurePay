@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -48,7 +49,8 @@ import com.touchbase.user.ui.theme.TextSecondary
 @Composable
 fun ActivationScreen(
     viewModel: ActivationViewModel,
-    onActivated: () -> Unit
+    onActivated: () -> Unit,
+    onUseCustomerLogin: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -151,6 +153,9 @@ fun ActivationScreen(
                 } else {
                     ButtonText("Activate", fontWeight = FontWeight.SemiBold)
                 }
+            }
+            TextButton(onClick = onUseCustomerLogin) {
+                Text("Already have an account? Log in")
             }
         }
     }

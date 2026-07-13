@@ -98,6 +98,9 @@ jobs:
       FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
       FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
       FCM_APPLICATION_ID: ${{ secrets.FCM_APPLICATION_ID }}
+      SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
+      SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
+      SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
 
   build-agent:
     name: Build agent-app
@@ -119,4 +122,7 @@ jobs:
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+      SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
+      SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
+      SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
 

@@ -84,8 +84,8 @@ class SecurePayRepository(
         try { Result.success(api.createAccount(request)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
-    suspend fun updateAccount(id: String, updates: Map<String, @JvmSuppressWildcards Any>): Result<Account> = withContext(Dispatchers.IO) {
-        try { Result.success(api.updateAccount(id, updates)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    suspend fun updateAccount(id: String, request: UpdateAccountRequest): Result<Account> = withContext(Dispatchers.IO) {
+        try { Result.success(api.updateAccount(id, request)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
     suspend fun deleteAccount(id: String): Result<Unit> = withContext(Dispatchers.IO) {
@@ -101,6 +101,10 @@ class SecurePayRepository(
         }
     }
 
+    suspend fun resetCustomerPin(id: String): Result<CustomerCredentials> = withContext(Dispatchers.IO) {
+        try { Result.success(api.resetCustomerPin(id)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
     suspend fun forceLock(id: String): Result<Account> = withContext(Dispatchers.IO) {
         try { Result.success(api.forceLock(id)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
@@ -111,11 +115,15 @@ class SecurePayRepository(
 
     suspend fun approveRelease(id: String, allowEarlyRelease: Boolean): Result<Account> = withContext(Dispatchers.IO) {
         try {
-            val body = mapOf(
-                "allowEarlyRelease" to allowEarlyRelease,
-                "note" to if (allowEarlyRelease) "Manual settlement release approved from TB Agent" else "Paid-off release approved from TB Agent"
+            val request = ReleaseAccountRequest(
+                allowEarlyRelease = allowEarlyRelease,
+                note = if (allowEarlyRelease) {
+                    "Manual settlement release approved from TB Agent"
+                } else {
+                    "Paid-off release approved from TB Agent"
+                }
             )
-            Result.success(api.approveRelease(id, body))
+            Result.success(api.approveRelease(id, request))
         } catch (e: Exception) {
             Result.failure(Exception(e.friendlyMessage()))
         }

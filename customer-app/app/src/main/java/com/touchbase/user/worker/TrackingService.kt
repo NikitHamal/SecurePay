@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class TrackingService : Service() {
@@ -42,7 +43,7 @@ class TrackingService : Service() {
     private var locationCallback: LocationCallback? = null
 
     companion object {
-        const val CHANNEL_ID = "tracking_channel"
+        const val CHANNEL_ID = "tracking_channel_v2"
         const val NOTIFICATION_ID = 1001
         const val TAG = "TrackingService"
         private const val MAX_UPLOAD_BATCH = 50
@@ -102,7 +103,7 @@ class TrackingService : Service() {
 
         startLocationUpdates(accountId, imei)
         flushQueuedLocations(accountId, imei)
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -203,8 +204,10 @@ class TrackingService : Service() {
                 } else {
                     SecureLog.w(TAG, "Failed to upload location: HTTP ${response.code()}")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                SecureLog.e(TAG, "Error uploading location: ${e.message}")
+                SecureLog.w(TAG, "Location upload deferred: ${e.message}")
             }
         }
     }
@@ -221,7 +224,10 @@ class TrackingService : Service() {
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
 
@@ -229,10 +235,13 @@ class TrackingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "TB User Recovery Tracking",
-                NotificationManager.IMPORTANCE_HIGH
+                "TB User recovery tracking",
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows when stolen-device location reporting is active."
+                description = "Required while a device reported as stolen is sending its location."
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)

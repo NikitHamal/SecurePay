@@ -97,6 +97,7 @@ fun InventoryScreen(
     onNavigateToHome: () -> Unit,
     onNavigateToCustomers: () -> Unit,
     onNavigateToLedger: () -> Unit,
+    onNavigateToMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var devices by remember { mutableStateOf<List<Device>>(emptyList()) }
@@ -166,7 +167,8 @@ fun InventoryScreen(
                 onHomeClick = onNavigateToHome,
                 onCustomersClick = onNavigateToCustomers,
                 onInventoryClick = {},
-                onLedgerClick = onNavigateToLedger
+                onLedgerClick = onNavigateToLedger,
+                onMoreClick = onNavigateToMore
             )
         }
     ) { innerPadding ->
@@ -489,7 +491,8 @@ fun InventoryScreenPreview() {
             repository = null,
             onNavigateToHome = {},
             onNavigateToCustomers = {},
-            onNavigateToLedger = {}
+            onNavigateToLedger = {},
+            onNavigateToMore = {}
         )
     }
 }

@@ -16,7 +16,6 @@ import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.AppUpdateWorker
 import com.touchbase.user.worker.TrackingWorker
 import com.touchbase.user.worker.TrackingService
-import kotlinx.coroutines.launch
 
 class SecurePayApplication : Application() {
 
@@ -136,22 +135,6 @@ class SecurePayApplication : Application() {
             }
         }.onFailure { SecureLog.w(TAG, "Failed to start tracking service from cache", it) }
 
-        runCatching {
-            val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
-            scope.launch {
-                deviceRepository.account.collect { account ->
-                    if (account != null) {
-                        if (account.isStolen) {
-                            SecureLog.i(TAG, "DeviceRepository account updated: isStolen=true. Starting tracking service.")
-                            TrackingService.start(this@SecurePayApplication, account.id)
-                        } else {
-                            SecureLog.i(TAG, "DeviceRepository account updated: isStolen=false. Stopping tracking service.")
-                            TrackingService.stop(this@SecurePayApplication)
-                        }
-                    }
-                }
-            }
-        }.onFailure { SecureLog.w(TAG, "Failed to collect account flow for tracking", it) }
     }
 
     companion object {

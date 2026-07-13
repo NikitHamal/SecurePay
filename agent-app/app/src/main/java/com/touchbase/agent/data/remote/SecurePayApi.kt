@@ -24,10 +24,13 @@ interface SecurePayApi {
     suspend fun createAccount(@Body request: CreateAccountRequest): Account
 
     @PATCH("accounts/{id}")
-    suspend fun updateAccount(@Path("id") id: String, @Body updates: Map<String, @JvmSuppressWildcards Any>): Account
+    suspend fun updateAccount(@Path("id") id: String, @Body request: UpdateAccountRequest): Account
 
     @DELETE("accounts/{id}")
     suspend fun deleteAccount(@Path("id") id: String): retrofit2.Response<Unit>
+
+    @POST("accounts/{id}/reset-customer-pin")
+    suspend fun resetCustomerPin(@Path("id") id: String): CustomerCredentials
 
     @POST("accounts/{id}/force-lock")
     suspend fun forceLock(@Path("id") id: String): Account
@@ -38,7 +41,7 @@ interface SecurePayApi {
     @POST("accounts/{id}/release")
     suspend fun approveRelease(
         @Path("id") id: String,
-        @Body request: Map<String, @JvmSuppressWildcards Any>
+        @Body request: ReleaseAccountRequest
     ): Account
 
     @POST("payments")

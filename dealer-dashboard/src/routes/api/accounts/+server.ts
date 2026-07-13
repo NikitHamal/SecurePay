@@ -7,11 +7,12 @@ import {
   releaseFields,
   releaseApproved,
   getR2,
-  generateAccountId
+  generateAccountId,
+  generateCustomerPin
 } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
-import { getScopeFilter } from '$lib/auth';
+import { getScopeFilter, hashPassword } from '$lib/auth';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -211,6 +212,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const nowSeconds = Math.floor(nowMillis / 1000);
   const nextPaymentDue = nowMillis + DAY_MS;
   const accountId = generateAccountId();
+  const customerAccountNumber = phoneNumber.replace(/\D/g, '');
+  if (customerAccountNumber.length < 8 || customerAccountNumber.length > 15) {
+    return errorResponse('phoneNumber must normalize to an 8 to 15 digit account number', 400);
+  }
+  const temporaryPin = generateCustomerPin();
+  const customerPinHash = hashPassword(temporaryPin);
   const r2 = getR2({ platform });
   const uploadedKeys: string[] = [];
 
@@ -242,8 +249,8 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
         total_loan_amount, amount_paid, daily_rate, next_payment_due, status,
         locked_by_dealer, down_payment, term_days, currency_code, customer_photo_path,
         national_id_front_path, national_id_back_path, enrolled_by, branch_id, agency_id,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?, ?, 'GHS', ?, ?, ?, ?, ?, ?, ?, ?)
+        customer_account_number, customer_pin_hash, customer_pin_updated_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?, ?, 'GHS', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       accountId,
       customerName,
@@ -264,6 +271,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       locals.dealer.id,
       locals.dealer.branchId || null,
       locals.dealer.agencyId || null,
+      customerAccountNumber,
+      customerPinHash,
+      nowSeconds,
       nowSeconds,
       nowSeconds
     ),
@@ -350,6 +360,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     enrolledBy: locals.dealer.id,
     ghanaCardVerified: false,
     ghanaCardStatus: null,
+    initialCredentials: {
+      accountNumber: customerAccountNumber,
+      temporaryPin
+    },
     ...releaseFields(row as Record<string, unknown>)
   };
 

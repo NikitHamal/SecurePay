@@ -94,6 +94,7 @@ fun CustomersScreen(
     onNavigateToHome: () -> Unit,
     onNavigateToInventory: () -> Unit,
     onNavigateToLedger: () -> Unit,
+    onNavigateToMore: () -> Unit,
     onCustomerClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -143,7 +144,8 @@ fun CustomersScreen(
                 onHomeClick = onNavigateToHome,
                 onCustomersClick = {},
                 onInventoryClick = onNavigateToInventory,
-                onLedgerClick = onNavigateToLedger
+                onLedgerClick = onNavigateToLedger,
+                onMoreClick = onNavigateToMore
             )
         }
     ) { innerPadding ->
@@ -457,6 +459,7 @@ fun CustomersScreenPreview() {
             onNavigateToHome = {},
             onNavigateToInventory = {},
             onNavigateToLedger = {},
+            onNavigateToMore = {},
             onCustomerClick = {}
         )
     }

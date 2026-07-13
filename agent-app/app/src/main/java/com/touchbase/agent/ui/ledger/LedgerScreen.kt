@@ -86,6 +86,7 @@ fun LedgerScreen(
     onNavigateToHome: () -> Unit,
     onNavigateToCustomers: () -> Unit,
     onNavigateToInventory: () -> Unit,
+    onNavigateToMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isPreview = LocalInspectionMode.current
@@ -149,7 +150,8 @@ fun LedgerScreen(
                 onHomeClick = onNavigateToHome,
                 onCustomersClick = onNavigateToCustomers,
                 onInventoryClick = onNavigateToInventory,
-                onLedgerClick = {}
+                onLedgerClick = {},
+                onMoreClick = onNavigateToMore
             )
         }
     ) { innerPadding ->
@@ -326,7 +328,8 @@ fun LedgerScreenPreview() {
             onBack = {},
             onNavigateToHome = {},
             onNavigateToCustomers = {},
-            onNavigateToInventory = {}
+            onNavigateToInventory = {},
+            onNavigateToMore = {}
         )
     }
 }

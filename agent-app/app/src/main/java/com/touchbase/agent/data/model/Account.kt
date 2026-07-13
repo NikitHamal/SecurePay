@@ -8,6 +8,13 @@ enum class AccountStatus {
 }
 
 @Serializable
+data class CustomerCredentials(
+    val accountNumber: String = "",
+    val temporaryPin: String = "",
+    val message: String? = null
+)
+
+@Serializable
 data class Account(
     val id: String = "",
     val customerName: String = "",
@@ -35,7 +42,8 @@ data class Account(
     val nationalIdFrontPath: String? = null,
     val nationalIdBackPath: String? = null,
     val isStolen: Boolean = false,
-    val ghanaCardVerified: Boolean? = null
+    val ghanaCardVerified: Boolean? = null,
+    val initialCredentials: CustomerCredentials? = null
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED

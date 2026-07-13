@@ -126,6 +126,7 @@ fun DashboardScreen(
     onNavigateToEnrollment: () -> Unit,
     onNavigateToInventory: () -> Unit,
     onNavigateToLedger: () -> Unit,
+    onNavigateToMore: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -226,7 +227,8 @@ fun DashboardScreen(
                 onHomeClick = {},
                 onCustomersClick = onNavigateToCustomers,
                 onInventoryClick = onNavigateToInventory,
-                onLedgerClick = onNavigateToLedger
+                onLedgerClick = onNavigateToLedger,
+                onMoreClick = onNavigateToMore
             )
         },
         floatingActionButton = {
@@ -254,7 +256,7 @@ fun DashboardScreen(
         val refreshState = rememberSwipeRefreshState(isLoading)
         SwipeRefresh(
             state = refreshState,
-            onRefresh = { 
+            onRefresh = {
                 scope.launch {
                     isLoading = true
                     val result = repository?.getKpis()
@@ -500,7 +502,7 @@ fun WidgetsSection(
 ) {
     val total = kpi.totalAccounts
     val formattedTotal = String.format(Locale.US, "%,d", total)
-    
+
     // Format outstanding balance to a nice formatted string (e.g. GH₵ 8.4M or GH₵ 450K)
     val totalValueStr = remember(kpi.totalOutstanding) {
         val amount = kpi.totalOutstanding / 100.0
@@ -551,9 +553,9 @@ fun WidgetsSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Spacer(modifier = Modifier.height(20.dp))
-                
+
                 // Legend
                 LegendItem(label = "Active", count = kpi.activeCount, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(6.dp))
@@ -968,7 +970,7 @@ fun CollectionAreaChart(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 45.dp, top = 8.dp), 
+                    .padding(start = 45.dp, top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
@@ -1062,7 +1064,7 @@ fun SoldPhonesHistogram(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1269,6 +1271,7 @@ fun DashboardLoadingPreview() {
             onNavigateToEnrollment = {},
             onNavigateToInventory = {},
             onNavigateToLedger = {},
+            onNavigateToMore = {},
             onLogout = {},
             onNavigateToSettings = {}
         )
@@ -1297,6 +1300,7 @@ fun DashboardDataPreview() {
             onNavigateToEnrollment = {},
             onNavigateToInventory = {},
             onNavigateToLedger = {},
+            onNavigateToMore = {},
             onLogout = {},
             onNavigateToSettings = {}
         )

@@ -4,6 +4,7 @@ import com.touchbase.user.util.SecureLog
 import com.touchbase.user.data.model.AccountResponse
 import com.touchbase.user.data.model.ActivateResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
+import com.touchbase.user.data.model.CustomerLoginRequest
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.PaymentEntry
 import com.touchbase.user.data.remote.DeviceTokenManager
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 
 class DeviceRepository(
     private var api: SecurePayApi,
@@ -41,6 +43,17 @@ class DeviceRepository(
 
     val trustedTime: Long
         get() = tokenManager.getTrustedTimeMillis()
+
+    private fun Throwable.userMessage(): String {
+        if (this is HttpException) {
+            val body = runCatching { response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            val message = Regex("\"(?:error|message)\"\\s*:\\s*\"([^\"]+)\"")
+                .find(body)?.groupValues?.getOrNull(1)
+            if (!message.isNullOrBlank()) return message
+            return "Request failed (${code()})"
+        }
+        return message ?: "Unable to contact the server"
+    }
 
     suspend fun checkAndRegister(imei: String): Result<DeviceCheckResponse> = withContext(Dispatchers.IO) {
         try {
@@ -105,6 +118,38 @@ class DeviceRepository(
         }
     }
 
+
+    suspend fun customerLogin(
+        accountNumber: String,
+        pin: String,
+        expectedImei: String
+    ): Result<ActivateResponse> = withContext(Dispatchers.IO) {
+        try {
+            val requestTime = System.currentTimeMillis()
+            val response = api.customerLogin(
+                CustomerLoginRequest(
+                    accountNumber = accountNumber.filter(Char::isDigit),
+                    pin = pin.filter(Char::isDigit),
+                    imei = expectedImei.filter(Char::isDigit)
+                )
+            )
+            updateServerTimeOffset(requestTime, response.serverTime)
+            if (response.activated && response.account != null) {
+                val imei = response.imei.ifBlank { response.device?.imei.orEmpty() }
+                tokenManager.saveDevice(response.account.id, imei, response.apiSecret.ifBlank { null })
+                tokenManager.saveSecurityPolicy(response.securityPolicy)
+                if (response.apiSecret.isNotBlank()) {
+                    api = com.touchbase.user.data.remote.ApiModule.provideApi(response.apiSecret, response.account.id)
+                }
+                _isRegistered.value = true
+                refresh()
+            }
+            Result.success(response)
+        } catch (e: Exception) {
+            SecureLog.w(TAG, "customer login failed: ${e.message}")
+            Result.failure(IllegalStateException(e.userMessage()))
+        }
+    }
 
     suspend fun reportProvisioned(token: String, imei: String?): Result<Unit> = withContext(Dispatchers.IO) {
         try {

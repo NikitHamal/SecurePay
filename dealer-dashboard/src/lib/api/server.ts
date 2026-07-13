@@ -255,6 +255,19 @@ export function generateToken(byteLength = 16): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+export function generateCustomerPin(): string {
+  const PIN_DIGITS = 8;
+  const RANGE = 100_000_000;
+  const MAX_VALID = 0x100000000 - (0x100000000 % RANGE);
+  const bytes = new Uint8Array(4);
+  let n = MAX_VALID;
+  while (n >= MAX_VALID) {
+    crypto.getRandomValues(bytes);
+    n = new DataView(bytes.buffer).getUint32(0, false);
+  }
+  return (n % RANGE).toString().padStart(PIN_DIGITS, '0');
+}
+
 export function generateActivationCode(): string {
   const CODE_DIGITS = 6;
   const RANGE = 1_000_000;

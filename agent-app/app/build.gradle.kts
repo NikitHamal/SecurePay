@@ -16,6 +16,9 @@ fun buildConfigString(value: String): String =
 val apiBaseUrl = configured("TB_API_BASE_URL", "https://securepay-dashboard.pages.dev/api/")
 val hmacSecret = configured("TB_HMAC_SECRET")
 val signingCertHash = configured("TB_SIGNING_CERT_HASH")
+val supportPhone = configured("TB_SUPPORT_PHONE")
+val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP")
+val supportEmail = configured("TB_SUPPORT_EMAIL")
 val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
 if (releaseRequested && (hmacSecret.isBlank() || signingCertHash.isBlank())) {
     throw GradleException("Release build requires TB_HMAC_SECRET and TB_SIGNING_CERT_HASH")
@@ -31,6 +34,10 @@ android {
         targetSdk = 35
         versionCode = 6
         versionName = "1.2.0"
+
+        buildConfigField("String", "SUPPORT_PHONE", buildConfigString(supportPhone))
+        buildConfigField("String", "SUPPORT_WHATSAPP", buildConfigString(supportWhatsapp))
+        buildConfigField("String", "SUPPORT_EMAIL", buildConfigString(supportEmail))
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

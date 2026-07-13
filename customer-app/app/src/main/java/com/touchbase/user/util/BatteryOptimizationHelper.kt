@@ -37,6 +37,11 @@ object BatteryOptimizationHelper {
         }
     }
 
+    /**
+     * Opens the system battery exemption flow only after an explicit user action.
+     * The app deliberately does not call this on startup, which avoids a recurring
+     * system dialog every time the customer opens TB User.
+     */
     fun requestIfRegistered(context: Context) {
         val tokenManager = DeviceTokenManager(context)
         if (!tokenManager.isRegistered) return

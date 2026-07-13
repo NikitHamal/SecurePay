@@ -18,7 +18,11 @@ enum class EnrollmentStep {
 sealed interface SubmissionState {
     data object Idle : SubmissionState
     data object Submitting : SubmissionState
-    data class Success(val enrollmentId: String) : SubmissionState
+    data class Success(
+        val enrollmentId: String,
+        val accountNumber: String = "",
+        val temporaryPin: String = ""
+    ) : SubmissionState
     data class Error(val message: String) : SubmissionState
 }
 

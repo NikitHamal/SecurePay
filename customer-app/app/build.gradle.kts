@@ -20,6 +20,9 @@ val fcmProjectId = configured("TB_FCM_PROJECT_ID")
 val fcmApiKey = configured("TB_FCM_API_KEY")
 val fcmSenderId = configured("TB_FCM_SENDER_ID")
 val fcmApplicationId = configured("TB_FCM_APPLICATION_ID")
+val supportPhone = configured("TB_SUPPORT_PHONE")
+val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP")
+val supportEmail = configured("TB_SUPPORT_EMAIL")
 val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
 if (releaseRequested && (hmacSecret.isBlank() || signingCertHash.isBlank())) {
     throw GradleException("Release build requires TB_HMAC_SECRET and TB_SIGNING_CERT_HASH via environment or Gradle properties")
@@ -46,6 +49,9 @@ android {
         buildConfigField("String", "FCM_API_KEY", buildConfigString(fcmApiKey))
         buildConfigField("String", "FCM_SENDER_ID", buildConfigString(fcmSenderId))
         buildConfigField("String", "FCM_APPLICATION_ID", buildConfigString(fcmApplicationId))
+        buildConfigField("String", "SUPPORT_PHONE", buildConfigString(supportPhone))
+        buildConfigField("String", "SUPPORT_WHATSAPP", buildConfigString(supportWhatsapp))
+        buildConfigField("String", "SUPPORT_EMAIL", buildConfigString(supportEmail))
     }
 
     buildTypes {

@@ -9,6 +9,7 @@ import com.touchbase.user.data.remote.DeviceAuthRecovery
 import com.touchbase.user.data.remote.DeviceRegistrationRecovery
 import com.touchbase.user.util.SecureLog
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -83,8 +84,10 @@ class TrackingWorker(context: Context, params: WorkerParameters) : CoroutineWork
             } else {
                 Result.retry()
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            SecureLog.e(TAG, "Tracking worker failed: ${e.message}")
+            SecureLog.w(TAG, "Tracking check deferred: ${e.message}")
             Result.retry()
         }
     }

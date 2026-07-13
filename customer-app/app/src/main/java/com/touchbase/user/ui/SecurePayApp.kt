@@ -24,6 +24,9 @@ import com.touchbase.user.ui.activation.ActivationViewModel
 import com.touchbase.user.ui.dashboard.DashboardScreen
 import com.touchbase.user.ui.navigation.Screen
 import com.touchbase.user.ui.payments.PaymentsScreen
+import com.touchbase.user.ui.recovery.RecoveryLoginScreen
+import com.touchbase.user.ui.more.MoreScreen
+import com.touchbase.user.ui.more.HelpScreen
 import com.touchbase.user.ui.update.UpdateScreen
 import com.touchbase.user.ui.release.ReleaseApprovedScreen
 import kotlinx.coroutines.launch
@@ -37,7 +40,6 @@ fun SecurePayApp(
 ) {
     val context = LocalContext.current
     val isRegistered by repository.isRegistered.collectAsState()
-    val startDestination = if (isRegistered) Screen.Dashboard.route else Screen.Activation.route
 
     val navController = rememberNavController()
     val deviceViewModel: DeviceViewModel = viewModel(
@@ -48,6 +50,12 @@ fun SecurePayApp(
     }
     val expectedImei = remember(context) {
         ProvisioningExtrasStore.expectedImei(context)
+    }
+    val hasDealerActivation = !provisioningToken.isNullOrBlank() && !expectedImei.isNullOrBlank()
+    val startDestination = when {
+        isRegistered -> Screen.Dashboard.route
+        hasDealerActivation -> Screen.Activation.route
+        else -> Screen.RecoveryLogin.route
     }
     val activationViewModel: ActivationViewModel = viewModel(
         factory = ActivationViewModel.Factory(repository, provisioningToken, expectedImei)
@@ -167,7 +175,22 @@ fun SecurePayApp(
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Activation.route) { inclusive = true }
                     }
-                }
+                },
+                onUseCustomerLogin = { navController.navigate(Screen.RecoveryLogin.route) }
+            )
+        }
+
+        composable(Screen.RecoveryLogin.route) {
+            RecoveryLoginScreen(
+                repository = repository,
+                expectedImei = expectedImei,
+                onRecovered = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
+                },
+                onUseActivationCode = { navController.navigate(Screen.Activation.route) },
+                onHelp = { navController.navigate(Screen.Help.route) }
             )
         }
 
@@ -178,6 +201,7 @@ fun SecurePayApp(
                 onMessageShown = deviceViewModel::consumeMessage,
                 onViewPayments = { navController.navigate(Screen.Payments.route) },
                 onCheckUpdates = { navController.navigate(Screen.Updates.route) },
+                onMore = { navController.navigate(Screen.More.route) },
                 securityReport = securityReport
             )
         }
@@ -187,6 +211,20 @@ fun SecurePayApp(
                 repository = repository,
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable(Screen.More.route) {
+            MoreScreen(
+                account = state.account,
+                onHome = { navController.navigate(Screen.Dashboard.route) { launchSingleTop = true } },
+                onPayments = { navController.navigate(Screen.Payments.route) },
+                onHelp = { navController.navigate(Screen.Help.route) },
+                onCheckUpdates = { navController.navigate(Screen.Updates.route) }
+            )
+        }
+
+        composable(Screen.Help.route) {
+            HelpScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Screen.Updates.route) {

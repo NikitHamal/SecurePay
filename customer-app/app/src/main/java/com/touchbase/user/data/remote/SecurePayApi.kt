@@ -3,6 +3,7 @@ package com.touchbase.user.data.remote
 import com.touchbase.user.data.model.AccountResponse
 import com.touchbase.user.data.model.ActivateResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
+import com.touchbase.user.data.model.CustomerLoginRequest
 import com.touchbase.user.data.model.PaymentsResponse
 import com.touchbase.user.data.model.ReleaseCompleteResponse
 import com.touchbase.user.data.model.AppUpdateResponse
@@ -22,6 +23,9 @@ interface SecurePayApi {
 
     @POST("device/activate")
     suspend fun activate(@Body body: Map<String, @JvmSuppressWildcards String>): ActivateResponse
+
+    @POST("device/customer-login")
+    suspend fun customerLogin(@Body body: CustomerLoginRequest): ActivateResponse
 
     @POST("device/provisioned")
     suspend fun reportProvisioned(

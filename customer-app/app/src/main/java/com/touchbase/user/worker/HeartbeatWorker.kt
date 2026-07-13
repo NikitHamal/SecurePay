@@ -17,6 +17,7 @@ import com.touchbase.user.data.remote.DeviceRegistrationRecovery
 import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.BuildConfig
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 class HeartbeatWorker(
     context: Context,
@@ -51,11 +52,16 @@ class HeartbeatWorker(
         // Step 1: Try network heartbeat — may fail when offline
         var heartbeatSucceeded = false
         if (repository != null) {
-            runCatching {
-                repository.heartbeat()
-                heartbeatSucceeded = true
-            }.onFailure {
-                SecureLog.w(TAG, "Heartbeat network call failed, using cached data", it)
+            try {
+                val heartbeatResult = repository.heartbeat()
+                heartbeatSucceeded = heartbeatResult.isSuccess
+                heartbeatResult.exceptionOrNull()?.let { error ->
+                    SecureLog.w(TAG, "Heartbeat network call failed, using cached data: ${error.message}")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                SecureLog.w(TAG, "Heartbeat network call failed, using cached data: ${e.message}")
             }
         }
 
