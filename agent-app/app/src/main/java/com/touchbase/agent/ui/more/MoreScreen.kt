@@ -115,15 +115,15 @@ fun MoreScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text("Personal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-            MoreRow(Icons.Filled.CreditCard, "Payment Details", "View customer collections and transactions", onNavigateToLedger)
+            MoreRow(Icons.Filled.CreditCard, "Payment Details", "View customer collections and transactions", onClick = onNavigateToLedger)
 
             Spacer(Modifier.height(8.dp))
             Text("App version", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            MoreRow(Icons.Filled.Info, "Version ${BuildConfig.VERSION_NAME}", "Build ${BuildConfig.VERSION_CODE}") {}
+            MoreRow(Icons.Filled.Info, "Version ${BuildConfig.VERSION_NAME}", "Build ${BuildConfig.VERSION_CODE}", onClick = {})
 
             Spacer(Modifier.height(8.dp))
             Text("General", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            MoreRow(Icons.Filled.Feedback, "Give app Feedback", "Email the TB support team") {
+            MoreRow(Icons.Filled.Feedback, "Give app Feedback", "Email the TB support team", onClick = {
                 val email = BuildConfig.SUPPORT_EMAIL.trim()
                 if (email.isBlank()) {
                     scope.launch { snackbar.showSnackbar("Support email has not been configured") }
@@ -134,11 +134,11 @@ fun MoreScreen(
                         scope.launch { snackbar.showSnackbar("No email app is available") }
                     }
                 }
-            }
-            MoreRow(Icons.Filled.Palette, "App theme", "System, light or dark", onNavigateToTheme)
-            MoreRow(Icons.Filled.Gavel, "Legal", "Privacy and authorized-use notice") { showLegal = true }
-            MoreRow(Icons.Filled.SupportAgent, "Contact us", "Chat, WhatsApp, call or email", onNavigateToContact)
-            MoreRow(Icons.Filled.Logout, "Log out", "Sign out of this dealer account", tint = Color.Red) { confirmLogout = true }
+            })
+            MoreRow(Icons.Filled.Palette, "App theme", "System, light or dark", onClick = onNavigateToTheme)
+            MoreRow(Icons.Filled.Gavel, "Legal", "Privacy and authorized-use notice", onClick = { showLegal = true })
+            MoreRow(Icons.Filled.SupportAgent, "Contact us", "Chat, WhatsApp, call or email", onClick = onNavigateToContact)
+            MoreRow(Icons.Filled.Logout, "Log out", "Sign out of this dealer account", tint = Color.Red, onClick = { confirmLogout = true })
             Spacer(Modifier.height(18.dp))
         }
     }
