@@ -72,7 +72,9 @@ object AppUpdateInstaller {
                     putExtra("sessionId", sessionId)
                 }
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE
+                    else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE
+                    else 0
                 val pending = PendingIntent.getBroadcast(context, sessionId, intent, flags)
                 session.commit(pending.intentSender)
             }
