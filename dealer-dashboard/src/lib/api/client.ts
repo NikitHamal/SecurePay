@@ -300,7 +300,11 @@ export interface DeviceLog {
   tag: string;
   message: string;
   level: string;
-  time: string;
+  time: number;
+  account_id: string | null;
+  imei: string | null;
+  device_model: string | null;
+  customer_name: string | null;
 }
 
 export async function listDeviceLogs(): Promise<DeviceLog[]> {

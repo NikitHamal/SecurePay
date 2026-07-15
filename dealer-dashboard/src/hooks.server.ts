@@ -129,6 +129,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       });
       if (!valid) return jsonError('Invalid device HMAC signature', 401);
       event.locals.hmacScope = 'device';
+      event.locals.deviceId = accountId || undefined;
+      event.locals.deviceImei = imei || undefined;
     } else {
       const allowGlobal = GLOBAL_DEVICE_PATHS.some((p) => path.startsWith(p)) || path === GLOBAL_LOG_PATH;
       if (!allowGlobal) return jsonError('Device credential required', 401);

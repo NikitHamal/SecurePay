@@ -12,6 +12,8 @@ declare global {
       } | null;
       hmacVerified: boolean;
       hmacScope?: 'global' | 'device';
+      deviceId?: string;
+      deviceImei?: string;
     }
     interface Platform {
       env: {

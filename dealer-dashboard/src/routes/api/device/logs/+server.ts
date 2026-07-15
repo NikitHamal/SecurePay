@@ -20,9 +20,18 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     if (!tag || !message) return errorResponse('Invalid log format', 400);
 
     const db = getDb({ platform });
+    const accountId = locals.deviceId ?? null;
+    const imei = locals.deviceImei ?? null;
+    let deviceModel: string | null = null;
+    if (accountId) {
+      const row = await db.prepare(
+        "SELECT d.model FROM accounts a JOIN devices d ON d.id = a.device_id WHERE a.id = ?"
+      ).bind(accountId).first<{ model: string }>();
+      deviceModel = row?.model ?? null;
+    }
     await db.prepare(
-      'INSERT INTO device_logs (tag, message, level) VALUES (?, ?, ?)'
-    ).bind(tag, message, level).run();
+      'INSERT INTO device_logs (tag, message, level, account_id, imei, device_model) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(tag, message, level, accountId, imei, deviceModel).run();
     return json({ success: true }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Server error';
@@ -37,9 +46,15 @@ export const GET: RequestHandler = async ({ platform, locals }) => {
 
   try {
     const db = getDb({ platform });
-    const { results } = await db.prepare(
-      "SELECT id, tag, message, level, datetime(created_at, 'unixepoch') as time FROM device_logs ORDER BY id DESC LIMIT 200"
-    ).all();
+    const { results } = await db.prepare(`
+      SELECT l.id, l.tag, l.message, l.level,
+             l.created_at * 1000 AS time,
+             l.account_id, l.imei, l.device_model,
+             a.customer_name
+      FROM device_logs l
+      LEFT JOIN accounts a ON a.id = l.account_id
+      ORDER BY l.id DESC LIMIT 200
+    `).all();
     return json(results, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Server error';

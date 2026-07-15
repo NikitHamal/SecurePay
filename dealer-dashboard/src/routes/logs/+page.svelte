@@ -75,12 +75,14 @@
   });
 
   $: filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.tag.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      log.message.toLowerCase().includes(searchQuery.toLowerCase());
-    
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      log.tag.toLowerCase().includes(q) ||
+      log.message.toLowerCase().includes(q) ||
+      (log.imei && log.imei.includes(q)) ||
+      (log.customer_name && log.customer_name.toLowerCase().includes(q)) ||
+      (log.device_model && log.device_model.toLowerCase().includes(q));
     const matchesLevel = levelFilter === 'ALL' || log.level === levelFilter;
-    
     return matchesSearch && matchesLevel;
   });
 
@@ -91,6 +93,19 @@
       case 'INFO': return 'chip-sky';
       default: return 'chip';
     }
+  }
+
+  function localTime(epochMs: number): string {
+    return new Date(epochMs).toLocaleString(undefined, {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    });
+  }
+
+  function shortImei(imei: string | null): string {
+    if (!imei) return '—';
+    return imei.slice(-4);
   }
 </script>
 
@@ -194,16 +209,18 @@
       <table class="data-table min-w-full">
         <thead>
           <tr>
-            <th class="w-40">Time</th>
-            <th class="w-24">Level</th>
-            <th class="w-64">Tag</th>
+            <th class="w-44">Time (local)</th>
+            <th class="w-20">Level</th>
+            <th class="w-14">Dev</th>
+            <th class="w-32">Customer</th>
+            <th class="w-52">Tag</th>
             <th>Message</th>
           </tr>
         </thead>
         <tbody>
           {#if filteredLogs.length === 0}
             <tr>
-              <td colspan="4" class="py-16 text-center text-ink-muted">
+              <td colspan="6" class="py-16 text-center text-ink-muted">
                 {#if loading}
                   Streaming device logs...
                 {:else if searchQuery || levelFilter !== 'ALL'}
@@ -216,11 +233,24 @@
           {:else}
             {#each filteredLogs as log (log.id)}
               <tr class="transition-colors hover:bg-hover align-top border-b border-edge/60 last:border-b-0">
-                <td class="font-mono text-2xs text-ink-secondary whitespace-nowrap pt-3">
-                  {log.time}
+                <td class="font-mono text-2xs text-ink-secondary whitespace-nowrap pt-3" title={log.time.toString()}>
+                  {localTime(log.time)}
                 </td>
                 <td class="pt-2">
                   <span class={getLevelClass(log.level)}>{log.level}</span>
+                </td>
+                <td class="font-mono text-2xs text-ink-muted pt-3" title={log.imei ?? ''}>
+                  {shortImei(log.imei)}
+                </td>
+                <td class="text-xs text-ink-primary pt-3 truncate max-w-[180px]" title={log.customer_name ?? ''}>
+                  {#if log.customer_name}
+                    <span class="font-medium">{log.customer_name}</span>
+                    {#if log.device_model}
+                      <span class="text-2xs text-ink-muted block">{log.device_model}</span>
+                    {/if}
+                  {:else}
+                    <span class="text-ink-muted">—</span>
+                  {/if}
                 </td>
                 <td class="font-mono text-2xs font-semibold text-ink-primary pt-3 break-all">
                   {log.tag}
