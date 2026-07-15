@@ -48,7 +48,8 @@ class AppUpdateWorker(
             val committed = AppUpdateInstaller.downloadVerifyAndInstall(
                 applicationContext,
                 update.url,
-                update.sha256Base64
+                update.sha256Base64,
+                update.signatureChecksumBase64
             )
             if (committed) Result.success() else Result.retry()
         } catch (e: Exception) {

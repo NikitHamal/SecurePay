@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.os.Build
 import com.touchbase.user.util.SecureLog
 
 class AppUpdateReceiver : BroadcastReceiver() {
@@ -13,7 +14,12 @@ class AppUpdateReceiver : BroadcastReceiver() {
         when (status) {
             PackageInstaller.STATUS_SUCCESS -> SecureLog.i(TAG, "App update installed")
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                val confirm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_INTENT)
+                }
                 if (confirm != null) {
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     runCatching { context.startActivity(confirm) }

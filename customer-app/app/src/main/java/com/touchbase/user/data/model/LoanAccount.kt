@@ -167,6 +167,7 @@ data class AppUpdateResponse(
     val available: Boolean = false,
     val url: String = "",
     val sha256Base64: String = "",
+    val signatureChecksumBase64: String = "",
     val versionName: String = "",
     val versionCode: Int = 0,
     val minSupportedVersionCode: Int = 0,

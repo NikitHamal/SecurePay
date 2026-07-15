@@ -20,6 +20,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     available,
     url: available ? meta.url : '',
     sha256Base64: available ? meta.sha256Base64 : '',
+    signatureChecksumBase64: available ? (meta.signatureChecksumBase64 ?? '') : '',
     versionName: meta.versionName,
     versionCode: meta.versionCode,
     minSupportedVersionCode,
