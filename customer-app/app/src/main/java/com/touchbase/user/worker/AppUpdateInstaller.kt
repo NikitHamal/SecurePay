@@ -27,7 +27,7 @@ object AppUpdateInstaller {
         .callTimeout(2, TimeUnit.MINUTES)
         .build()
 
-    suspend fun downloadVerifyAndInstall(
+        suspend fun downloadVerifyAndInstall(
         context: Context,
         apkUrl: String,
         expectedSha256Base64: String
@@ -53,6 +53,9 @@ object AppUpdateInstaller {
             }
 
             val installer = context.packageManager.packageInstaller
+
+            abandonStaleSessions(installer)
+
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
                 setAppPackageName(context.packageName)
                 setSize(apkBytes.size.toLong())
@@ -62,6 +65,7 @@ object AppUpdateInstaller {
                 }
             }
             val sessionId = installer.createSession(params)
+            var error: Throwable? = null
             installer.openSession(sessionId).use { session ->
                 session.openWrite("base.apk", 0, apkBytes.size.toLong()).use { output ->
                     output.write(apkBytes)
@@ -76,12 +80,28 @@ object AppUpdateInstaller {
                     else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE
                     else 0
                 val pending = PendingIntent.getBroadcast(context, sessionId, intent, flags)
-                session.commit(pending.intentSender)
+                try {
+                    session.commit(pending.intentSender)
+                } catch (e: Exception) {
+                    error = e
+                }
+            }
+            if (error != null) {
+                installer.abandonSession(sessionId)
+                throw error!!
             }
             true
         } catch (e: Exception) {
             SecureLog.e(TAG, "Self-update failed", e)
             false
+        }
+    }
+
+    private fun abandonStaleSessions(installer: PackageInstaller) {
+        for (sessionInfo in installer.allSessions) {
+            if (sessionInfo.appPackageName == "com.touchbase.securepay.client") {
+                runCatching { installer.abandonSession(sessionInfo.sessionId) }
+            }
         }
     }
 
