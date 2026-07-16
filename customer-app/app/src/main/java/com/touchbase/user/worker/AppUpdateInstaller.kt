@@ -173,13 +173,13 @@ object AppUpdateInstaller {
             val pm = context.packageManager
             val certBytes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 val info = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-                info.signingInfo.apkContentsSigners[0].toByteArray()
+                info?.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
             } else {
                 @Suppress("DEPRECATION")
                 val info = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-                info.signatures[0].toByteArray()
+                info?.signatures?.firstOrNull()?.toByteArray()
             }
-            val digest = MessageDigest.getInstance("SHA-256").digest(certBytes)
+            val digest = MessageDigest.getInstance("SHA-256").digest(certBytes ?: return null)
             Base64.getUrlEncoder().withoutPadding().encodeToString(digest)
         }.getOrNull()
     }
