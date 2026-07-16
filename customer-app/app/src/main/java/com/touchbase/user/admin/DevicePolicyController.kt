@@ -89,12 +89,6 @@ class DevicePolicyController(context: Context) {
     fun releaseRestrictions() {
         if (!isAdminActive) return
         allowScreenCapture()
-        runCatching {
-            dpm.setKeyguardDisabledFeatures(
-                admin,
-                DevicePolicyManager.KEYGUARD_DISABLE_FEATURES_NONE
-            )
-        }.onFailure { SecureLog.w(TAG, "Restoring keyguard features denied: ${it.message}") }
         clearPermittedInputMethods()
     }
 
