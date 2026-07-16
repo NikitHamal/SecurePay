@@ -5,8 +5,8 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "securepay-db"
-database_id = "4f1f0a49-ecc3-479d-adb4-b82cd2a4d296"
+database_name = "securepay-db-weur"
+database_id = "227f572a-73a6-4270-a60c-8fc5c35af34b"
 
 [[r2_buckets]]
 binding = "R2"
