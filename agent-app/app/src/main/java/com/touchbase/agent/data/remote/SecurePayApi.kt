@@ -106,4 +106,14 @@ interface SecurePayApi {
 
     @GET("my-sales")
     suspend fun getMySales(): List<SaleItem>
+
+    // Paystack mobile money (agent-initiated on behalf of a customer).
+    @POST("paystack/initialize")
+    suspend fun paystackInitialize(@Body request: PaystackInitializeRequest): PaystackInitializeResponse
+
+    @POST("paystack/otp")
+    suspend fun paystackSubmitOtp(@Body request: PaystackOtpRequest): PaystackOtpResponse
+
+    @GET("paystack/verify/{reference}")
+    suspend fun paystackVerify(@Path("reference") reference: String): PaystackVerifyResponse
 }

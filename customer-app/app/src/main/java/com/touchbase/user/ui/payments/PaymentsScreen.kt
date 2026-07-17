@@ -9,12 +9,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,20 +36,25 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.PaymentEntry
 import com.touchbase.user.data.model.formatCentsAsCurrency
 import com.touchbase.user.data.repository.DeviceRepository
+import com.touchbase.user.ui.theme.Charcoal
 import com.touchbase.user.ui.theme.CharcoalElevated
+import com.touchbase.user.ui.theme.Emerald
+import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentsScreen(
     repository: DeviceRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onPayNow: () -> Unit
 ) {
     val account by repository.account.collectAsState()
     val payments by repository.payments.collectAsState()
@@ -55,18 +64,18 @@ fun PaymentsScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Charcoal,
         topBar = {
             TopAppBar(
-                title = { Text("Payment History", fontWeight = FontWeight.Bold) },
+                title = { Text("Payment History", fontWeight = FontWeight.Bold, color = TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = Charcoal,
+                    titleContentColor = TextPrimary
                 )
             )
         }
@@ -79,7 +88,7 @@ fun PaymentsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                CircularProgressIndicator(color = Emerald)
             }
         } else {
             Column(
@@ -90,8 +99,44 @@ fun PaymentsScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                account?.let {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = CharcoalElevated)
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                "Remaining balance",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextSecondary
+                            )
+                            Text(
+                                formatCentsAsCurrency(it.remainingBalanceCents, it.currencyCode),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Button(
+                                onClick = onPayNow,
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Emerald,
+                                    contentColor = Color(0xFF07130F)
+                                )
+                            ) {
+                                Icon(Icons.Filled.AccountBalanceWallet, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Pay with Mobile Money", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
                 if (payments.isEmpty()) {
-                    Spacer(Modifier.height(40.dp))
+                    Spacer(Modifier.height(24.dp))
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -115,6 +160,7 @@ fun PaymentsScreen(
                         PaymentCard(payment, account)
                     }
                 }
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -143,7 +189,7 @@ private fun PaymentCard(payment: PaymentEntry, account: LoanAccount?) {
                     text = payment.method.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = TextPrimary
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -163,7 +209,7 @@ private fun PaymentCard(payment: PaymentEntry, account: LoanAccount?) {
                 text = formatCentsAsCurrency(payment.amount, currencyCode),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = Emerald
             )
         }
     }

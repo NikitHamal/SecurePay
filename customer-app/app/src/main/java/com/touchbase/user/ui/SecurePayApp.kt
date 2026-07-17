@@ -24,6 +24,7 @@ import com.touchbase.user.ui.activation.ActivationViewModel
 import com.touchbase.user.ui.dashboard.DashboardScreen
 import com.touchbase.user.ui.navigation.Screen
 import com.touchbase.user.ui.payments.PaymentsScreen
+import com.touchbase.user.ui.payments.PayWithMoMoScreen
 import com.touchbase.user.ui.recovery.RecoveryLoginScreen
 import com.touchbase.user.ui.more.MoreScreen
 import com.touchbase.user.ui.more.HelpScreen
@@ -200,16 +201,30 @@ fun SecurePayApp(
                 onRefresh = deviceViewModel::refreshStatus,
                 onMessageShown = deviceViewModel::consumeMessage,
                 onViewPayments = { navController.navigate(Screen.Payments.route) },
+                onPayNow = { navController.navigate(Screen.PayWithMoMo.route) },
                 onCheckUpdates = { navController.navigate(Screen.Updates.route) },
                 onMore = { navController.navigate(Screen.More.route) },
                 securityReport = securityReport
             )
         }
 
+        composable(Screen.PayWithMoMo.route) {
+            PayWithMoMoScreen(
+                repository = repository,
+                account = state.account,
+                onBack = { navController.popBackStack() },
+                onPaid = {
+                    deviceViewModel.refreshStatus()
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable(Screen.Payments.route) {
             PaymentsScreen(
                 repository = repository,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onPayNow = { navController.navigate(Screen.PayWithMoMo.route) }
             )
         }
 

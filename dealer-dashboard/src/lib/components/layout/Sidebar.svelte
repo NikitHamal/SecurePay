@@ -4,6 +4,8 @@
   import { dealer, logout } from '$lib/stores/auth';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
   import { sidebarOpen } from '$lib/stores/ui';
+  import { apiClient } from '$lib/api/client';
+  import { onMount } from 'svelte';
 
   interface NavItem {
     label: string;
@@ -12,12 +14,33 @@
     badge?: string;
     badgeTone?: 'emerald' | 'amber' | 'crimson';
     roles?: string[];
+    badgeCount?: () => number;
   }
 
   interface NavGroup {
     label: string;
     items: NavItem[];
   }
+
+  let pendingAgentRequests = 0;
+
+  async function fetchPendingCount() {
+    try {
+      const res = await apiClient('/api/agent-requests?status=PENDING');
+      if (res.ok) {
+        const data = await res.json();
+        pendingAgentRequests = Array.isArray(data) ? data.length : 0;
+      }
+    } catch {
+      /* silent */
+    }
+  }
+
+  onMount(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 60000);
+    return () => clearInterval(interval);
+  });
 
   const groups: NavGroup[] = [
     {
@@ -39,7 +62,12 @@
     {
       label: 'Organization',
       items: [
-        { label: 'Agent Requests', href: '/agent-requests', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', badge: 'Pending', badgeTone: 'amber', roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'] },
+        {
+          label: 'Agent Requests',
+          href: '/agent-requests',
+          icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
+          roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN']
+        },
         { label: 'Agents', href: '/agents', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'] },
         { label: 'Branches', href: '/branches', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', roles: ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'] },
         { label: 'Notifications', href: '/notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' }
@@ -58,17 +86,12 @@
   }
 
   function getInitials(name: string): string {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
+    return (name || 'DD').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   }
 
   $: pathname = $page.url.pathname;
   $: userRole = $dealer?.role || 'SUPER_ADMIN';
-  $: pendingCount = 0; // would come from a store later; badge stays visible
+  $: canViewRequests = userRole === 'SUPER_ADMIN' || userRole === 'AGENCY_OWNER' || userRole === 'BRANCH_ADMIN';
 </script>
 
 {#if $sidebarOpen}
@@ -80,7 +103,7 @@
 {/if}
 
 <aside
-  class="fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-edge bg-bg-sidebar transition-transform duration-200 ease-out md:sticky md:top-0 md:h-screen md:w-64 md:translate-x-0
+  class="fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-edge transition-transform duration-200 ease-out md:sticky md:top-0 md:h-screen md:w-64 md:translate-x-0
          {$sidebarOpen ? 'translate-x-0' : '-translate-x-full'}"
   style="background-color: var(--bg-sidebar);"
   aria-label="Primary navigation"
@@ -99,22 +122,7 @@
     </div>
   </div>
 
-  <!-- Status pill -->
-  <div class="mx-4 mb-4 rounded-lg border border-edge px-3 py-2.5" style="background-color: var(--bg-surface-100);">
-    <div class="flex items-center justify-between">
-      <span class="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Status</span>
-      <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald">
-        <span class="relative flex h-1.5 w-1.5">
-          <span class="absolute inline-flex h-full w-full rounded-full bg-emerald opacity-60 animate-pulse"></span>
-          <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald"></span>
-        </span>
-        Live
-      </span>
-    </div>
-    <p class="mt-1 text-[11px] text-ink-muted">Nairobi Hub · Operator #4471</p>
-  </div>
-
-  <nav class="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3">
+  <nav class="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3 pt-2">
     {#each groups as group (group.label)}
       {@const visibleItems = group.items.filter(item => canAccessItem(item, userRole))}
       {#if visibleItems.length > 0}
@@ -122,14 +130,13 @@
           <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1">{group.label}</p>
           {#each visibleItems as item (item.href)}
             {@const active = isActive(item.href, pathname)}
+            {@const showPendingBadge = item.href === '/agent-requests' && canViewRequests && pendingAgentRequests > 0}
             <a
               href={item.href}
               on:click={() => sidebarOpen.set(false)}
               aria-current={active ? 'page' : undefined}
               class="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                     {active
-                ? 'text-emerald'
-                : 'text-ink-secondary hover:bg-hover hover:text-ink-primary'}"
+                     {active ? 'text-emerald' : 'text-ink-secondary hover:bg-hover hover:text-ink-primary'}"
               style={active ? 'background-color: var(--brand-soft);' : ''}
             >
               {#if active}
@@ -154,12 +161,9 @@
                 </svg>
               </span>
               <span class="flex-1 truncate">{item.label}</span>
-              {#if item.badge}
-                <span
-                  class="rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide
-                         {item.badgeTone === 'amber' ? 'bg-amber/10 text-amber border border-amber/20' : 'bg-emerald/10 text-emerald border border-emerald/20'}"
-                >
-                  {item.badge}
+              {#if showPendingBadge}
+                <span class="inline-flex min-w-[20px] items-center justify-center rounded-md bg-amber/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber border border-amber/20 tabular-nums">
+                  {pendingAgentRequests}
                 </span>
               {/if}
             </a>

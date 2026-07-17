@@ -4,8 +4,7 @@
   import { apiClient } from '$lib/api/client';
   import { customers } from '$lib/stores/customers';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
-  import { formatRelative } from '$lib/utils/format';
-  import { sidebarOpen, openNewLoan } from '$lib/stores/ui';
+  import { sidebarOpen } from '$lib/stores/ui';
 
   export let searchPlaceholder: string = 'Search customers, IMEI, references…';
   export let showSearch: boolean = true;
@@ -42,11 +41,6 @@
   function prettify(segment: string): string {
     return segment.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
   }
-
-  $: warnings = $customers
-    .filter((c) => c.status === 'WARNING' || c.status === 'LOCKED')
-    .sort((a, b) => a.nextPaymentDueEpochMillis - b.nextPaymentDueEpochMillis)
-    .slice(0, 5);
 
   $: unreadCount = notifications.filter(n => !n.isRead).length;
 </script>
@@ -150,24 +144,6 @@
           </div>
         {/if}
       </div>
-
-      <button type="button" class="btn-primary hidden sm:inline-flex" on:click={() => openNewLoan()}>
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-        </svg>
-        New loan
-      </button>
     </div>
-  </div>
-
-  <!-- Mobile quick action -->
-  <div class="md:hidden px-4 pb-3 flex gap-2 overflow-x-auto">
-    <button class="btn-primary !py-1.5 text-xs" on:click={() => openNewLoan()}>
-      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-      New loan
-    </button>
-    <a href="/customers" class="btn-outline !py-1.5 text-xs">Customers</a>
-    <a href="/inventory" class="btn-outline !py-1.5 text-xs">Inventory</a>
-    <a href="/agent-requests" class="btn-outline !py-1.5 text-xs">Requests</a>
   </div>
 </header>

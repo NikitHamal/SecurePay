@@ -5,8 +5,13 @@ import com.touchbase.user.data.model.AccountResponse
 import com.touchbase.user.data.model.ActivateResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
 import com.touchbase.user.data.model.CustomerLoginRequest
+import com.touchbase.user.data.model.InitializePaystackRequest
+import com.touchbase.user.data.model.InitializePaystackResponse
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.PaymentEntry
+import com.touchbase.user.data.model.SubmitOtpRequest
+import com.touchbase.user.data.model.SubmitOtpResponse
+import com.touchbase.user.data.model.VerifyPaystackResponse
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.SecurePayApi
 import com.touchbase.user.BuildConfig
@@ -277,6 +282,69 @@ class DeviceRepository(
         val halfRoundTrip = ((receivedAt - requestSentAt).coerceAtLeast(0L)) / 2L
         val estimatedServerAtReceipt = serverTime + halfRoundTrip
         tokenManager.saveServerTimeOffset(estimatedServerAtReceipt - receivedAt)
+    }
+
+    // ---- Paystack mobile money --------------------------------------------------
+
+    suspend fun paystackInitialize(
+        amountGhs: Double,
+        phone: String,
+        provider: String
+    ): Result<InitializePaystackResponse> = withContext(Dispatchers.IO) {
+        val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
+        val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
+        try {
+            ensurePerDeviceApi(accountId, imei)
+            val response = api.paystackInitialize(
+                InitializePaystackRequest(
+                    accountId = accountId,
+                    imei = imei,
+                    amount = amountGhs,
+                    phone = phone,
+                    provider = provider
+                )
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "paystackInitialize failed", e)
+            Result.failure(IllegalStateException(e.userMessage()))
+        }
+    }
+
+    suspend fun paystackSubmitOtp(
+        reference: String,
+        otp: String
+    ): Result<SubmitOtpResponse> = withContext(Dispatchers.IO) {
+        val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
+        val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
+        try {
+            ensurePerDeviceApi(accountId, imei)
+            val response = api.paystackSubmitOtp(
+                SubmitOtpRequest(reference = reference, otp = otp, accountId = accountId, imei = imei)
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "paystackSubmitOtp failed", e)
+            Result.failure(IllegalStateException(e.userMessage()))
+        }
+    }
+
+    suspend fun paystackVerify(reference: String): Result<VerifyPaystackResponse> = withContext(Dispatchers.IO) {
+        val accountId = tokenManager.accountId ?: return@withContext Result.failure(IllegalStateException("Not registered"))
+        val imei = tokenManager.imei ?: return@withContext Result.failure(IllegalStateException("No IMEI"))
+        try {
+            ensurePerDeviceApi(accountId, imei)
+            val response = api.paystackVerify(reference = reference, accountId = accountId, imei = imei)
+            if (response.applied) {
+                // Server returned updated state; patch local account + refresh payments.
+                refresh()
+                refreshPayments()
+            }
+            Result.success(response)
+        } catch (e: Exception) {
+            SecureLog.e(TAG, "paystackVerify failed", e)
+            Result.failure(IllegalStateException(e.userMessage()))
+        }
     }
 
     fun clearRegistration() {

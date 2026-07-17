@@ -166,6 +166,10 @@ export function getDb(event: { platform?: App.Platform | null }): D1Database {
   return event.platform.env.DB;
 }
 
+export function getPaystackSecret(event: { platform?: App.Platform | null }): string {
+  return event.platform?.env?.PAYSTACK_SECRET_KEY || (typeof process !== 'undefined' ? (process.env?.PAYSTACK_SECRET_KEY || '') : '') || '';
+}
+
 let mockR2Instance: any = null;
 
 function createMockR2(): any {

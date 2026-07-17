@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -83,6 +84,7 @@ import androidx.compose.ui.res.painterResource
 import com.touchbase.agent.R
 import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.remote.SecurePayRepository
+import com.touchbase.agent.ui.components.BarcodeScannerSheet
 import com.touchbase.agent.ui.components.SecurePayBottomNavBar
 import com.touchbase.agent.ui.components.ButtonText
 
@@ -409,6 +411,7 @@ private fun AddDeviceBottomSheet(
     var imei by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showScanner by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -424,12 +427,28 @@ private fun AddDeviceBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Add Device", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+
+            // Quick scan action — biggest time-saver for stock intake.
+            androidx.compose.material3.Button(
+                onClick = { showScanner = true },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(360.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.size(8.dp))
+                ButtonText("Scan IMEI Barcode")
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("IMEI (15 digits)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = imei,
                     onValueChange = { imei = it.filter { c -> c.isDigit() }.take(15) },
-                    placeholder = { Text("Enter IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Scan or enter IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -441,7 +460,19 @@ private fun AddDeviceBottomSheet(
                         unfocusedBorderColor = Color.Transparent,
                         cursorColor = MaterialTheme.colorScheme.primary
                     ),
-                    shape = RoundedCornerShape(360.dp)
+                    shape = RoundedCornerShape(360.dp),
+                    trailingIcon = {
+                        IconButton(onClick = { showScanner = true }) {
+                            Icon(
+                                Icons.Filled.QrCodeScanner,
+                                contentDescription = "Scan IMEI",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    supportingText = {
+                        Text("${imei.length}/15 digits", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -449,7 +480,7 @@ private fun AddDeviceBottomSheet(
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
-                    placeholder = { Text("Enter model", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                    placeholder = { Text("e.g. SM-A075F/DS", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -477,9 +508,22 @@ private fun AddDeviceBottomSheet(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) { ButtonText("Add") }
+                ),
+                shape = RoundedCornerShape(360.dp)
+            ) { ButtonText("Add to Inventory") }
         }
+    }
+
+    if (showScanner) {
+        BarcodeScannerSheet(
+            title = "Scan IMEI",
+            subtitle = "Point camera at the IMEI barcode on the box or sticker. 15-digit codes are detected automatically.",
+            onDismiss = { showScanner = false },
+            onScan = { digits ->
+                imei = digits
+                showScanner = false
+            }
+        )
     }
 }
 

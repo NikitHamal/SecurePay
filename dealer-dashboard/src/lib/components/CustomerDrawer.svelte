@@ -9,11 +9,14 @@
   import { onDestroy } from 'svelte';
   import { getAccountLocations } from '$lib/api/client';
   import { openProvision } from '$lib/stores/ui';
+  import PayWithMoMoModal from '$lib/components/PayWithMoMoModal.svelte';
 
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
 
   let editing = false;
+  let payMoMoOpen = false;
+  let momoRefreshTick = 0; // bump to force reload after payment
   let saving = false;
   let editName = '';
   let editNationalId = '';
@@ -489,13 +492,24 @@
           type="button"
           class="btn-primary flex-1"
           disabled={isPending || editing}
+          on:click={() => { payMoMoOpen = true; }}
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>
+          </svg>
+          Pay with MoMo
+        </button>
+        <button
+          type="button"
+          class="btn-outline flex-1"
+          disabled={isPending || editing}
           on:click={() => { openProvision(customer.imei); onClose(); }}
         >
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
             <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4"/>
           </svg>
-          Provision device
+          Provision
         </button>
         <button
           type="button"
@@ -517,7 +531,7 @@
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 11V8a6 6 0 1112 0v3M5 11h14v10H5z" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          Force remote lock
+          Lock
         </button>
         <button
           type="button"
@@ -544,3 +558,13 @@
     </div>
   </div>
 {/if}
+
+<PayWithMoMoModal
+  open={payMoMoOpen && customer !== null}
+  accountId={customer?.id || ''}
+  customerName={customer?.customerName || ''}
+  customerPhone={customer?.phoneNumber || ''}
+  remainingBalance={customer?.remainingBalance || 0}
+  on:close={() => { payMoMoOpen = false; }}
+  on:paid={() => { momoRefreshTick++; }}
+/>

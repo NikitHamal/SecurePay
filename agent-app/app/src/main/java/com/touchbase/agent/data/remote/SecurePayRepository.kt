@@ -251,4 +251,33 @@ class SecurePayRepository(
     suspend fun getMySales(): Result<List<SaleItem>> = withContext(Dispatchers.IO) {
         try { Result.success(api.getMySales()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
+
+    // ---- Paystack mobile money --------------------------------------------------
+
+    suspend fun paystackInitialize(accountId: String, amountGhs: Double, phone: String, provider: String): Result<PaystackInitializeResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                Result.success(
+                    api.paystackInitialize(
+                        PaystackInitializeRequest(accountId = accountId, amount = amountGhs, phone = phone, provider = provider)
+                    )
+                )
+            } catch (e: Exception) {
+                Result.failure(Exception(e.friendlyMessage()))
+            }
+        }
+
+    suspend fun paystackSubmitOtp(reference: String, otp: String): Result<PaystackOtpResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                Result.success(api.paystackSubmitOtp(PaystackOtpRequest(reference = reference, otp = otp)))
+            } catch (e: Exception) {
+                Result.failure(Exception(e.friendlyMessage()))
+            }
+        }
+
+    suspend fun paystackVerify(reference: String): Result<PaystackVerifyResponse> =
+        withContext(Dispatchers.IO) {
+            try { Result.success(api.paystackVerify(reference)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+        }
 }

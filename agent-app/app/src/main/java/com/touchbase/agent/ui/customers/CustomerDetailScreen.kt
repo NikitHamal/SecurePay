@@ -92,6 +92,8 @@ import com.touchbase.agent.ui.enrollment.steps.KycPhotoSelector
 import kotlinx.coroutines.launch
 
 import com.touchbase.agent.data.model.UpdateAccountRequest
+import com.touchbase.agent.ui.payments.AgentPayWithMoMoDialog
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerDetailScreen(
@@ -109,6 +111,7 @@ fun CustomerDetailScreen(
     var actionInProgress by remember { mutableStateOf(false) }
     var customerCredentials by remember { mutableStateOf<CustomerCredentials?>(null) }
     var showPaymentSheet by remember { mutableStateOf(false) }
+    var showMoMoDialog by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf("") }
@@ -656,23 +659,37 @@ fun CustomerDetailScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            Button(
+                onClick = { showMoMoDialog = true },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = !actionInProgress && !isEditing && acc.remainingBalance > 0,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF10B981),
+                    contentColor = Color(0xFF07130F)
+                ),
+                shape = RoundedCornerShape(360.dp)
+            ) {
+                Icon(Icons.Filled.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                ButtonText("Pay with Mobile Money")
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Button(
+                OutlinedButton(
                     onClick = { showPaymentSheet = true },
                     modifier = Modifier.weight(1f).height(48.dp),
                     enabled = !actionInProgress && !isEditing,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(360.dp)
                 ) {
                     Icon(Icons.Filled.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    ButtonText("Record")
+                    ButtonText("Cash / Record")
                 }
 
                 if (acc.status == AccountStatus.LOCKED) {
@@ -879,6 +896,19 @@ fun CustomerDetailScreen(
             onDismiss = { showPaymentSheet = false },
             onSuccess = {
                 showPaymentSheet = false
+                loadAccount()
+            }
+        )
+    }
+
+    if (showMoMoDialog && repository != null) {
+        AgentPayWithMoMoDialog(
+            repository = repository,
+            account = acc,
+            onDismiss = { showMoMoDialog = false },
+            onPaymentRecorded = {
+                showMoMoDialog = false
+                actionMessage = "Payment successful — device will unlock on next sync."
                 loadAccount()
             }
         )

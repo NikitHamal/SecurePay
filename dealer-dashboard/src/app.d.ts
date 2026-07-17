@@ -32,6 +32,7 @@ declare global {
         DIDIT_WORKFLOW_ID?: string;
         DIDIT_CALLBACK_URL?: string;
         APP_BUILD_VERSION?: string;
+        PAYSTACK_SECRET_KEY?: string;
       };
     }
   }

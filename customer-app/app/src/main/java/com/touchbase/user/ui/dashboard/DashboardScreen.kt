@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
@@ -54,7 +55,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -87,6 +87,7 @@ fun DashboardScreen(
     onRefresh: () -> Unit,
     onMessageShown: () -> Unit,
     onViewPayments: () -> Unit,
+    onPayNow: () -> Unit,
     onCheckUpdates: () -> Unit,
     onMore: () -> Unit,
     securityReport: SecurityChecker.SecurityReport? = null
@@ -154,6 +155,7 @@ fun DashboardScreen(
             ActionGrid(
                 state = state,
                 onRefresh = onRefresh,
+                onPayNow = onPayNow,
                 onViewPayments = onViewPayments,
                 onCheckUpdates = onCheckUpdates
             )
@@ -180,7 +182,7 @@ private fun HeroStatusCard(state: DeviceUiState) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.24f), CharcoalElevated)))
+                .background(accent.copy(alpha = 0.14f), RoundedCornerShape(28.dp))
                 .padding(22.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -243,29 +245,42 @@ private fun LoanSummaryCard(account: LoanAccount) {
 private fun ActionGrid(
     state: DeviceUiState,
     onRefresh: () -> Unit,
+    onPayNow: () -> Unit,
     onViewPayments: () -> Unit,
     onCheckUpdates: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
-            onClick = onRefresh,
+            onClick = onPayNow,
             enabled = !state.isProcessingPayment,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(58.dp),
             shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Emerald, contentColor = Color(0xFF07130F))
         ) {
+            Icon(Icons.Filled.AccountBalanceWallet, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Pay with Mobile Money", fontWeight = FontWeight.Bold)
+        }
+
+        OutlinedButton(
+            onClick = onRefresh,
+            enabled = !state.isProcessingPayment,
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+        ) {
             if (state.isProcessingPayment) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color(0xFF07130F))
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Emerald)
             } else {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Sync Status Now", fontWeight = FontWeight.Bold)
+                Text("Sync Status", fontWeight = FontWeight.SemiBold)
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             SecondaryAction(
-                text = "Payments",
+                text = "History",
                 icon = Icons.Filled.Payments,
                 modifier = Modifier.weight(1f),
                 onClick = onViewPayments
