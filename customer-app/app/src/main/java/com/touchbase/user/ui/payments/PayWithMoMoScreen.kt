@@ -321,12 +321,7 @@ private fun PaymentForm(
     val appTextFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = Emerald,
         unfocusedBorderColor = CharcoalSurfaceVariant,
-        cursorColor = Emerald,
-        focusedLabelColor = Emerald,
-        unfocusedLabelColor = TextSecondary,
-        focusedTextColor = TextPrimary,
-        unfocusedTextColor = TextPrimary,
-        backgroundColor = CharcoalElevated
+        cursorColor = Emerald
     )
 
     Card(
@@ -456,12 +451,7 @@ private fun OtpCard(
     val appTextFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = Emerald,
         unfocusedBorderColor = CharcoalSurfaceVariant,
-        cursorColor = Emerald,
-        focusedLabelColor = Emerald,
-        unfocusedLabelColor = TextSecondary,
-        focusedTextColor = TextPrimary,
-        unfocusedTextColor = TextPrimary,
-        backgroundColor = CharcoalElevated
+        cursorColor = Emerald
     )
 
     Card(

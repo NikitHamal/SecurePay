@@ -901,7 +901,7 @@ fun CustomerDetailScreen(
         )
     }
 
-    if (showMoMoDialog && repository != null) {
+    if (showMoMoDialog && repository != null && account != null) {
         AgentPayWithMoMoDialog(
             repository = repository,
             account = account,
