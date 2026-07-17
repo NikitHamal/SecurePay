@@ -434,7 +434,7 @@ private fun InfoCard(title: String, icon: ImageVector, accent: Color, content: @
 }
 
 @Composable
-private fun Metric(label: String, value: String) {
+private fun RowScope.Metric(label: String, value: String) {
     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
         Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
