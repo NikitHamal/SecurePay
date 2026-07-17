@@ -904,7 +904,7 @@ fun CustomerDetailScreen(
     if (showMoMoDialog && repository != null) {
         AgentPayWithMoMoDialog(
             repository = repository,
-            account = acc,
+            account = account,
             onDismiss = { showMoMoDialog = false },
             onPaymentRecorded = {
                 showMoMoDialog = false

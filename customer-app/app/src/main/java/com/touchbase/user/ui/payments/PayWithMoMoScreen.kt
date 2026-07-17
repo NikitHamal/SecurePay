@@ -318,6 +318,17 @@ private fun PaymentForm(
     onPayFull: () -> Unit,
     onSubmit: () -> Unit
 ) {
+    val appTextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = Emerald,
+        unfocusedBorderColor = CharcoalSurfaceVariant,
+        cursorColor = Emerald,
+        focusedLabelColor = Emerald,
+        unfocusedLabelColor = TextSecondary,
+        focusedTextColor = TextPrimary,
+        unfocusedTextColor = TextPrimary,
+        backgroundColor = CharcoalElevated
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -357,7 +368,7 @@ private fun PaymentForm(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         singleLine = true,
         shape = RoundedCornerShape(16.dp),
-        colors = fieldColors(),
+        colors = appTextFieldColors,
         modifier = Modifier.fillMaxWidth()
     )
 
@@ -385,7 +396,7 @@ private fun PaymentForm(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
         singleLine = true,
         shape = RoundedCornerShape(16.dp),
-        colors = fieldColors(),
+        colors = appTextFieldColors,
         modifier = Modifier.fillMaxWidth()
     )
 
@@ -442,6 +453,17 @@ private fun OtpCard(
     onSubmit: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val appTextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = Emerald,
+        unfocusedBorderColor = CharcoalSurfaceVariant,
+        cursorColor = Emerald,
+        focusedLabelColor = Emerald,
+        unfocusedLabelColor = TextSecondary,
+        focusedTextColor = TextPrimary,
+        unfocusedTextColor = TextPrimary,
+        backgroundColor = CharcoalElevated
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -460,7 +482,7 @@ private fun OtpCard(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
-                colors = fieldColors(),
+                colors = appTextFieldColors,
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
             )
             error?.let {
@@ -558,14 +580,4 @@ private fun chipColors(selected: Boolean = false) = FilterChipDefaults.filterChi
     iconColor = if (selected) Color(0xFF07130F) else TextSecondary
 )
 
-@Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Emerald,
-    unfocusedBorderColor = CharcoalSurfaceVariant,
-    cursorColor = Emerald,
-    focusedLabelColor = Emerald,
-    unfocusedLabelColor = TextSecondary,
-    focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary,
-    containerColor = CharcoalElevated
-)
+

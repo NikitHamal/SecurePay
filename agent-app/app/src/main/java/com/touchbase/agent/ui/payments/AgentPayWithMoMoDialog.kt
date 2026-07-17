@@ -95,6 +95,18 @@ fun AgentPayWithMoMoDialog(
     var displayText by remember { mutableStateOf("") }
     val otpFocus = remember { FocusRequester() }
 
+    val appTextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = EmeraldGreen,
+        unfocusedBorderColor = surfaceVariant,
+        cursorColor = EmeraldGreen,
+        focusedLabelColor = EmeraldGreen,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedContainerColor = surfaceVariant,
+        unfocusedContainerColor = surfaceVariant
+    )
+
     fun pollVerification(ref: String) {
         scope.launch {
             val start = System.currentTimeMillis()
@@ -161,7 +173,7 @@ fun AgentPayWithMoMoDialog(
                             value = amountText, onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' }.take(10) },
                             label = { Text("Amount (GHS)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true, shape = RoundedCornerShape(14.dp),
-                            colors = fieldColors(surfaceVariant),
+                            colors = appTextFieldColors,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -180,7 +192,7 @@ fun AgentPayWithMoMoDialog(
                             leadingIcon = { Icon(Icons.Filled.PhoneAndroid, contentDescription = null, tint = onSurfaceVariant) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             singleLine = true, shape = RoundedCornerShape(14.dp),
-                            colors = fieldColors(surfaceVariant),
+                            colors = appTextFieldColors,
                             modifier = Modifier.fillMaxWidth()
                         )
                         error?.let {
@@ -220,7 +232,7 @@ fun AgentPayWithMoMoDialog(
                                 Text("Ask the customer for the OTP sent to ${provider.display}.", color = onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                                 OutlinedTextField(value = otp, onValueChange = { otp = it.filter { c -> c.isDigit() }.take(6) },
                                     label = { Text("OTP") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                                    singleLine = true, shape = RoundedCornerShape(14.dp), colors = fieldColors(surfaceVariant),
+                                    singleLine = true, shape = RoundedCornerShape(14.dp), colors = appTextFieldColors,
                                     modifier = Modifier.fillMaxWidth().focusRequester(otpFocus))
                                 error?.let { Text(it, color = VividCrimson, style = MaterialTheme.typography.bodySmall) }
                                 Button(onClick = {
@@ -306,10 +318,4 @@ private fun chipColors(selected: Boolean) = FilterChipDefaults.filterChipColors(
     selectedLabelColor = Color(0xFF07130F)
 )
 
-@Composable
-private fun fieldColors(surfaceVariant: Color) = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = EmeraldGreen, unfocusedBorderColor = surfaceVariant, cursorColor = EmeraldGreen,
-    focusedLabelColor = EmeraldGreen, unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedTextColor = MaterialTheme.colorScheme.onSurface, unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-    containerColor = surfaceVariant
-)
+

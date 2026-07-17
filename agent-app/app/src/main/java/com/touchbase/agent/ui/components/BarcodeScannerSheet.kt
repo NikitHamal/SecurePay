@@ -115,10 +115,10 @@ fun BarcodeScannerSheet(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    CameraPreview { raw ->
+                    CameraPreview(onBarcodeDetected = { raw ->
                         val accepted = validator(raw)
                         if (accepted != null) onScan(accepted)
-                    }
+                    })
                 }
                 Text(
                     subtitle,
