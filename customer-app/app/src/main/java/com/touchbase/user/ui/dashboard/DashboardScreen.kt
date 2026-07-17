@@ -208,8 +208,8 @@ private fun HeroStatusCard(state: DeviceUiState) {
                     }
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary, maxLines = 1, softWrap = false)
+                        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                 }
                 if (!state.releaseApproved) {
@@ -270,7 +270,7 @@ private fun ActionGrid(
         ) {
             Icon(Icons.Filled.AccountBalanceWallet, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Pay with Mobile Money", fontWeight = FontWeight.Bold)
+            Text("Pay with Mobile Money", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
         }
 
         OutlinedButton(
@@ -316,7 +316,7 @@ private fun SecondaryAction(text: String, icon: ImageVector, modifier: Modifier 
     ) {
         Icon(icon, contentDescription = null)
         Spacer(Modifier.width(8.dp))
-        Text(text, fontWeight = FontWeight.SemiBold)
+        Text(text, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
     }
 }
 
@@ -435,9 +435,9 @@ private fun InfoCard(title: String, icon: ImageVector, accent: Color, content: @
 
 @Composable
 private fun Metric(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.Start) {
+    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 

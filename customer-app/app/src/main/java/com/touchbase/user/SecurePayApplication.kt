@@ -132,6 +132,10 @@ class SecurePayApplication : Application() {
                 val accountId = tm.accountId ?: ""
                 SecureLog.i(TAG, "Startup check: Device is flagged as stolen. Starting tracking service.")
                 TrackingService.start(this, accountId)
+            } else {
+                // Clear a stale foreground location service after a normal payment/status
+                // sync. Otherwise Android keeps showing the enterprise location notice.
+                TrackingService.stop(this)
             }
         }.onFailure { SecureLog.w(TAG, "Failed to start tracking service from cache", it) }
 

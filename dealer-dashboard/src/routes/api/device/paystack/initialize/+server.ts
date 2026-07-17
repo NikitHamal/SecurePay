@@ -89,7 +89,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     }, secret);
 
     const nowSec = Math.floor(Date.now() / 1000);
-    await db.prepare(`
+    // Keep gateway success separate from ledger persistence. If the production D1
+    // migration has not been applied, return an actionable deployment error.
+    try {
+      await db.prepare(`
       INSERT INTO paystack_transactions
         (id, reference, access_code, account_id, dealer_id, amount, currency, channel, provider,
          customer_email, customer_phone, status, gateway_response, metadata_json, created_at, updated_at)
@@ -111,7 +114,11 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       JSON.stringify({ account_id: accountId, imei, customer_name: account.customer_name, source: 'customer-app' }),
       nowSec,
       nowSec
-    ).run();
+      ).run();
+    } catch (ledgerError: any) {
+      console.error('Paystack transaction ledger insert failed', ledgerError);
+      return errorResponse('Payment service is not ready: apply the Paystack D1 migration, then retry.', 503);
+    }
 
     return json({
       ok: true,
