@@ -14,6 +14,7 @@ const config: Config = {
           300: 'var(--bg-surface-300)',
           elevated: 'var(--bg-elevated)',
         },
+        'bg-sidebar': 'var(--bg-sidebar)',
         edge: {
           DEFAULT: 'var(--border-default)',
           strong: 'var(--border-strong)',
@@ -27,12 +28,16 @@ const config: Config = {
           300: '#047857',
           400: '#065F46',
         },
+        brand: {
+          DEFAULT: 'var(--brand)',
+          soft: 'var(--brand-soft)',
+          accent: 'var(--brand-accent)',
+        },
         crimson: {
-          DEFAULT: '#EF4444',
-          50: '#F87171',
-          100: '#EF4444',
-          200: '#DC2626',
-          300: '#B91C1C',
+          DEFAULT: '#DC2626',
+          50: '#EF4444',
+          100: '#DC2626',
+          200: '#B91C1C',
         },
         amber: {
           DEFAULT: '#F59E0B',
@@ -40,24 +45,17 @@ const config: Config = {
           100: '#F59E0B',
           200: '#D97706',
         },
-        sky: {
-          DEFAULT: '#38BDF8',
-        },
-        violet: {
-          DEFAULT: '#A78BFA',
-        },
+        sky: { DEFAULT: '#0EA5E9' },
         ink: {
           primary: 'var(--text-primary)',
           secondary: 'var(--text-secondary)',
           muted: 'var(--text-muted)',
           dim: 'var(--text-dim)',
         },
-        'text-primary': 'var(--text-primary)',
-        'text-secondary': 'var(--text-secondary)',
       },
       fontFamily: {
         sans: [
-          'Poppins',
+          'Inter',
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
@@ -68,7 +66,7 @@ const config: Config = {
           'sans-serif',
         ],
         display: [
-          'Poppins',
+          'Inter',
           'ui-sans-serif',
           'system-ui',
           'sans-serif',
@@ -76,12 +74,12 @@ const config: Config = {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       fontSize: {
-        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+        '2xs': ['0.6875rem', { lineHeight: '0.875rem' }],
       },
       borderRadius: {
-        xl: '0.875rem',
-        '2xl': '1.125rem',
-        '3xl': '1.5rem',
+        xl: '0.75rem',
+        '2xl': '1rem',
+        '3xl': '1.25rem',
       },
       boxShadow: {
         card: 'var(--shadow-card)',
@@ -92,23 +90,14 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
-        'pulse-soft': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.55' },
-        },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
-        'spin-slow': {
-          to: { transform: 'rotate(360deg)' },
-        },
       },
       animation: {
-        'fade-in': 'fade-in 0.25s ease-out both',
-        'pulse-soft': 'pulse-soft 2.4s ease-in-out infinite',
-        shimmer: 'shimmer 2.2s linear infinite',
-        'spin-slow': 'spin-slow 12s linear infinite',
+        'fade-in': 'fade-in 0.2s ease-out both',
+        shimmer: 'shimmer 2s linear infinite',
       },
     },
   },

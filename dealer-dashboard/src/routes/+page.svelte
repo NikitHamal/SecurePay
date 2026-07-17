@@ -6,24 +6,12 @@
   import BarChart from '$lib/components/charts/BarChart.svelte';
   import AreaChart from '$lib/components/charts/AreaChart.svelte';
   import Gauge from '$lib/components/charts/Gauge.svelte';
-  import StackedBar from '$lib/components/charts/StackedBar.svelte';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import { portfolioMetrics, kpis } from '$lib/stores/portfolio';
   import { customers } from '$lib/stores/customers';
   import { formatCurrency, formatRelative } from '$lib/utils/format';
+  import { openNewLoan, openAddDevice, openProvision } from '$lib/stores/ui';
   import { derived } from 'svelte/store';
-
-  const deltas = {
-    active: { delta: '+2 this week', trend: 'up' as const },
-    warning: { delta: '3 approaching due', trend: 'flat' as const },
-    locked: { delta: '2 overdue', trend: 'down' as const },
-    outstanding: { delta: '-1.8% MoM', trend: 'up' as const },
-    collected: { delta: '+12% vs avg', trend: 'up' as const }
-  };
-
-  function last7(series: { value: number }[]): number[] {
-    return series.slice(-7).map((s) => s.value);
-  }
 
   const recentActivity = derived(customers, ($c) => {
     return [...$c]
@@ -44,11 +32,23 @@
     month: 'long',
     year: 'numeric'
   });
+
+  function statusColor(status: string) {
+    if (status === 'LOCKED') return '#DC2626';
+    if (status === 'WARNING') return '#F59E0B';
+    return '#10B981';
+  }
+  function statusBg(status: string) {
+    if (status === 'LOCKED') return 'rgba(220,38,38,0.12)';
+    if (status === 'WARNING') return 'rgba(245,158,11,0.12)';
+    return 'rgba(16,185,129,0.12)';
+  }
+  function initials(name: string) {
+    return (name || '?').split(' ').map(p => p[0]).join('').slice(0, 2);
+  }
 </script>
 
-<svelte:head>
-  <title>Overview · SecurePay Dealer Console</title>
-</svelte:head>
+<svelte:head><title>Overview · SecurePay Dealer Console</title></svelte:head>
 
 <div class="page">
   <TopBar searchPlaceholder="Search customers, IMEI, transactions…" />
@@ -56,100 +56,78 @@
   <PageHeader
     eyebrow="Today · {today}"
     title="Portfolio Overview"
-    subtitle="Real-time device financing health across your fleet. All four apps stay in sync through the shared status rule."
+    subtitle="Real-time device financing health across your fleet."
   >
-    <div slot="actions" class="flex items-center gap-2">
-      <button type="button" class="btn-outline">
-        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-        </svg>
-        Export CSV
-      </button>
-      <button type="button" class="btn-primary">
-        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-          <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-        </svg>
-        New loan
-      </button>
-    </div>
+    <svelte:fragment slot="actions">
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn-outline" on:click={() => openAddDevice()}>
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>
+          </svg>
+          Add device
+        </button>
+        <button type="button" class="btn-outline" on:click={() => openProvision()}>
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4"/>
+          </svg>
+          Provision
+        </button>
+        <button type="button" class="btn-primary" on:click={() => openNewLoan()}>
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+          New loan
+        </button>
+      </div>
+    </svelte:fragment>
   </PageHeader>
 
   {#if $portfolioMetrics}
     {@const m = $portfolioMetrics}
-    {@const spark = last7(m.collectionSeries)}
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <KpiCard
-        title="Active nodes"
-        value={$kpis.activeNodes.toString()}
-        sublabel="Devices in good standing"
-        delta={deltas.active.delta}
-        trend={deltas.active.trend}
-        accent="emerald"
-        progress={($kpis.activeNodes / Math.max(1, m.totalAccounts)) * 100}
-        spark={spark}
-        icon="M9 12l2 2 4-4M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-      />
-      <KpiCard
-        title="Approaching due"
-        value={$kpis.warningCount.toString()}
-        sublabel="Within 24 hours"
-        delta={deltas.warning.delta}
-        trend={deltas.warning.trend}
-        accent="amber"
-        progress={($kpis.warningCount / Math.max(1, m.totalAccounts)) * 100}
-        spark={spark.map((v, i) => v + (i % 2 === 0 ? -150 : 80))}
-        icon="M12 9v4M12 17h.01M12 2l10 18H2L12 2z"
-      />
-      <KpiCard
-        title="Locked / Overdue"
-        value={$kpis.lockedCount.toString()}
-        sublabel="Past due date"
-        delta={deltas.locked.delta}
-        trend={deltas.locked.trend}
-        accent="crimson"
-        progress={($kpis.lockedCount / Math.max(1, m.totalAccounts)) * 100}
-        spark={spark.map((v, i) => v * 0.4 + (i % 3) * 30)}
-        icon="M6 11V8a6 6 0 1112 0v3M5 11h14v10H5z"
-      />
-      <KpiCard
-        title="Total outstanding"
-        value={formatCurrency(m.totalOutstanding)}
-        sublabel="Across {m.totalAccounts} financed devices"
-        delta={deltas.outstanding.delta}
-        trend={deltas.outstanding.trend}
-        accent="sky"
-        progress={m.paidRatio}
-        spark={spark}
-        icon="M3 17l6-6 4 4 8-8"
-      />
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="card p-4">
+        <p class="text-xs font-medium text-ink-muted">Active devices</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{$kpis.activeNodes}</p>
+        <p class="mt-0.5 text-xs text-ink-muted">In good standing</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-ink-muted">Approaching due</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums text-amber">{$kpis.warningCount}</p>
+        <p class="mt-0.5 text-xs text-ink-muted">Within 24 hours</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-ink-muted">Locked / Overdue</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums text-crimson">{$kpis.lockedCount}</p>
+        <p class="mt-0.5 text-xs text-ink-muted">Past due date</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-ink-muted">Outstanding</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{formatCurrency(m.totalOutstanding)}</p>
+        <p class="mt-0.5 text-xs text-ink-muted">{m.totalAccounts} financed devices</p>
+      </div>
     </div>
 
-    <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div class="card relative overflow-hidden p-6">
-        <div
-          class="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-30"
-          style="background: radial-gradient(ellipse at 50% 0%, {m.health >= 70 ? 'rgba(16,185,129,0.4)' : m.health >= 50 ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)'}, transparent 70%);"
-        ></div>
-        <div class="relative">
-          <p class="section-title">Portfolio Health</p>
-          <p class="mt-1 text-sm text-ink-secondary">Weighted by status mix + paid ratio</p>
-          <div class="mt-4 flex justify-center">
-            <Gauge
-              percent={m.health}
-              label={m.health >= 70 ? 'Strong' : m.health >= 50 ? 'Watch' : 'At risk'}
-              color={m.health >= 70 ? '#10B981' : m.health >= 50 ? '#F59E0B' : '#EF4444'}
-              caption="0% = critical · 100% = optimal"
-            />
-          </div>
+    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div class="card p-5">
+        <p class="section-title">Portfolio Health</p>
+        <p class="mt-1 text-xs text-ink-muted">Weighted by status mix + paid ratio</p>
+        <div class="mt-4 flex justify-center">
+          <Gauge
+            percent={m.health}
+            label={m.health >= 70 ? 'Strong' : m.health >= 50 ? 'Watch' : 'At risk'}
+            color={m.health >= 70 ? '#10B981' : m.health >= 50 ? '#F59E0B' : '#DC2626'}
+            caption="0% = critical · 100% = optimal"
+          />
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="card p-5">
         <div class="flex items-center justify-between">
           <div>
             <p class="section-title">Status mix</p>
-            <p class="mt-1 text-sm text-ink-secondary">Live count by account state</p>
+            <p class="mt-1 text-xs text-ink-muted">Live count by state</p>
           </div>
           <span class="chip">{m.totalAccounts} total</span>
         </div>
@@ -158,7 +136,7 @@
             segments={[
               { label: 'Active', value: $kpis.activeNodes, color: '#10B981' },
               { label: 'Warning', value: $kpis.warningCount, color: '#F59E0B' },
-              { label: 'Locked', value: $kpis.lockedCount, color: '#EF4444' }
+              { label: 'Locked', value: $kpis.lockedCount, color: '#DC2626' }
             ]}
             size={180}
             stroke={20}
@@ -170,136 +148,105 @@
         </div>
       </div>
 
-      <div class="card p-6">
+      <div class="card p-5">
         <div class="flex items-center justify-between">
           <div>
             <p class="section-title">Daily collections</p>
-            <p class="mt-1 text-sm text-ink-secondary">Last 14 days · GHS</p>
+            <p class="mt-1 text-xs text-ink-muted">Last 14 days · GHS</p>
           </div>
           <span class="chip-emerald tabular-nums">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald"></span>
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald inline-block mr-1"></span>
             {formatCurrency(m.collectionSeries.slice(-7).reduce((s, x) => s + x.value, 0))} / 7d
           </span>
         </div>
         <div class="mt-4">
-          <AreaChart
-            values={m.collectionSeries}
-            color="#10B981"
-            height={180}
-          />
+          <AreaChart values={m.collectionSeries} color="#10B981" height={180} />
         </div>
       </div>
     </div>
 
-    <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div class="card p-6 lg:col-span-2">
+    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div class="card p-5 lg:col-span-2">
         <div class="flex items-center justify-between">
           <div>
-            <p class="section-title">Devices by model</p>
-            <p class="mt-1 text-sm text-ink-secondary">Distribution across your fleet</p>
+            <p class="section-title">Next due</p>
+            <p class="mt-1 text-xs text-ink-muted">Upcoming payments needing attention</p>
           </div>
-          <span class="chip">{m.deviceDistribution.length} models</span>
+          <a href="/customers" class="text-xs text-emerald hover:underline">View all</a>
         </div>
-        <div class="mt-4">
-          <BarChart
-            values={m.deviceDistribution.map((d) => ({
-              label: d.name.length > 10 ? d.name.split(' ')[0].slice(0, 8) : d.name,
-              value: d.value,
-              color: d.color
-            }))}
-            color="#38BDF8"
-            height={220}
-            yTicks={3}
-            xLabelRotation={-22}
-            formatY={(n) => n.toString()}
-          />
-        </div>
-        <div class="mt-4">
-          <StackedBar segments={m.deviceDistribution.map((d) => ({ value: d.value, color: d.color, label: d.name }))} />
-        </div>
-      </div>
-
-      <div class="card p-6">
-        <div class="flex items-center justify-between">
-          <p class="section-title">Next due</p>
-          <span class="chip-amber">{m.upcoming.length} queued</span>
-        </div>
-        <ul class="mt-4 flex flex-col gap-2">
+        <ul class="mt-4 divide-y divide-edge">
           {#each m.upcoming as u (u.id)}
-            <li class="flex items-center gap-3 rounded-lg border border-edge bg-surface-100/40 p-3">
-              <span
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xs font-semibold text-white"
-                style="background: {u.status === 'LOCKED' ? '#EF4444' : u.status === 'WARNING' ? '#F59E0B' : '#10B981'};"
-              >
-                {u.name.split(' ').map((p) => p[0]).join('').slice(0, 2)}
+            <li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white" style="background: {statusColor(u.status)};">
+                {initials(u.name)}
               </span>
-              <div class="flex-1 min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium text-ink-primary">{u.name}</p>
-                <p class="text-2xs text-ink-muted">{formatRelative(u.ms)} · {formatCurrency(u.amount)}</p>
+                <p class="truncate text-xs text-ink-muted">{formatRelative(u.ms)} · {formatCurrency(u.amount)}</p>
               </div>
               <StatusBadge status={u.status} size="sm" />
             </li>
           {/each}
         </ul>
       </div>
-    </div>
 
-    <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div class="card p-6">
-        <p class="section-title">Payment method mix</p>
-        <p class="mt-1 text-sm text-ink-secondary">Across all settled installments</p>
-        <div class="mt-4">
-          <Donut
-            segments={m.methodSeries.map((s) => ({ label: s.label, value: s.value, color: s.color }))}
-            size={170}
-            stroke={20}
-            gap={3}
-            centerTitle={formatCurrency(m.methodSeries.reduce((s, x) => s + x.value, 0))}
-            centerSubtitle="settled"
-            legendValues={false}
-            showLegend
-          />
+      <div class="card p-5">
+        <p class="section-title">Quick actions</p>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button class="rounded-lg border border-edge bg-surface-100 p-3 text-left hover:bg-hover transition" on:click={() => openNewLoan()}>
+            <svg class="mb-1.5 h-5 w-5 text-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            <p class="text-sm font-medium text-ink-primary">New loan</p>
+            <p class="text-[11px] text-ink-muted">Enroll customer</p>
+          </button>
+          <button class="rounded-lg border border-edge bg-surface-100 p-3 text-left hover:bg-hover transition" on:click={() => openProvision()}>
+            <svg class="mb-1.5 h-5 w-5 text-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4"/></svg>
+            <p class="text-sm font-medium text-ink-primary">Provision</p>
+            <p class="text-[11px] text-ink-muted">Generate QR</p>
+          </button>
+          <button class="rounded-lg border border-edge bg-surface-100 p-3 text-left hover:bg-hover transition" on:click={() => openAddDevice()}>
+            <svg class="mb-1.5 h-5 w-5 text-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+            <p class="text-sm font-medium text-ink-primary">Add device</p>
+            <p class="text-[11px] text-ink-muted">Add IMEI</p>
+          </button>
+          <a href="/ledger" class="rounded-lg border border-edge bg-surface-100 p-3 text-left hover:bg-hover transition">
+            <svg class="mb-1.5 h-5 w-5 text-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h6M9 11h6M9 15h4M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <p class="text-sm font-medium text-ink-primary">Record payment</p>
+            <p class="text-[11px] text-ink-muted">Open ledger</p>
+          </a>
         </div>
       </div>
+    </div>
 
-      <div class="card p-6 lg:col-span-2">
-        <p class="section-title">Recent activity</p>
-        <p class="mt-1 text-sm text-ink-secondary">Latest status changes across the portfolio</p>
-        <ul class="mt-4 flex flex-col">
-          {#each $recentActivity as a, i (a.id)}
-            <li class="flex items-start gap-4 {i < $recentActivity.length - 1 ? 'pb-4' : ''}">
-              <div class="flex flex-col items-center">
-                <span
-                  class="flex h-7 w-7 items-center justify-center rounded-full ring-4"
-                  style="background: {a.status === 'LOCKED' ? 'rgba(239,68,68,0.15)' : a.status === 'WARNING' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}; --tw-ring-color: var(--bg-base);"
-                >
-                  <span
-                    class="h-2 w-2 rounded-full"
-                    style="background: {a.status === 'LOCKED' ? '#EF4444' : a.status === 'WARNING' ? '#F59E0B' : '#10B981'};"
-                  ></span>
-                </span>
-                {#if i < $recentActivity.length - 1}
-                  <span class="mt-1 w-px flex-1 bg-edge"></span>
+    <div class="mt-5 card p-5">
+      <p class="section-title">Recent activity</p>
+      <p class="mt-1 text-xs text-ink-muted">Latest account status changes</p>
+      <ul class="mt-4 divide-y divide-edge">
+        {#each $recentActivity as a (a.id)}
+          <li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full" style="background: {statusBg(a.status)};">
+              <span class="h-2 w-2 rounded-full" style="background: {statusColor(a.status)};"></span>
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-ink-primary truncate">
+                <span class="font-medium">{a.name}</span>
+                {#if a.status === 'LOCKED'}
+                  <span class="text-ink-muted"> · missed payment · locked</span>
+                {:else if a.status === 'WARNING'}
+                  <span class="text-ink-muted"> · approaching due</span>
+                {:else}
+                  <span class="text-ink-muted"> · on track</span>
                 {/if}
-              </div>
-              <div class="flex-1 -mt-0.5">
-                <p class="text-sm text-ink-primary">
-                  <span class="font-medium">{a.name}</span>
-                  {#if a.status === 'LOCKED'}
-                    missed payment · locked
-                  {:else if a.status === 'WARNING'}
-                    approaching due
-                  {:else}
-                    is on track
-                  {/if}
-                </p>
-                <p class="text-2xs text-ink-muted">{formatCurrency(a.amount)} · {a.ms > 0 ? formatRelative(a.ms) : 'past due'}</p>
-              </div>
-              <StatusBadge status={a.status} size="sm" />
-            </li>
-          {/each}
-        </ul>
-      </div>
+              </p>
+              <p class="text-xs text-ink-muted">{formatCurrency(a.amount)} · {a.ms > 0 ? formatRelative(a.ms) : 'past due'}</p>
+            </div>
+            <StatusBadge status={a.status} size="sm" />
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {:else}
+    <div class="flex items-center justify-center py-16">
+      <div class="h-8 w-8 animate-spin rounded-full border-2 border-emerald border-t-transparent"></div>
     </div>
   {/if}
 </div>

@@ -69,7 +69,7 @@ fun SecurePayBottomNavBar(
             NavigationBar(
                 containerColor = Color.Transparent,
                 tonalElevation = 0.dp,
-                modifier = Modifier.height(76.dp)
+                modifier = Modifier.height(64.dp)
             ) {
                 items.forEachIndexed { index, item ->
                     val selected = index == selectedTab
@@ -80,7 +80,7 @@ fun SecurePayBottomNavBar(
                             Box(
                                 modifier = if (selected) {
                                     Modifier.background(indicatorColor, RoundedCornerShape(14.dp))
-                                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                                        .padding(horizontal = 16.dp, vertical = 9.dp)
                                 } else {
                                     Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                 },
@@ -89,13 +89,13 @@ fun SecurePayBottomNavBar(
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = item.label,
-                                    modifier = Modifier.size(22.dp),
+                                    modifier = Modifier.size(24.dp),
                                     tint = if (selected) selectedIconColor else unselectedIconColor
                                 )
                             }
                         },
-                        label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
-                        alwaysShowLabel = true,
+                        label = { },
+                        alwaysShowLabel = false,
                         colors = NavigationBarItemDefaults.colors(
                             indicatorColor = Color.Transparent,
                             selectedTextColor = selectedIconColor,

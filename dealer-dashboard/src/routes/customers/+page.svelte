@@ -3,10 +3,10 @@
   import CustomerDrawer from '$lib/components/CustomerDrawer.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import TopBar from '$lib/components/layout/TopBar.svelte';
-  import KpiCard from '$lib/components/ui/KpiCard.svelte';
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics, kpis } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
+  import { openNewLoan, openProvision } from '$lib/stores/ui';
   import type { Status } from '$lib/types';
 
   let statusFilter: Status | 'ALL' = 'ALL';
@@ -50,46 +50,43 @@
     subtitle="Manage payment timers and remote device locks for every financed account."
   >
     <div slot="actions" class="flex items-center gap-2">
-      <button type="button" class="btn-outline">
+      <button type="button" class="btn-outline" on:click={() => openProvision()}>
         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4" stroke-linecap="round"/>
+        </svg>
+        Provision
+      </button>
+      <button type="button" class="btn-primary" on:click={() => openNewLoan()}>
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
           <path d="M12 5v14M5 12h14" stroke-linecap="round" />
         </svg>
-        Import CSV
+        New loan
       </button>
-      <button type="button" class="btn-primary">+ New loan</button>
     </div>
   </PageHeader>
 
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <KpiCard
-      title="Total accounts"
-      value={$customers.length.toString()}
-      sublabel="Across all statuses"
-      accent="sky"
-      progress={100}
-      icon="M16 14a4 4 0 10-8 0M12 7a3 3 0 100 6 3 3 0 000-6z"
-    />
-    <KpiCard
-      title="Active"
-      value={$kpis.activeNodes.toString()}
-      sublabel="In good standing"
-      accent="emerald"
-      progress={($kpis.activeNodes / Math.max(1, $customers.length)) * 100}
-    />
-    <KpiCard
-      title="Outstanding"
-      value={formatCurrency($portfolioMetrics.totalOutstanding)}
-      sublabel="Loan balance to collect"
-      accent="amber"
-      progress={$portfolioMetrics.paidRatio}
-    />
-    <KpiCard
-      title="Paid ratio"
-      value={`${Math.round($portfolioMetrics.paidRatio)}%`}
-      sublabel="Of total loaned out"
-      accent="violet"
-      progress={$portfolioMetrics.paidRatio}
-    />
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted font-medium">Total accounts</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{$customers.length}</p>
+      <p class="mt-0.5 text-xs text-ink-muted">Across all statuses</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted font-medium">Active</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald">{$kpis.activeNodes}</p>
+      <p class="mt-0.5 text-xs text-ink-muted">In good standing</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted font-medium">Outstanding</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{formatCurrency($portfolioMetrics.totalOutstanding)}</p>
+      <p class="mt-0.5 text-xs text-ink-muted">Balance to collect</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted font-medium">Paid ratio</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald">{Math.round($portfolioMetrics.paidRatio)}%</p>
+      <p class="mt-0.5 text-xs text-ink-muted">Of total loaned out</p>
+    </div>
   </div>
 
   <div class="card mt-6 flex flex-wrap items-center gap-3 p-4">

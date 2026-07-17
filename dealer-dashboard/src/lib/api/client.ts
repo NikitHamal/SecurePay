@@ -315,3 +315,47 @@ export async function clearDeviceLogs(): Promise<{ success: boolean }> {
   return request<{ success: boolean }>('/device/logs', { method: 'DELETE' });
 }
 
+export interface QrProvisionResult {
+  token: string;
+  activationCode: string;
+  qrPayload: string;
+  qrPayloadVersion: number;
+  expiresAt: number;
+  apk: { versionName: string; versionCode: number; updatedAt: number };
+  securityPolicy: { frpEnabled: boolean; frpAccountCount: number; version: number };
+  account: { id: string; customerName: string };
+  device: { imei: string; model: string };
+}
+
+export async function generateQr(data: {
+  imei: string;
+  wifiSsid?: string;
+  wifiPassword?: string;
+}): Promise<QrProvisionResult> {
+  return request<QrProvisionResult>('/provisioning/qr', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export interface ProvisionToken {
+  id: string;
+  activationCode: string;
+  status: string;
+  wifiSsid: string | null;
+  createdAt: number;
+  expiresAt: number;
+  provisionedAt: number | null;
+  activatedAt: number | null;
+  accountId: string;
+  deviceId: string;
+  imei: string;
+  deviceModel: string;
+  customerName: string;
+  qrPayload?: string;
+}
+
+export async function getProvisionToken(tokenId: string): Promise<ProvisionToken> {
+  return request<ProvisionToken>(`/provisioning/qr/${encodeURIComponent(tokenId)}`);
+}
+

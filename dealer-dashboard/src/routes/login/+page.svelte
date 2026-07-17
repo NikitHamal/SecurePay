@@ -13,61 +13,47 @@
   }
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-charcoal px-4">
-  <div class="w-full max-w-md">
-    <div class="mb-8 text-center">
-      <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20">
-        <svg class="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+<svelte:head><title>Sign in · SecurePay</title></svelte:head>
+
+<div class="flex min-h-screen items-center justify-center px-4 py-10" style="background-color: var(--bg-base);">
+  <div class="w-full max-w-sm">
+    <div class="mb-6 flex flex-col items-center">
+      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl" style="background-color: var(--brand);">
+        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/>
         </svg>
       </div>
-      <h1 class="text-2xl font-bold text-white">SecurePay</h1>
-      <p class="mt-1 text-sm text-ink-secondary">Dealer Dashboard</p>
+      <h1 class="text-xl font-semibold text-ink-primary">SecurePay</h1>
+      <p class="mt-0.5 text-sm text-ink-muted">Dealer Console</p>
     </div>
 
     <form on:submit={handleSubmit} class="card space-y-4 p-6">
       {#if $authError}
-        <div class="rounded-lg border border-crimson-200/30 bg-crimson-200/10 px-3 py-2 text-sm text-crimson">
+        <div class="rounded-lg border border-crimson/20 bg-crimson/10 px-3 py-2 text-sm text-crimson">
           {$authError}
         </div>
       {/if}
 
       <div>
-        <label for="email" class="mb-1 block text-sm font-medium text-ink-secondary">Email</label>
-        <input
-          id="email"
-          type="email"
-          bind:value={email}
-          placeholder="you@securepay.io"
-          required
-          class="input w-full"
-        />
+        <label for="email" class="label">Email</label>
+        <input id="email" type="email" bind:value={email} placeholder="you@securepay.io" required class="input w-full" />
       </div>
 
       <div>
-        <label for="password" class="mb-1 block text-sm font-medium text-ink-secondary">Password</label>
-        <input
-          id="password"
-          type="password"
-          bind:value={password}
-          placeholder="••••••••"
-          required
-          class="input w-full"
-        />
+        <label for="password" class="label">Password</label>
+        <input id="password" type="password" bind:value={password} placeholder="••••••••" required class="input w-full" />
       </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        class="btn-primary w-full"
-      >
-        {submitting ? 'Signing in...' : 'Sign in'}
+      <button type="submit" disabled={submitting} class="btn-primary w-full">
+        {#if submitting}
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+          Signing in…
+        {:else}Sign in{/if}
       </button>
 
       <div class="text-center">
-        <a href="/register" class="text-sm text-emerald hover:underline">
-          Become an agent? Register here
-        </a>
+        <a href="/register" class="text-sm text-emerald hover:underline">Become an agent? Register here</a>
       </div>
     </form>
   </div>

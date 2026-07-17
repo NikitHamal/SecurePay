@@ -8,6 +8,7 @@
   import { fade } from 'svelte/transition';
   import { onDestroy } from 'svelte';
   import { getAccountLocations } from '$lib/api/client';
+  import { openProvision } from '$lib/stores/ui';
 
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
@@ -183,15 +184,15 @@
       <header class="flex items-start justify-between gap-3 border-b border-edge px-6 py-5">
         <div class="flex items-center gap-3 min-w-0">
           {#if customer.customerPhotoPath}
-            <img 
-              src="/api/accounts/{customer.id}/photos/photo" 
-              alt={customer.customerName} 
-              class="h-12 w-12 shrink-0 rounded-xl object-cover border border-edge"
+            <img
+              src="/api/accounts/{customer.id}/photos/photo"
+              alt={customer.customerName}
+              class="h-12 w-12 shrink-0 rounded-lg object-cover border border-edge"
             />
           {:else}
             <span
-              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white"
-              style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white"
+              style="background-color: var(--brand);"
             >
               {customer.customerName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
             </span>
@@ -486,6 +487,18 @@
       <footer class="flex flex-wrap items-center gap-2 border-t border-edge bg-surface-200/80 px-6 py-4 backdrop-blur">
         <button
           type="button"
+          class="btn-primary flex-1"
+          disabled={isPending || editing}
+          on:click={() => { openProvision(customer.imei); onClose(); }}
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4"/>
+          </svg>
+          Provision device
+        </button>
+        <button
+          type="button"
           class="btn-emerald flex-1"
           disabled={isPending || editing}
           on:click={extend}
@@ -493,7 +506,7 @@
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 8v8M8 12h8" stroke-linecap="round" />
           </svg>
-          Extend timer +24h
+          Extend +24h
         </button>
         <button
           type="button"

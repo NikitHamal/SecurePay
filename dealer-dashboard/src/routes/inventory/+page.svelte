@@ -3,11 +3,11 @@
   import TopBar from '$lib/components/layout/TopBar.svelte';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import Donut from '$lib/components/charts/Donut.svelte';
-  import BarChart from '$lib/components/charts/BarChart.svelte';
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
   import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy } from '$lib/api/client';
+  import { openAddDevice, openProvision } from '$lib/stores/ui';
   import { onMount } from 'svelte';
 
   interface DeviceRow {
@@ -18,7 +18,7 @@
     createdAt: number;
   }
 
-  let view: 'cards' | 'table' = 'cards';
+  let view: 'cards' | 'table' = 'table';
   let devices: DeviceRow[] = [];
   let devicesLoading = false;
   let inventoryError: string | null = null;
@@ -28,56 +28,52 @@
   let isSavingSecurity = false;
 
   $: m = $portfolioMetrics;
-  $: inStockCount = devices.filter((device) => device.status === 'in_stock').length;
+  $: inStockCount = devices.filter(d => d.status === 'in_stock').length;
 
-  function avatarHue(id: string): number {
-    const digits = id.replace(/\D/g, '');
-    const seed = Number.parseInt(digits || '19', 10);
-    return (seed * 37) % 360;
+  function initials(name: string) {
+    return (name || '?').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+  }
+  function progressColor(ratio: number) {
+    if (ratio > 80) return '#10B981';
+    if (ratio > 50) return '#F59E0B';
+    return '#DC2626';
   }
 
-  onMount(async () => {
-    await Promise.all([loadSecurityPolicy(), loadDevices()]);
-  });
+  onMount(() => { Promise.all([loadSecurityPolicy(), loadDevices()]); });
 
   async function loadSecurityPolicy() {
     try {
       const policy = await getSecurityPolicy();
-      frpAccountIdsText = policy.frpAccountIds.join(String.fromCharCode(10));
+      frpAccountIdsText = policy.frpAccountIds.join('\n');
       securityStatus = policy.frpEnabled
-        ? `EFRP enabled with ${policy.frpAccountIds.length} admin account ID(s).`
-        : 'EFRP is not configured yet. Add Google admin numeric user IDs before production provisioning.';
-    } catch (error) {
-      securityError = error instanceof Error ? error.message : 'Failed to load security policy';
+        ? `EFRP enabled with ${policy.frpAccountIds.length} admin ID(s).`
+        : 'EFRP not configured. Add Google admin numeric IDs before production provisioning.';
+    } catch (e) {
+      securityError = e instanceof Error ? e.message : 'Failed to load security policy';
     }
   }
 
   async function loadDevices() {
     devicesLoading = true;
     inventoryError = null;
-    try {
-      devices = await listDevices();
-    } catch (error) {
-      inventoryError = error instanceof Error ? error.message : 'Failed to load inventory';
-    } finally {
-      devicesLoading = false;
-    }
+    try { devices = await listDevices(); }
+    catch (e) { inventoryError = e instanceof Error ? e.message : 'Failed to load inventory'; }
+    finally { devicesLoading = false; }
   }
 
   async function removeDevice(device: DeviceRow) {
     if (device.status !== 'in_stock') {
-      inventoryError = 'Delete the linked customer account first. Sold devices are protected from direct inventory deletion.';
+      inventoryError = 'Delete the linked customer account first. Sold devices cannot be removed directly.';
       return;
     }
-    const ok = window.confirm(`Delete inventory device ${device.imei}? This cannot be undone.`);
-    if (!ok) return;
+    if (!confirm(`Delete ${device.imei}? This cannot be undone.`)) return;
     devicesLoading = true;
     inventoryError = null;
     try {
       await deleteDevice(device.id);
-      devices = devices.filter((row) => row.id !== device.id);
-    } catch (error) {
-      inventoryError = error instanceof Error ? error.message : 'Failed to delete device';
+      devices = devices.filter(r => r.id !== device.id);
+    } catch (e) {
+      inventoryError = e instanceof Error ? e.message : 'Failed to delete device';
     } finally {
       devicesLoading = false;
     }
@@ -87,133 +83,110 @@
     isSavingSecurity = true;
     securityError = null;
     try {
-      const ids = frpAccountIdsText.split(/[\s,]+/).map((id) => id.trim()).filter(Boolean);
+      const ids = frpAccountIdsText.split(/[\s,]+/).map(id => id.trim()).filter(Boolean);
       const policy = await updateSecurityPolicy(ids);
-      frpAccountIdsText = policy.frpAccountIds.join(String.fromCharCode(10));
+      frpAccountIdsText = policy.frpAccountIds.join('\n');
       securityStatus = policy.frpEnabled
-        ? `EFRP enabled with ${policy.frpAccountIds.length} admin account ID(s). Generate fresh QRs after this change.`
-        : 'EFRP is not configured. Factory-reset recovery protection will not be added to new QRs.';
-    } catch (error) {
-      securityError = error instanceof Error ? error.message : 'Failed to save security policy';
-    } finally {
-      isSavingSecurity = false;
-    }
+        ? `EFRP enabled with ${policy.frpAccountIds.length} admin ID(s). Generate fresh QRs after this change.`
+        : 'EFRP is not configured.';
+    } catch (e) {
+      securityError = e instanceof Error ? e.message : 'Failed to save security policy';
+    } finally { isSavingSecurity = false; }
   }
 </script>
 
-<svelte:head>
-  <title>Inventory · SecurePay Dealer Console</title>
-</svelte:head>
+<svelte:head><title>Inventory · SecurePay</title></svelte:head>
 
 <div class="page">
   <TopBar searchPlaceholder="Search IMEI, model, customer…" />
 
   <PageHeader
     eyebrow="Hardware"
-    title="IMEI Matrix"
-    subtitle="Hardware inventory mapped to financed accounts and lock status."
+    title="Inventory"
+    subtitle="Manage IMEIs, stock, and Device Owner provisioning."
   >
-    <div slot="actions" class="flex items-center gap-1 rounded-lg border border-edge bg-surface-100 p-1">
-      <button
-        type="button"
-        on:click={() => (view = 'cards')}
-        class="rounded-md px-3 py-1 text-xs font-medium transition-colors
-               {view === 'cards' ? 'bg-emerald-300/15 text-emerald' : 'text-ink-secondary hover:text-ink-primary'}"
-      >
-        Cards
-      </button>
-      <button
-        type="button"
-        on:click={() => (view = 'table')}
-        class="rounded-md px-3 py-1 text-xs font-medium transition-colors
-               {view === 'table' ? 'bg-emerald-300/15 text-emerald' : 'text-ink-secondary hover:text-ink-primary'}"
-      >
-        Table
-      </button>
-    </div>
+    <svelte:fragment slot="actions">
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 rounded-lg border border-edge bg-surface-100 p-1">
+          <button on:click={() => view = 'table'} class="rounded-md px-3 py-1 text-xs font-medium transition {view === 'table' ? 'bg-surface-200 text-ink-primary shadow-sm' : 'text-ink-secondary'}">Table</button>
+          <button on:click={() => view = 'cards'} class="rounded-md px-3 py-1 text-xs font-medium transition {view === 'cards' ? 'bg-surface-200 text-ink-primary shadow-sm' : 'text-ink-secondary'}">Cards</button>
+        </div>
+        <button class="btn-outline" on:click={() => openProvision()}>
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4"/></svg>
+          Provision
+        </button>
+        <button class="btn-primary" on:click={() => openAddDevice()}>
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+          Add device
+        </button>
+      </div>
+    </svelte:fragment>
   </PageHeader>
 
-  <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-    <div class="card p-6 lg:col-span-3">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div class="max-w-2xl">
-          <p class="section-title">Production security policy</p>
-          <p class="mt-1 text-sm text-ink-secondary">
-            EFRP IDs are embedded into new Device Owner QRs and applied on the customer phone. Use numeric Google user IDs, not email addresses.
-          </p>
-          <p class="mt-2 text-xs {securityStatus.startsWith('EFRP enabled') ? 'text-emerald' : 'text-amber'}">{securityStatus}</p>
-          {#if securityError}
-            <p class="mt-2 text-xs text-crimson">{securityError}</p>
-          {/if}
-        </div>
-        <div class="w-full lg:max-w-xl">
-          <textarea
-            bind:value={frpAccountIdsText}
-            rows="3"
-            class="w-full rounded-xl border border-edge bg-surface-100 px-3 py-2 font-mono text-xs text-ink-primary outline-none transition focus:border-emerald"
-            placeholder="One Google numeric user ID per line"
-          ></textarea>
-          <div class="mt-2 flex justify-end">
-            <button type="button" class="btn-primary" on:click={saveSecurityPolicy} disabled={isSavingSecurity}>
-              {isSavingSecurity ? 'Saving...' : 'Save EFRP policy'}
-            </button>
-          </div>
-        </div>
-      </div>
+  <!-- Stock summary -->
+  <div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted">Total IMEIs</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{devices.length}</p>
     </div>
-
-    <div class="card p-6">
-      <p class="section-title">Model mix</p>
-      <p class="mt-1 text-sm text-ink-secondary">{m.deviceDistribution.length} models deployed</p>
-      <div class="mt-4">
-        <Donut
-          segments={m.deviceDistribution.map((d) => ({ label: d.name, value: d.value, color: d.color }))}
-          size={170}
-          stroke={20}
-          gap={3}
-          centerTitle={$customers.length.toString()}
-          centerSubtitle="devices"
-          legendValues={false}
-          showLegend
-        />
-      </div>
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted">In stock</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald">{inStockCount}</p>
     </div>
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted">Assigned</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{devices.length - inStockCount}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-ink-muted">Active loans</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{$customers.length}</p>
+    </div>
+  </div>
 
-    <div class="card p-6 lg:col-span-2">
-      <p class="section-title">Devices per model</p>
-      <p class="mt-1 text-sm text-ink-secondary">Distribution across the fleet</p>
-      <div class="mt-4">
-        <BarChart
-          values={m.deviceDistribution.map((d) => ({
-            label: d.name.length > 10 ? d.name.split(' ')[0].slice(0, 8) : d.name,
-            value: d.value,
-            color: d.color
-          }))}
-          color="#38BDF8"
-          height={220}
-          xLabelRotation={-22}
-        />
+  <!-- Security policy -->
+  <div class="card mb-5 p-5">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="max-w-xl">
+        <p class="section-title">Production security policy</p>
+        <p class="mt-1 text-sm text-ink-secondary">
+          EFRP Google admin numeric IDs are embedded in Device Owner QRs. Use numeric IDs only (not emails).
+        </p>
+        <p class="mt-2 text-xs {securityStatus.startsWith('EFRP enabled') ? 'text-emerald' : 'text-amber'}">{securityStatus}</p>
+        {#if securityError}<p class="mt-1 text-xs text-crimson">{securityError}</p>{/if}
+      </div>
+      <div class="w-full lg:max-w-md">
+        <textarea
+          bind:value={frpAccountIdsText} rows="3"
+          class="input font-mono text-xs"
+          placeholder="One Google numeric user ID per line"
+        ></textarea>
+        <div class="mt-2 flex justify-end">
+          <button class="btn-primary" on:click={saveSecurityPolicy} disabled={isSavingSecurity}>
+            {isSavingSecurity ? 'Saving…' : 'Save policy'}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="card mt-6 overflow-hidden">
-    <div class="flex flex-col gap-3 border-b border-edge px-5 py-4 md:flex-row md:items-center md:justify-between">
+  <!-- Inventory table/cards -->
+  {#if inventoryError}
+    <div class="mb-4 rounded-lg border border-crimson/20 bg-crimson/10 px-4 py-3 text-sm text-crimson">{inventoryError}</div>
+  {/if}
+
+  <div class="card overflow-hidden">
+    <div class="flex items-center justify-between border-b border-edge px-5 py-3">
       <div>
-        <p class="section-title">Inventory records</p>
-        <p class="mt-1 text-sm text-ink-secondary">{devices.length} total · {inStockCount} in stock. Delete sold devices by deleting their customer account first.</p>
+        <p class="text-sm font-semibold text-ink-primary">IMEI inventory</p>
+        <p class="text-xs text-ink-muted">{devices.length} records · {inStockCount} in stock</p>
       </div>
-      <button type="button" class="btn-outline" on:click={loadDevices} disabled={devicesLoading}>
+      <button class="btn-outline !py-1.5 text-xs" on:click={loadDevices} disabled={devicesLoading}>
         {devicesLoading ? 'Refreshing…' : 'Refresh'}
       </button>
     </div>
-    {#if inventoryError}
-      <div class="mx-5 mt-4 rounded-lg border border-crimson-200/30 bg-crimson-200/10 px-3 py-2 text-sm text-crimson">
-        {inventoryError}
-      </div>
-    {/if}
+
     <div class="overflow-x-auto">
-      <table class="data-table min-w-[760px]">
+      <table class="data-table min-w-[720px]">
         <thead>
           <tr>
             <th>IMEI</th>
@@ -225,26 +198,29 @@
         </thead>
         <tbody>
           {#if devicesLoading && devices.length === 0}
-            <tr><td colspan="5" class="py-10 text-center text-ink-muted">Loading inventory…</td></tr>
+            <tr><td colspan="5" class="py-10 text-center text-ink-muted">Loading…</td></tr>
           {:else if devices.length === 0}
-            <tr><td colspan="5" class="py-10 text-center text-ink-muted">No inventory devices yet.</td></tr>
+            <tr><td colspan="5" class="py-12 text-center">
+              <p class="text-sm text-ink-primary">No devices yet</p>
+              <p class="mt-1 text-xs text-ink-muted">Add IMEIs to your inventory to begin selling.</p>
+              <button class="btn-primary mt-3" on:click={() => openAddDevice()}>+ Add device</button>
+            </td></tr>
           {:else}
             {#each devices as device (device.id)}
-              <tr class="transition-colors hover:bg-hover">
-                <td class="font-mono text-2xs text-ink-secondary">{device.imei}</td>
-                <td class="text-ink-primary">{device.model}</td>
+              <tr class="hover:bg-hover transition-colors">
+                <td class="font-mono text-xs text-ink-secondary">{device.imei}</td>
+                <td class="text-sm text-ink-primary">{device.model}</td>
                 <td><span class={device.status === 'in_stock' ? 'chip-emerald' : 'chip-amber'}>{device.status.replace('_', ' ')}</span></td>
-                <td class="text-2xs text-ink-muted">{new Date(device.createdAt).toLocaleDateString()}</td>
+                <td class="text-xs text-ink-muted">{new Date(device.createdAt).toLocaleDateString()}</td>
                 <td class="text-right">
-                  <button
-                    type="button"
-                    class="btn-outline text-crimson hover:bg-crimson/10"
-                    disabled={devicesLoading || device.status !== 'in_stock'}
-                    title={device.status === 'in_stock' ? 'Delete inventory device' : 'Delete the linked customer account first'}
-                    on:click={() => removeDevice(device)}
-                  >
-                    Delete
-                  </button>
+                  <div class="flex justify-end gap-2">
+                    {#if device.status === 'in_stock'}
+                      <button class="btn-emerald !py-1 !px-2.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
+                      <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={devicesLoading} on:click={() => removeDevice(device)}>Delete</button>
+                    {:else}
+                      <span class="text-xs text-ink-muted">Assigned</span>
+                    {/if}
+                  </div>
                 </td>
               </tr>
             {/each}
@@ -255,93 +231,45 @@
   </div>
 
   {#if view === 'cards'}
-    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {#each $customers as customer (customer.id)}
         {@const ratio = customer.totalLoanAmount > 0 ? (customer.amountPaid / customer.totalLoanAmount) * 100 : 0}
         <article class="card card-hover p-4">
           <header class="flex items-start justify-between gap-2">
             <div class="flex items-center gap-3 min-w-0">
-              <span
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-semibold text-white"
-                style="background: linear-gradient(135deg, hsl({avatarHue(customer.id)}, 70%, 60%), hsl({(avatarHue(customer.id) + 40) % 360}, 70%, 50%));"
-              >
-                {customer.deviceModel.split(' ').map((p) => p[0]).join('').slice(0, 2)}
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white" style="background-color: var(--brand);">
+                {initials(customer.customerName)}
               </span>
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-ink-primary">{customer.deviceModel}</p>
-                <p class="truncate text-2xs text-ink-muted">{customer.customerName}</p>
+                <p class="truncate text-sm font-semibold text-ink-primary">{customer.customerName}</p>
+                <p class="truncate text-xs text-ink-muted">{customer.deviceModel}</p>
               </div>
             </div>
             <StatusBadge status={customer.status} size="sm" />
           </header>
 
-          <dl class="mt-3 grid grid-cols-2 gap-2 text-2xs">
-            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
-              <dt class="text-ink-muted">IMEI</dt>
+          <dl class="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div class="rounded-md bg-surface-100 px-2 py-1.5">
+              <dt class="text-ink-muted text-[11px]">IMEI</dt>
               <dd class="font-mono text-ink-secondary truncate">{customer.imei}</dd>
             </div>
-            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
-              <dt class="text-ink-muted">Plan</dt>
-              <dd class="text-ink-secondary truncate">{customer.planName}</dd>
-            </div>
-            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
-              <dt class="text-ink-muted">Outstanding</dt>
+            <div class="rounded-md bg-surface-100 px-2 py-1.5">
+              <dt class="text-ink-muted text-[11px]">Outstanding</dt>
               <dd class="font-medium text-ink-primary tabular-nums">{formatCurrency(customer.remainingBalance)}</dd>
-            </div>
-            <div class="rounded-md bg-surface-100/40 px-2 py-1.5">
-              <dt class="text-ink-muted">Daily rate</dt>
-              <dd class="font-medium text-ink-primary tabular-nums">{formatCurrency(customer.dailyRate)}</dd>
             </div>
           </dl>
 
           <div class="mt-3">
-            <div class="mb-1 flex items-baseline justify-between text-2xs text-ink-secondary">
-              <span>Loan progress</span>
+            <div class="mb-1 flex items-baseline justify-between text-xs text-ink-secondary">
+              <span>Paid</span>
               <span class="tabular-nums text-ink-primary">{ratio.toFixed(0)}%</span>
             </div>
             <div class="h-1.5 w-full overflow-hidden rounded-full" style="background: var(--progress-track);">
-              <div
-                class="h-full rounded-full"
-                style="width: {Math.min(100, ratio)}%; background: linear-gradient(90deg, {ratio > 80 ? '#10B981' : ratio > 50 ? '#F59E0B' : '#EF4444'}, {ratio > 80 ? '#34D399' : ratio > 50 ? '#FBBF24' : '#F87171'});"
-              ></div>
+              <div class="h-full rounded-full transition-all" style="width: {Math.min(100, ratio)}%; background: {progressColor(ratio)};"></div>
             </div>
           </div>
         </article>
       {/each}
-    </div>
-  {:else}
-    <div class="card mt-6 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="data-table min-w-[760px]">
-          <thead>
-            <tr>
-              <th class="px-4 py-3 font-semibold">IMEI</th>
-              <th class="px-4 py-3 font-semibold">Device Model</th>
-              <th class="px-4 py-3 font-semibold">Assigned Customer</th>
-              <th class="px-4 py-3 text-right font-semibold">Outstanding</th>
-              <th class="px-4 py-3 font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each $customers as customer (customer.id)}
-              <tr class="border-b border-edge/60 last:border-b-0 transition-colors hover:bg-hover">
-                <td class="px-4 py-3 font-mono text-2xs text-ink-secondary">{customer.imei}</td>
-                <td class="px-4 py-3 text-ink-primary">{customer.deviceModel}</td>
-                <td class="px-4 py-3">
-                  <div class="text-ink-primary">{customer.customerName}</div>
-                  <div class="text-2xs text-ink-muted">{customer.id}</div>
-                </td>
-                <td class="px-4 py-3 text-right font-medium text-ink-primary tabular-nums">
-                  {formatCurrency(customer.remainingBalance)}
-                </td>
-                <td class="px-4 py-3">
-                  <StatusBadge status={customer.status} size="sm" />
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
     </div>
   {/if}
 </div>
