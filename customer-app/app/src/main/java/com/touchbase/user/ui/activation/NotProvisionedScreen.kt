@@ -79,7 +79,7 @@ fun NotProvisionedScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "TB User can only enforce factory-reset, uninstall, FRP, and lock policies after true Device Owner QR provisioning.",
+                        text = "Touch Base can only enforce factory-reset, uninstall, FRP, and lock policies after true Device Owner QR provisioning.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TextSecondary,
                         textAlign = TextAlign.Center

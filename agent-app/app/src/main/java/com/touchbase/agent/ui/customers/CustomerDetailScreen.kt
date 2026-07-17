@@ -664,8 +664,8 @@ fun CustomerDetailScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 enabled = !actionInProgress && !isEditing && acc.remainingBalance > 0,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF10B981),
-                    contentColor = Color(0xFF07130F)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(360.dp)
             ) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.OverscrollConfiguration
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -175,16 +176,15 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_logo),
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(id = R.drawable.touchbase_logo),
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = Color(0xFF10B981),
+                            modifier = Modifier.size(36.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "TB Agent",
+                                text = "Touch Base",
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -366,7 +366,7 @@ fun OutstandingSection(
             Box(
                 modifier = Modifier
                     .background(
-                        color = Color(0xFFFDA4AF).copy(alpha = 0.1f),
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
                         shape = RoundedCornerShape(8.dp)
                     )
             ) {
@@ -374,7 +374,7 @@ fun OutstandingSection(
                     text = "High Risk",
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFFDA4AF),
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1095,165 +1095,148 @@ fun CollectionOverviewCard(
     onNewRecord: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
     val currencyValue = collectedAmount / 100.0
     val formattedAmount = String.format(Locale.US, "%,.2f", currencyValue)
-
-    val cardBg = if (isDark) {
-        Brush.horizontalGradient(colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)))
-    } else {
-        Brush.horizontalGradient(colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.primaryContainer))
-    }
+    val cardBg = MaterialTheme.colorScheme.surface
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .background(cardBg)
-                .padding(20.dp)
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_ledger),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-
-                        val growthBg = if (isGrowthPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                        val growthText = if (isGrowthPositive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onError
-                        val growthArrow = if (isGrowthPositive) "↗" else "↘"
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(growthBg)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = growthArrow,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = growthText,
-                                    softWrap = false
-                                )
-                                Text(
-                                    text = growthRateText,
-                                    color = growthText,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    softWrap = false
-                                )
-                            }
-                        }
-                    }
-
                 Row(
-                    verticalAlignment = Alignment.Bottom
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "GH₵",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
-                        ),
-                        color = MaterialTheme.colorScheme.primary
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_ledger),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = formattedAmount,
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 36.sp
-                        ),
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = onSyncData,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onBackground
-                        ),
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            ButtonText(
-                                text = "Sync",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-                    }
+                val growthBg = if (isGrowthPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                val growthText = if (isGrowthPositive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onError
+                val growthArrow = if (isGrowthPositive) "↗" else "↘"
 
-                    Button(
-                        onClick = onNewRecord,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .height(48.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(growthBg)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.AddCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            ButtonText(
-                                text = "Record",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
+                        Text(
+                            text = growthArrow,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = growthText,
+                            softWrap = false
+                        )
+                        Text(
+                            text = growthRateText,
+                            color = growthText,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            softWrap = false
+                        )
+                    }
+                }
+            }
+
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = "GH₵",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = formattedAmount,
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 36.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onSyncData,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onBackground
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        ButtonText(
+                            text = "Sync",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = onNewRecord,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.weight(1.2f).height(48.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.AddCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        ButtonText(
+                            text = "Record",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                        )
                     }
                 }
             }

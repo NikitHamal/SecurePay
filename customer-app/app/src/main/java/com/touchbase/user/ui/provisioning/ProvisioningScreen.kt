@@ -110,7 +110,7 @@ fun ProvisioningScreen(
             )
 
             Text(
-                text = "TB User Device Setup",
+                text = "Touch Base Device Setup",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,

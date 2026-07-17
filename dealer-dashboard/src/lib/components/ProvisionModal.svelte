@@ -166,7 +166,7 @@
     <div class="grid grid-cols-1 gap-5 md:grid-cols-5">
       <!-- QR -->
       <div class="md:col-span-2">
-        <div class="rounded-xl border border-edge bg-white p-4 text-center">
+        <div class="rounded-xl border border-edge bg-surface-elevated p-4 text-center">
           {#if qrImgUrl}
             <img src={qrImgUrl} alt="Provisioning QR" class="mx-auto h-56 w-56" />
           {:else}
@@ -233,7 +233,7 @@
       <button class="btn-outline" on:click={close} disabled={submitting}>Cancel</button>
       <button class="btn-primary" on:click={submit} disabled={submitting}>
         {#if submitting}
-          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--avatar-text)] border-t-transparent"></span>
           Generating…
         {:else}Generate QR{/if}
       </button>

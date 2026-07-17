@@ -233,7 +233,7 @@
     {#if step === 'form'}
       <button class="btn-outline" on:click={close} disabled={loading}>Cancel</button>
       <button class="btn-primary" on:click={initialize} disabled={loading || !amountValid}>
-        {#if loading}<span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>{/if}
+        {#if loading}<span class="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--avatar-text)] border-t-transparent"></span>{/if}
         Request payment
       </button>
     {:else if step === 'otp'}

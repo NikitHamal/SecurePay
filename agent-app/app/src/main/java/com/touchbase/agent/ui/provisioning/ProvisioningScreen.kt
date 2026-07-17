@@ -143,7 +143,7 @@ private fun QrFormSection(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                "This installs TB User on the customer's phone as a Device Owner and binds it to their account. Saved Wi-Fi is stored encrypted on this agent device only.",
+                "This installs Touch Base on the customer's phone as a Device Owner and binds it to their account. Saved Wi-Fi is stored encrypted on this agent device only.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -306,7 +306,7 @@ private fun QrDisplaySection(
             StepRow("1", "Factory-reset the phone (no Google account).")
             StepRow("2", "On the welcome screen, tap 6 times.")
             StepRow("3", "Scan this QR when the scanner opens.")
-            StepRow("4", "When TB User opens, enter the code above.")
+            StepRow("4", "When Touch Base opens, enter the code above.")
             Text(
                 state.securityText,
                 color = if (state.securityText.startsWith("EFRP enabled"))

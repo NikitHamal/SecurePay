@@ -21,7 +21,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,9 +46,10 @@ fun SecurePayBottomNavBar(
 ) {
     val isDark = isSystemInDarkTheme()
     val containerColor = MaterialTheme.colorScheme.surface
-    val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFFB5D8C7)
-    val selectedIconColor = if (isDark) Color(0xFF34D399) else Color(0xFF004B30)
-    val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+    val primary = MaterialTheme.colorScheme.primary
+    val indicatorColor = if (isDark) primary.copy(alpha = 0.18f) else primary.copy(alpha = 0.14f)
+    val selectedIconColor = primary
+    val unselectedIconColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF6B7280)
 
     val items = listOf(
         TabItem("Home", Icons.Outlined.Home, onHomeClick),

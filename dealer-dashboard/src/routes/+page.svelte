@@ -77,7 +77,7 @@
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
             <path d="M12 5v14M5 12h14" stroke-linecap="round" />
           </svg>
-          New loan
+          Enroll customer
         </button>
       </div>
     </svelte:fragment>

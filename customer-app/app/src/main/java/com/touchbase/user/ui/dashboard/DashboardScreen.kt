@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,11 +59,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.touchbase.user.R
 import com.touchbase.user.admin.SecurityChecker
 import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.data.model.LoanAccount
@@ -115,9 +118,17 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Touch Base", fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("Device financing", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.touchbase_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Touch Base", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("Device financing", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Charcoal)

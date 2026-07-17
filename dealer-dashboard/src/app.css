@@ -135,6 +135,88 @@
   }
   .btn-primary:hover { background-color: var(--brand-accent); }
 
+  .btn-outline {
+    @apply btn border border-edge bg-transparent text-ink-primary;
+  }
+  .btn-outline:hover { background-color: var(--bg-hover); }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-ink-secondary;
+  }
+  .btn-ghost:hover { background-color: var(--bg-hover); color: var(--text-primary); }
+
+  .btn-emerald {
+    @apply btn text-white;
+    background-color: var(--success);
+  }
+  .btn-emerald:hover { background-color: #059669; }
+
+  .btn-crimson {
+    @apply btn text-white;
+    background-color: var(--danger);
+  }
+  .btn-crimson:hover { background-color: #B91C1C; }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-edge bg-surface-100 px-2.5 py-1 text-xs font-medium text-ink-secondary;
+  }
+
+  .chip-emerald {
+    @apply inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald/10 px-2.5 py-1 text-xs font-semibold text-emerald;
+  }
+
+  .chip-amber {
+    @apply inline-flex items-center gap-1 rounded-full border border-amber/30 bg-amber/10 px-2.5 py-1 text-xs font-semibold text-amber;
+  }
+
+  .chip-crimson {
+    @apply inline-flex items-center gap-1 rounded-full border border-crimson/30 bg-crimson/10 px-2.5 py-1 text-xs font-semibold text-crimson;
+  }
+
+  .chip-sky {
+    @apply inline-flex items-center gap-1 rounded-full border border-sky/30 bg-sky/10 px-2.5 py-1 text-xs font-semibold text-sky;
+  }
+
+  .chip-violet {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-brand;
+    border-color: var(--brand-soft);
+    background-color: var(--brand-soft);
+  }
+
+  .chip-muted {
+    @apply inline-flex items-center gap-1 rounded-full border border-edge bg-surface-100 px-2.5 py-1 text-xs font-medium text-ink-muted;
+  }
+
+  .page {
+    @apply px-4 py-5 sm:px-8 sm:py-6 lg:px-10;
+  }
+
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-ink-muted;
+  }
+
+  .label {
+    @apply text-xs font-medium text-ink-secondary;
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted border-b border-edge;
+  }
+  .data-table td {
+    @apply px-4 py-3 text-ink-primary;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-md bg-surface-100;
+  }
+
+  .divider {
+    @apply h-px w-full bg-edge;
+  }
+
   .input {
     @apply w-full rounded-lg border border-edge bg-[var(--bg-input)] px-3 py-2 text-sm
            text-ink-primary placeholder:text-ink-dim

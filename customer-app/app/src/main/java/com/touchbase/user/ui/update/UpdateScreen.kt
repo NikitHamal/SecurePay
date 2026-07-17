@@ -147,7 +147,7 @@ fun UpdateScreen(
                     }
                     Text("Manual Update Check", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Text(
-                        "Checks your dealer server for a newer TB User APK. If an update is available, the app downloads it, verifies its SHA-256 checksum, then asks Android Package Installer to install it.",
+                        "Checks your dealer server for a newer Touch Base APK. If an update is available, the app downloads it, verifies its SHA-256 checksum, then asks Android Package Installer to install it.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
                         textAlign = TextAlign.Center

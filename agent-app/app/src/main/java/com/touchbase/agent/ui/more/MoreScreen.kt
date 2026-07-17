@@ -75,7 +75,7 @@ fun MoreScreen(
             onDismissRequest = { showLegal = false },
             title = { Text("Legal") },
             text = {
-                Text("TB Agent must be used only by authorized dealers. Customer identity, device, payment and location data must be handled according to the signed financing agreement and applicable privacy law.")
+                Text("Touch Base Agent must be used only by authorized dealers. Customer identity, device, payment and location data must be handled according to the signed financing agreement and applicable privacy law.")
             },
             confirmButton = { TextButton(onClick = { showLegal = false }) { Text("Close") } }
         )

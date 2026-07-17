@@ -90,7 +90,7 @@ class TrackingService : Service() {
             return START_NOT_STICKY
         }
 
-        val notification = createNotification("TB User recovery active", "Secure location reporting is enabled for this financed device.")
+        val notification = createNotification("Touch Base recovery active", "Secure location reporting is enabled for this financed device.")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
@@ -235,7 +235,7 @@ class TrackingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "TB User recovery tracking",
+                "Touch Base recovery tracking",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Required while a device reported as stolen is sending its location."

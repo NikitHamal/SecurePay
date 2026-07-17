@@ -186,6 +186,7 @@
       <span class="flex-1 min-w-0">
         <span class="block text-sm font-medium text-ink-primary truncate">{$dealer?.name || 'Demo Dealer'}</span>
         <span class="block text-[11px] text-ink-muted truncate">{$dealer?.email || 'dealer@touchbase.app'}</span>
+
       </span>
       <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" stroke-linecap="round" stroke-linejoin="round" />

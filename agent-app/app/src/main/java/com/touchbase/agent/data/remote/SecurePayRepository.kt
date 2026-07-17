@@ -118,9 +118,9 @@ class SecurePayRepository(
             val request = ReleaseAccountRequest(
                 allowEarlyRelease = allowEarlyRelease,
                 note = if (allowEarlyRelease) {
-                    "Manual settlement release approved from TB Agent"
+                    "Manual settlement release approved from Touch Base Agent"
                 } else {
-                    "Paid-off release approved from TB Agent"
+                    "Paid-off release approved from Touch Base Agent"
                 }
             )
             Result.success(api.approveRelease(id, request))

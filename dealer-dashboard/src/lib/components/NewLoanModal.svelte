@@ -316,8 +316,8 @@
       <button class="btn-primary" on:click={submit} disabled={submitting}>
         {#if submitting}
           <span class="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--avatar-text)] border-t-transparent"></span>
-          Creating…
-        {:else}Create loan{/if}
+          Enrolling…
+        {:else}Enroll customer{/if}
       </button>
     {:else}
       <button class="btn-outline" on:click={close}>Done</button>

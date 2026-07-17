@@ -63,7 +63,7 @@ fun ReleaseApprovedScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "The dealer has approved this phone for release. Device management is being removed so TB User can be uninstalled.",
+            text = "The dealer has approved this phone for release. Device management is being removed so Touch Base can be uninstalled.",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -103,7 +103,7 @@ fun ReleaseApprovedScreen(
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                ButtonText(if (managementReleased) "Remove TB User" else "Management removal pending")
+                ButtonText(if (managementReleased) "Remove Touch Base" else "Management removal pending")
             }
             Spacer(Modifier.height(10.dp))
             OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {

@@ -31,11 +31,11 @@ fun CustomerBottomBar(
     onPayments: () -> Unit,
     onMore: () -> Unit
 ) {
-    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
     val containerColor = MaterialTheme.colorScheme.surface
-    val indicatorColor = if (isDark) Color(0xFF004B30) else Color(0xFFB5D8C7)
-    val selectedColor = if (isDark) Color(0xFF34D399) else Color(0xFF004B30)
-    val unselectedColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+    val primary = MaterialTheme.colorScheme.primary
+    val indicatorColor = primary.copy(alpha = 0.16f)
+    val selectedColor = primary
+    val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
 
     data class Tab(val key: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val onClick: () -> Unit)
     val tabs = listOf(

@@ -25,7 +25,7 @@
     { id: 'ACTIVE', label: 'Active', accent: 'text-emerald' },
     { id: 'WARNING', label: 'Warning', accent: 'text-amber' },
     { id: 'LOCKED', label: 'Locked', accent: 'text-crimson' },
-    { id: 'STOLEN', label: 'Stolen', accent: 'text-crimson-secondary' }
+    { id: 'STOLEN', label: 'Stolen', accent: 'text-crimson' }
   ];
 
   $: counts = {

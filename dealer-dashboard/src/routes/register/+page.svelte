@@ -62,7 +62,7 @@
   }
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-charcoal px-4">
+<div class="flex min-h-screen items-center justify-center px-4" style="background-color: var(--bg-base);">
   <div class="w-full max-w-md">
     <div class="mb-8 text-center">
       <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20">
