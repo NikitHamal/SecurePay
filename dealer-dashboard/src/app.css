@@ -19,9 +19,9 @@
     --border-strong: rgba(11,11,12,0.14);
     --border-subtle: rgba(11,11,12,0.05);
     --text-primary: #0B0B0C;
-    --text-secondary: #3F3F46;
-    --text-muted: #6B7280;
-    --text-dim: #9CA3AF;
+    --text-secondary: #27272A;
+    --text-muted: #52525B;
+    --text-dim: #71717A;
     --shadow-card: 0 1px 2px rgba(11,11,12,0.04);
     --shadow-card-hover: 0 6px 18px rgba(11,11,12,0.08);
     --scrollbar-thumb: rgba(11,11,12,0.12);
@@ -31,10 +31,11 @@
     --overlay-bg: rgba(11,11,12,0.4);
     --progress-track: #E7E4DA;
     --avatar-text: #0B0B0C;
-    /* Touch Base gold */
-    --brand: #B8941F;
-    --brand-soft: rgba(212,175,55,0.14);
-    --brand-accent: #D4AF37;
+    /* Touch Base gold — bright, warm gold used for primary actions.
+       Near-black text on bright gold reads at ~10:1 contrast (WCAG AAA). */
+    --brand: #D4AF37;
+    --brand-soft: rgba(212,175,55,0.16);
+    --brand-accent: #C99E1F;
     /* Success = green (paid / verified / in-stock) */
     --success: #10B981;
     --success-soft: rgba(16,185,129,0.14);
@@ -70,14 +71,14 @@
     --overlay-bg: rgba(0,0,0,0.65);
     --progress-track: rgba(255,255,255,0.08);
     --avatar-text: #0B0B0C;
-    /* Touch Base gold */
-    --brand: #D4AF37;
-    --brand-soft: rgba(212,175,55,0.14);
-    --brand-accent: #E9C969;
-    --success: #10B981;
-    --success-soft: rgba(16,185,129,0.16);
-    --danger: #DC2626;
-    --warning: #F59E0B;
+    /* Touch Base gold — slightly brighter in dark for legibility. */
+    --brand: #E5C247;
+    --brand-soft: rgba(229,194,71,0.16);
+    --brand-accent: #F0D26B;
+    --success: #34D399;
+    --success-soft: rgba(52,211,153,0.16);
+    --danger: #F87171;
+    --warning: #FBBF24;
   }
 
   html, body {
@@ -132,27 +133,30 @@
   .btn-primary {
     @apply btn text-[color:var(--avatar-text)];
     background-color: var(--brand);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
   }
   .btn-primary:hover { background-color: var(--brand-accent); }
+  .btn-primary:disabled { opacity: 0.6; box-shadow: none; }
 
   .btn-outline {
-    @apply btn border border-edge bg-transparent text-ink-primary;
+    @apply btn border border-edge bg-transparent text-ink-primary font-medium;
   }
-  .btn-outline:hover { background-color: var(--bg-hover); }
+  .btn-outline:hover { background-color: var(--bg-hover); border-color: var(--border-strong); }
 
   .btn-ghost {
-    @apply btn bg-transparent text-ink-secondary;
+    @apply btn bg-transparent text-ink-secondary font-medium;
   }
   .btn-ghost:hover { background-color: var(--bg-hover); color: var(--text-primary); }
 
   .btn-emerald {
-    @apply btn text-white;
+    @apply btn text-white font-semibold;
     background-color: var(--success);
   }
   .btn-emerald:hover { background-color: #059669; }
 
   .btn-crimson {
-    @apply btn text-white;
+    @apply btn text-white font-semibold;
     background-color: var(--danger);
   }
   .btn-crimson:hover { background-color: #B91C1C; }

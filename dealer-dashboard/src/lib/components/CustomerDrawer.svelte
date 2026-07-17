@@ -25,6 +25,64 @@
   let editTotalLoan = '';
   let editTermDays = '';
 
+  // KYC photo uploads
+  let photoFile: File | null = null;
+  let idFrontFile: File | null = null;
+  let idBackFile: File | null = null;
+  let photoPreview: string | null = null;
+  let idFrontPreview: string | null = null;
+  let idBackPreview: string | null = null;
+  let photoUploading = false;
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function pickPhoto(field: 'photo' | 'id_front' | 'id_back', e: Event) {
+    const input = e.target as HTMLInputElement;
+    const f = input.files?.[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) {
+      alert('Image must be smaller than 5MB');
+      input.value = '';
+      return;
+    }
+    const dataUrl = await fileToBase64(f);
+    if (field === 'photo') { photoFile = f; photoPreview = dataUrl; }
+    if (field === 'id_front') { idFrontFile = f; idFrontPreview = dataUrl; }
+    if (field === 'id_back') { idBackFile = f; idBackPreview = dataUrl; }
+  }
+
+  function clearPhoto(field: 'photo' | 'id_front' | 'id_back') {
+    if (field === 'photo') { photoFile = null; photoPreview = null; }
+    if (field === 'id_front') { idFrontFile = null; idFrontPreview = null; }
+    if (field === 'id_back') { idBackFile = null; idBackPreview = null; }
+  }
+
+  async function uploadPhotos() {
+    if (!customer) return;
+    if (!photoFile && !idFrontFile && !idBackFile) return;
+    photoUploading = true;
+    try {
+      const patch: Record<string, string | null> = {};
+      if (photoFile) patch.customerPhoto = await fileToBase64(photoFile);
+      if (idFrontFile) patch.nationalIdFront = await fileToBase64(idFrontFile);
+      if (idBackFile) patch.nationalIdBack = await fileToBase64(idBackFile);
+      await updateCustomer(customer.id, patch);
+      photoFile = idFrontFile = idBackFile = null;
+      photoPreview = idFrontPreview = idBackPreview = null;
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to upload photos');
+    } finally {
+      photoUploading = false;
+    }
+  }
+
   $: customer = customerId ? $customers.find((c) => c.id === customerId) ?? null : null;
   $: ratio = customer && customer.totalLoanAmount > 0
     ? (customer.amountPaid / customer.totalLoanAmount) * 100
@@ -51,15 +109,23 @@
     if (!customer) return;
     saving = true;
     try {
-      await updateCustomer(customer.id, {
+      const patch: Record<string, any> = {
         customerName: editName.trim(),
         nationalId: editNationalId.trim(),
         phoneNumber: editPhone.trim(),
         dailyRate: Math.round(Number(editDailyRate) * 100),
         totalLoanAmount: Math.round(Number(editTotalLoan) * 100),
         termDays: Number(editTermDays),
-      });
+      };
+      if (photoFile) patch.customerPhoto = await fileToBase64(photoFile);
+      if (idFrontFile) patch.nationalIdFront = await fileToBase64(idFrontFile);
+      if (idBackFile) patch.nationalIdBack = await fileToBase64(idBackFile);
+      await updateCustomer(customer.id, patch);
+      photoFile = idFrontFile = idBackFile = null;
+      photoPreview = idFrontPreview = idBackPreview = null;
       editing = false;
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to save');
     } finally {
       saving = false;
     }
@@ -331,10 +397,60 @@
                   <input id="edit-term-days" type="number" class="input w-full" bind:value={editTermDays} />
                 </div>
               </div>
+
+              <div class="mt-3 border-t border-edge pt-3">
+                <p class="section-title mb-2">KYC Photos</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {photoPreview || customer.customerPhotoPath ? 'border-edge' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
+                    {#if photoPreview}
+                      <img src={photoPreview} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                    {:else if customer.customerPhotoPath}
+                      <img src={`/api/accounts/${customer.id}/photos/photo`} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                    {:else}
+                      <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
+                      </svg>
+                    {/if}
+                    <span class="relative z-10 text-2xs font-medium text-ink-primary px-1.5 py-0.5 rounded bg-surface-200/80 backdrop-blur mt-auto">Selfie</span>
+                    <input type="file" accept="image/*" class="hidden" on:change={(e)=>pickPhoto('photo',e)} />
+                    {#if photoPreview}<button type="button" class="absolute top-1 right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-white text-xs" on:click|stopPropagation={()=>clearPhoto('photo')}>×</button>{/if}
+                  </label>
+                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {idFrontPreview || customer.nationalIdFrontPath ? 'border-edge' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
+                    {#if idFrontPreview}
+                      <img src={idFrontPreview} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                    {:else if customer.nationalIdFrontPath}
+                      <img src={`/api/accounts/${customer.id}/photos/id_front`} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                    {:else}
+                      <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
+                      </svg>
+                    {/if}
+                    <span class="relative z-10 text-2xs font-medium text-ink-primary px-1.5 py-0.5 rounded bg-surface-200/80 backdrop-blur mt-auto">ID Front</span>
+                    <input type="file" accept="image/*" class="hidden" on:change={(e)=>pickPhoto('id_front',e)} />
+                    {#if idFrontPreview}<button type="button" class="absolute top-1 right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-white text-xs" on:click|stopPropagation={()=>clearPhoto('id_front')}>×</button>{/if}
+                  </label>
+                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {idBackPreview || customer.nationalIdBackPath ? 'border-edge' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
+                    {#if idBackPreview}
+                      <img src={idBackPreview} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                    {:else if customer.nationalIdBackPath}
+                      <img src={`/api/accounts/${customer.id}/photos/id_back`} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                    {:else}
+                      <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
+                      </svg>
+                    {/if}
+                    <span class="relative z-10 text-2xs font-medium text-ink-primary px-1.5 py-0.5 rounded bg-surface-200/80 backdrop-blur mt-auto">ID Back</span>
+                    <input type="file" accept="image/*" class="hidden" on:change={(e)=>pickPhoto('id_back',e)} />
+                    {#if idBackPreview}<button type="button" class="absolute top-1 right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-white text-xs" on:click|stopPropagation={()=>clearPhoto('id_back')}>×</button>{/if}
+                  </label>
+                </div>
+                <p class="mt-1 text-2xs text-ink-muted">Upload JPG/PNG up to 5MB. Saved to encrypted R2 storage.</p>
+              </div>
+
               <div class="mt-2 flex gap-2">
                 <button
                   type="button"
-                  class="btn-emerald flex-1"
+                  class="btn-primary flex-1"
                   disabled={saving || !editName.trim()}
                   on:click={saveEditing}
                 >
@@ -427,64 +543,52 @@
           </div>
         {/if}
 
-        {#if customer.customerPhotoPath || customer.nationalIdFrontPath || customer.nationalIdBackPath}
-          <div class="card mt-4 p-5">
-            <p class="section-title">KYC Photo Validation</p>
-            <div class="mt-4 flex flex-col gap-4">
-              {#if customer.customerPhotoPath}
-                <div class="flex items-center gap-4">
-                  <a href="/api/accounts/{customer.id}/photos/photo" target="_blank" class="block shrink-0 rounded-full border border-edge shadow-sm overflow-hidden cursor-zoom-in">
-                    <img 
-                      src="/api/accounts/{customer.id}/photos/photo" 
-                      alt="Customer Selfie" 
-                      class="h-16 w-16 object-cover"
-                    />
-                  </a>
-                  <div>
-                    <p class="text-sm font-semibold text-ink-primary">Customer Selfie</p>
-                    <p class="text-2xs text-ink-muted">Captured live during agent registration</p>
-                  </div>
-                </div>
-              {/if}
-              
-              <div class="grid grid-cols-2 gap-3 mt-2">
-                {#if customer.nationalIdFrontPath}
-                  <div class="flex flex-col gap-1.5">
-                    <span class="text-2xs font-semibold text-ink-secondary">ID Document Front</span>
-                    <a 
-                      href="/api/accounts/{customer.id}/photos/id_front" 
-                      target="_blank" 
-                      class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
-                    >
-                      <img 
-                        src="/api/accounts/{customer.id}/photos/id_front" 
-                        alt="ID Card Front" 
-                        class="h-24 w-full object-cover hover:scale-105 transition duration-200"
-                      />
-                    </a>
-                  </div>
-                {/if}
-                
-                {#if customer.nationalIdBackPath}
-                  <div class="flex flex-col gap-1.5">
-                    <span class="text-2xs font-semibold text-ink-secondary">ID Document Back</span>
-                    <a 
-                      href="/api/accounts/{customer.id}/photos/id_back" 
-                      target="_blank" 
-                      class="block overflow-hidden rounded-xl border border-edge bg-surface-100 cursor-zoom-in hover:border-emerald-300/40 transition"
-                    >
-                      <img 
-                        src="/api/accounts/{customer.id}/photos/id_back" 
-                        alt="ID Card Back" 
-                        class="h-24 w-full object-cover hover:scale-105 transition duration-200"
-                      />
-                    </a>
-                  </div>
-                {/if}
-              </div>
-            </div>
+        <div class="card mt-4 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <p class="section-title !mb-0">KYC Photos</p>
+            <label class="btn-ghost !py-1 !px-2 text-2xs cursor-pointer">
+              <input type="file" accept="image/*" multiple class="hidden" on:change={async (e) => {
+                const files = (e.target as HTMLInputElement).files;
+                if (!files || !customer) return;
+                const patch: Record<string,string> = {};
+                for (let i = 0; i < Math.min(files.length, 3); i++) {
+                  const b64 = await fileToBase64(files[i]);
+                  if (i === 0) patch.customerPhoto = b64;
+                  else if (i === 1) patch.nationalIdFront = b64;
+                  else patch.nationalIdBack = b64;
+                }
+                photoUploading = true;
+                try { await updateCustomer(customer.id, patch); }
+                catch (err) { alert(err instanceof Error ? err.message : 'Upload failed'); }
+                finally { photoUploading = false; (e.target as HTMLInputElement).value=''; }
+              }} />
+              {photoUploading ? 'Uploading…' : '+ Upload photos'}
+            </label>
           </div>
-        {/if}
+          <div class="grid grid-cols-3 gap-2">
+            {#each [
+              { label: 'Selfie', src: customer.customerPhotoPath ? `/api/accounts/${customer.id}/photos/photo` : null },
+              { label: 'ID Front', src: customer.nationalIdFrontPath ? `/api/accounts/${customer.id}/photos/id_front` : null },
+              { label: 'ID Back', src: customer.nationalIdBackPath ? `/api/accounts/${customer.id}/photos/id_back` : null }
+            ] as item}
+              <a
+                href={item.src || '#'}
+                target={item.src ? '_blank' : undefined}
+                class="relative flex flex-col items-center justify-center rounded-lg overflow-hidden aspect-square {item.src ? 'border border-edge cursor-zoom-in' : 'border border-dashed border-edge bg-surface-100'}"
+              >
+                {#if item.src}
+                  <img src={item.src} alt={item.label} class="absolute inset-0 h-full w-full object-cover" />
+                {:else}
+                  <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
+                  </svg>
+                {/if}
+                <span class="relative z-10 text-2xs font-medium text-ink-primary px-1.5 py-0.5 rounded bg-surface-200/80 backdrop-blur mt-auto">{item.label}</span>
+              </a>
+            {/each}
+          </div>
+        </div>
+
       </div>
 
       <footer class="flex flex-wrap items-center gap-2 border-t border-edge bg-surface-200/80 px-6 py-4 backdrop-blur">

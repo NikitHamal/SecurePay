@@ -175,6 +175,9 @@ export async function updateAccount(id: string, data: {
   totalLoanAmount?: number;
   termDays?: number;
   isStolen?: boolean;
+  customerPhoto?: string | null;
+  nationalIdFront?: string | null;
+  nationalIdBack?: string | null;
 }): Promise<Customer> {
   return request<Customer>(`/accounts/${id}`, {
     method: 'PATCH',
