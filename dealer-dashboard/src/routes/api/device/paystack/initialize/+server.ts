@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!Number.isFinite(amountGhs) || amountGhs <= 0) return errorResponse('A positive amount is required', 400);
   if (amountGhs > MAX_AMOUNT_GHS) return errorResponse(`Amount exceeds GH₵ ${MAX_AMOUNT_GHS.toLocaleString()}`, 400);
 
-  const allowedProviders = ['mtn', 'vod', 'tgo', 'atl'];
+  const allowedProviders = ['mtn', 'vod', 'tgo'];
   if (!allowedProviders.includes(provider)) {
     return errorResponse(`Provider must be one of: ${allowedProviders.join(', ')}`, 400);
   }

@@ -56,13 +56,17 @@ fun RecoveryLoginScreen(
     onHelp: () -> Unit
 ) {
     var accountNumber by remember { mutableStateOf("") }
+    // ADB-installed Device Owner builds do not receive the QR expectedImei extra.
+    // Let the dealer/customer enter the inventory IMEI so recovery can still be
+    // scoped server-side to the exact financed device.
+    var imeiInput by remember { mutableStateOf(expectedImei.orEmpty().filter(Char::isDigit).take(15)) }
     var pin by remember { mutableStateOf("") }
     var pinVisible by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val cleanImei = expectedImei.orEmpty().filter(Char::isDigit)
+    val cleanImei = imeiInput.filter(Char::isDigit)
 
     LaunchedEffect(error) {
         error?.let { snackbar.showSnackbar(it) }
@@ -79,7 +83,7 @@ fun RecoveryLoginScreen(
         ) {
             Icon(Icons.Filled.LockOpen, contentDescription = null, tint = Emerald)
             Spacer(Modifier.height(16.dp))
-            Text("TB USER", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Touch Base", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(18.dp))
             Text(
                 "Log in to restore this financed phone after setup or an authorized reset.",
@@ -95,6 +99,18 @@ fun RecoveryLoginScreen(
                 supportingText = { Text("Use the phone number registered by your dealer") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald)
+            )
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = imeiInput,
+                onValueChange = { imeiInput = it.filter(Char::isDigit).take(15) },
+                label = { Text("Phone IMEI") },
+                supportingText = { Text("Enter the 15-digit IMEI printed on the phone or box") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald)
@@ -120,7 +136,7 @@ fun RecoveryLoginScreen(
             if (cleanImei.length != 15) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "This installation is not linked to an inventory IMEI. Ask the dealer to provision this exact phone again.",
+                    "Enter the exact 15-digit inventory IMEI. It must match the phone registered by your dealer.",
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall

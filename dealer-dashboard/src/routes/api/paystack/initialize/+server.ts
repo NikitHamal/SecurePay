@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const amountPesewas = Math.round(amountGhs * 100);
 
-  const allowedProviders = ['mtn', 'vod', 'tgo', 'atl'];
+  const allowedProviders = ['mtn', 'vod', 'tgo'];
   if (!allowedProviders.includes(provider)) {
     return errorResponse(`Provider must be one of: ${allowedProviders.join(', ')}`, 400);
   }

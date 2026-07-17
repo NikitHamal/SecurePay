@@ -64,7 +64,7 @@ import kotlinx.coroutines.launch
 private enum class MomoStep { FORM, PROCESSING, OTP, SUCCESS, FAILED }
 
 private enum class MomoProvider(val key: String, val display: String) {
-    MTN("mtn", "MTN"), VODAFONE("vod", "Vodafone"), TELECEL("tgo", "Telecel");
+    MTN("mtn", "MTN"), TELECEL("vod", "Telecel"), AIRTELTIGO("tgo", "AirtelTigo");
     companion object {
         fun fromKey(k: String) = entries.firstOrNull { it.key == k } ?: MTN
     }

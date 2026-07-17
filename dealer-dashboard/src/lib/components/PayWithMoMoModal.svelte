@@ -179,8 +179,8 @@
         <div class="grid grid-cols-3 gap-2">
           {#each [
             { id: 'mtn', label: 'MTN MoMo' },
-            { id: 'vod', label: 'Vodafone' },
-            { id: 'tgo', label: 'Telecel' },
+            { id: 'vod', label: 'Telecel' },
+            { id: 'tgo', label: 'AirtelTigo' },
           ] as item, i}
             <button
               type="button"

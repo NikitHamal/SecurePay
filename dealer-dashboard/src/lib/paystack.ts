@@ -8,7 +8,7 @@
  */
 
 export type PaystackChannel = 'mobile_money' | 'card' | 'bank' | 'ussd' | 'qr' | 'bank_transfer';
-export type PaystackMobileProvider = 'mtn' | 'vod' | 'tgo' | 'atl'; // MTN, Vodafone, Telecel/AirtelTigo
+export type PaystackMobileProvider = 'mtn' | 'vod' | 'tgo'; // MTN, Vodafone, Telecel/AirtelTigo
 
 export interface PaystackChargeRequest {
   amount: number;           // pesewas (subunit)

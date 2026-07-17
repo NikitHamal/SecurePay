@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 /** Providers Paystack supports for Ghana mobile money. */
 enum class MomoProvider(val key: String, val display: String) {
     MTN("mtn", "MTN MoMo"),
-    VODAFONE("vod", "Vodafone Cash"),
-    TELECEL("tgo", "Telecel Cash");
+    TELECEL("vod", "Telecel Cash"),
+    AIRTELTIGO("tgo", "AirtelTigo");
 
     companion object {
         fun fromKey(key: String): MomoProvider =
