@@ -245,9 +245,9 @@ private fun LoanSummaryCard(account: LoanAccount) {
         )
         Spacer(Modifier.height(14.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Metric("Plan", account.planName)
-            Metric("Paid", formatCentsAsCurrency(account.amountPaidCents, account.currencyCode))
-            Metric("Daily", formatCentsAsCurrency(account.dailyRateCents, account.currencyCode))
+            Metric("Plan", account.planName, Modifier.weight(1f))
+            Metric("Paid", formatCentsAsCurrency(account.amountPaidCents, account.currencyCode), Modifier.weight(1f))
+            Metric("Daily", formatCentsAsCurrency(account.dailyRateCents, account.currencyCode), Modifier.weight(1f))
         }
     }
 }
@@ -434,8 +434,8 @@ private fun InfoCard(title: String, icon: ImageVector, accent: Color, content: @
 }
 
 @Composable
-private fun RowScope.Metric(label: String, value: String) {
-    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
         Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
