@@ -48,7 +48,7 @@
   }
 </script>
 
-<svelte:head><title>Overview · SecurePay Dealer Console</title></svelte:head>
+<svelte:head><title>Overview · Touch Base</title></svelte:head>
 
 <div class="page">
   <TopBar searchPlaceholder="Search customers, IMEI, transactions…" />
@@ -195,7 +195,7 @@
         <div class="mt-3 grid grid-cols-2 gap-2">
           <button class="rounded-lg border border-edge bg-surface-100 p-3 text-left hover:bg-hover transition" on:click={() => openNewLoan()}>
             <svg class="mb-1.5 h-5 w-5 text-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-            <p class="text-sm font-medium text-ink-primary">New loan</p>
+            <p class="text-sm font-medium text-ink-primary">Enroll customer</p>
             <p class="text-[11px] text-ink-muted">Enroll customer</p>
           </button>
           <button class="rounded-lg border border-edge bg-surface-100 p-3 text-left hover:bg-hover transition" on:click={() => openProvision()}>

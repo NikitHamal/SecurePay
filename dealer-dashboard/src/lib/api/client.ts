@@ -225,7 +225,7 @@ export async function getKpis(): Promise<KpiSummary> {
   return request<KpiSummary>('/kpis');
 }
 
-export async function listDevices(): Promise<{ id: string; imei: string; model: string; status: string; createdAt: number }[]> {
+export async function listDevices(): Promise<{ id: string; imei: string; model: string; status: string; createdAt: number; customerName: string | null; soldAt: number | null }[]> {
   return request('/devices');
 }
 

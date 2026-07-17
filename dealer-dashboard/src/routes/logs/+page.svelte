@@ -110,7 +110,7 @@
 </script>
 
 <svelte:head>
-  <title>Device Logs · SecurePay Dealer Console</title>
+  <title>Device Logs · Touch Base</title>
 </svelte:head>
 
 <div class="page">

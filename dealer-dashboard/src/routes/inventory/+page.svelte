@@ -7,7 +7,7 @@
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
   import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy } from '$lib/api/client';
-  import { openAddDevice, openProvision } from '$lib/stores/ui';
+  import { openAddDevice, openNewLoan, openProvision } from '$lib/stores/ui';
   import { onMount } from 'svelte';
 
   interface DeviceRow {
@@ -16,6 +16,7 @@
     model: string;
     status: string;
     createdAt: number;
+    customerName: string | null;
   }
 
   let view: 'cards' | 'table' = 'table';
@@ -95,7 +96,7 @@
   }
 </script>
 
-<svelte:head><title>Inventory · SecurePay</title></svelte:head>
+<svelte:head><title>Inventory · Touch Base</title></svelte:head>
 
 <div class="page">
   <TopBar searchPlaceholder="Search IMEI, model, customer…" />
@@ -215,10 +216,11 @@
                 <td class="text-right">
                   <div class="flex justify-end gap-2">
                     {#if device.status === 'in_stock'}
-                      <button class="btn-emerald !py-1 !px-2.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
+                      <button class="btn-primary !py-1 !px-2.5 text-xs" on:click={() => openNewLoan({ imei: device.imei, deviceModel: device.model })}>Enroll</button>
+                      <button class="btn-outline !py-1 !px-2.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
                       <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={devicesLoading} on:click={() => removeDevice(device)}>Delete</button>
                     {:else}
-                      <span class="text-xs text-ink-muted">Assigned</span>
+                      <span class="text-xs text-ink-muted">Assigned to {device.customerName || 'customer'}</span>
                     {/if}
                   </div>
                 </td>
@@ -232,42 +234,24 @@
 
   {#if view === 'cards'}
     <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {#each $customers as customer (customer.id)}
-        {@const ratio = customer.totalLoanAmount > 0 ? (customer.amountPaid / customer.totalLoanAmount) * 100 : 0}
+      {#each devices as device (device.id)}
         <article class="card card-hover p-4">
           <header class="flex items-start justify-between gap-2">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white" style="background-color: var(--brand);">
-                {initials(customer.customerName)}
-              </span>
-              <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-ink-primary">{customer.customerName}</p>
-                <p class="truncate text-xs text-ink-muted">{customer.deviceModel}</p>
-              </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold text-ink-primary">{device.model}</p>
+              <p class="font-mono text-xs text-ink-muted">{device.imei}</p>
             </div>
-            <StatusBadge status={customer.status} size="sm" />
+            <span class={device.status === 'in_stock' ? 'chip-emerald' : 'chip-amber'}>{device.status.replace('_', ' ')}</span>
           </header>
-
-          <dl class="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <div class="rounded-md bg-surface-100 px-2 py-1.5">
-              <dt class="text-ink-muted text-[11px]">IMEI</dt>
-              <dd class="font-mono text-ink-secondary truncate">{customer.imei}</dd>
+          <p class="mt-3 text-xs text-ink-muted">Added {new Date(device.createdAt).toLocaleDateString()}</p>
+          {#if device.status === 'in_stock'}
+            <div class="mt-3 flex gap-2">
+              <button class="btn-primary flex-1 !py-1.5 text-xs" on:click={() => openNewLoan({ imei: device.imei, deviceModel: device.model })}>Enroll</button>
+              <button class="btn-outline !py-1.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
             </div>
-            <div class="rounded-md bg-surface-100 px-2 py-1.5">
-              <dt class="text-ink-muted text-[11px]">Outstanding</dt>
-              <dd class="font-medium text-ink-primary tabular-nums">{formatCurrency(customer.remainingBalance)}</dd>
-            </div>
-          </dl>
-
-          <div class="mt-3">
-            <div class="mb-1 flex items-baseline justify-between text-xs text-ink-secondary">
-              <span>Paid</span>
-              <span class="tabular-nums text-ink-primary">{ratio.toFixed(0)}%</span>
-            </div>
-            <div class="h-1.5 w-full overflow-hidden rounded-full" style="background: var(--progress-track);">
-              <div class="h-full rounded-full transition-all" style="width: {Math.min(100, ratio)}%; background: {progressColor(ratio)};"></div>
-            </div>
-          </div>
+          {:else if device.customerName}
+            <p class="mt-3 text-xs text-ink-secondary">Assigned to <span class="font-medium text-ink-primary">{device.customerName}</span></p>
+          {/if}
         </article>
       {/each}
     </div>

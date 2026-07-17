@@ -42,7 +42,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.touchbase.user.ui.theme.Emerald
+import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +89,7 @@ fun ActivationScreen(
             Icon(
                 imageVector = Icons.Filled.Password,
                 contentDescription = null,
-                tint = Emerald,
+                tint = Gold,
                 modifier = Modifier.size(72.dp)
             )
 
@@ -125,9 +125,9 @@ fun ActivationScreen(
                     textAlign = TextAlign.Center
                 ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Emerald,
+                    focusedBorderColor = Gold,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    cursorColor = Emerald
+                    cursorColor = Gold
                 )
             )
 
@@ -140,7 +140,7 @@ fun ActivationScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Emerald,
+                    containerColor = Gold,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {

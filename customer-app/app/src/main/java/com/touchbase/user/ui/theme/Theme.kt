@@ -10,14 +10,16 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// SecurePay is a permanently dark, charcoal-based experience regardless of system setting.
+// Touch Base customer app — permanently dark, gold primary.
 private val SecurePayDarkColors = darkColorScheme(
-    primary = Emerald,
+    primary = Gold,
     onPrimary = OnAccent,
-    primaryContainer = EmeraldDim,
+    primaryContainer = GoldDim,
     onPrimaryContainer = TextPrimary,
-    secondary = Amber,
+    secondary = GoldBright,
     onSecondary = OnAccent,
+    tertiary = Amber,
+    onTertiary = OnAccent,
     error = Crimson,
     onError = TextPrimary,
     errorContainer = CrimsonDim,

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TB Agent</string>
+    <string name="app_name">Touch Base Agent</string>
     <string name="wizard_title">New Enrollment</string>
 
     <string name="step_kyc">Customer</string>
@@ -27,12 +27,11 @@
     <string name="summary_daily_rate">Daily rate</string>
     <string name="summary_term">Term (days)</string>
 
-    <string name="login_title">TB Agent</string>
-    <string name="login_subtitle">Agent Login</string>
+    <string name="login_title">Touch Base</string>
+    <string name="login_subtitle">Agent Console — Connect • Finance • Grow</string>
     <string name="login_email">Email</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign In</string>
-    
 
     <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_active">Active</string>

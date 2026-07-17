@@ -54,7 +54,7 @@
 </script>
 
 <svelte:head>
-  <title>Payment Ledger · SecurePay Dealer Console</title>
+  <title>Payment Ledger · Touch Base</title>
 </svelte:head>
 
 <div class="page">

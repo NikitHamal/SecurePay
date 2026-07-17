@@ -64,7 +64,7 @@ import com.touchbase.user.ui.theme.Charcoal
 import com.touchbase.user.ui.theme.CharcoalElevated
 import com.touchbase.user.ui.theme.CharcoalSurfaceVariant
 import com.touchbase.user.ui.theme.Crimson
-import com.touchbase.user.ui.theme.Emerald
+import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
@@ -256,7 +256,7 @@ fun PayWithMoMoScreen(
                         onClick = { onPaid() },
                         modifier = Modifier.fillMaxWidth().height(54.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald, contentColor = Color(0xFF07130F))
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))
                     ) {
                         Text("Done", fontWeight = FontWeight.Bold)
                     }
@@ -319,9 +319,9 @@ private fun PaymentForm(
     onSubmit: () -> Unit
 ) {
     val appTextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Emerald,
+        focusedBorderColor = Gold,
         unfocusedBorderColor = CharcoalSurfaceVariant,
-        cursorColor = Emerald
+        cursorColor = Gold
     )
 
     Card(
@@ -405,7 +405,7 @@ private fun PaymentForm(
         onClick = onSubmit,
         modifier = Modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(18.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Emerald, contentColor = Color(0xFF07130F))
+        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))
     ) {
         Text("Pay now", fontWeight = FontWeight.Bold)
     }
@@ -423,7 +423,7 @@ private fun ProcessingCard(text: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            CircularProgressIndicator(color = Emerald, strokeWidth = 3.dp)
+            CircularProgressIndicator(color = Gold, strokeWidth = 3.dp)
             Text("Processing…", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Text(
                 text.ifBlank { "Waiting for confirmation from your mobile money provider." },
@@ -449,9 +449,9 @@ private fun OtpCard(
     onCancel: () -> Unit
 ) {
     val appTextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Emerald,
+        focusedBorderColor = Gold,
         unfocusedBorderColor = CharcoalSurfaceVariant,
-        cursorColor = Emerald
+        cursorColor = Gold
     )
 
     Card(
@@ -486,9 +486,9 @@ private fun OtpCard(
                 enabled = !submitting,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald, contentColor = Color(0xFF07130F))
+                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))
             ) {
-                if (submitting) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF07130F))
+                if (submitting) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF0B0B0C))
                 else Text("Submit OTP", fontWeight = FontWeight.Bold)
             }
             OutlinedButton(
@@ -508,7 +508,7 @@ private fun SuccessCard(result: VerifyPaystackResponse?, account: LoanAccount?) 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Emerald.copy(alpha = 0.12f))
+        colors = CardDefaults.cardColors(containerColor = Gold.copy(alpha = 0.12f))
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -516,13 +516,13 @@ private fun SuccessCard(result: VerifyPaystackResponse?, account: LoanAccount?) 
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
-                modifier = Modifier.size(64.dp).background(Emerald, RoundedCornerShape(20.dp)),
+                modifier = Modifier.size(64.dp).background(Gold, RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color(0xFF07130F), modifier = Modifier.size(36.dp))
+                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color(0xFF0B0B0C), modifier = Modifier.size(36.dp))
             }
             Text("Payment successful", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(formatCentsAsCurrency(amount, currency), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Emerald)
+            Text(formatCentsAsCurrency(amount, currency), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Gold)
             if (result?.paidOff == true) {
                 Text("Your loan is fully paid. Your device will unlock shortly.", color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
             } else {
@@ -563,11 +563,11 @@ private fun FailedCard(error: String?) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun chipColors(selected: Boolean = false) = FilterChipDefaults.filterChipColors(
-    containerColor = if (selected) Emerald else CharcoalSurfaceVariant,
-    labelColor = if (selected) Color(0xFF07130F) else TextPrimary,
-    selectedContainerColor = Emerald,
-    selectedLabelColor = Color(0xFF07130F),
-    iconColor = if (selected) Color(0xFF07130F) else TextSecondary
+    containerColor = if (selected) Gold else CharcoalSurfaceVariant,
+    labelColor = if (selected) Color(0xFF0B0B0C) else TextPrimary,
+    selectedContainerColor = Gold,
+    selectedLabelColor = Color(0xFF0B0B0C),
+    iconColor = if (selected) Color(0xFF0B0B0C) else TextSecondary
 )
 
 

@@ -2,48 +2,53 @@ package com.touchbase.agent.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import android.content.Context
 
-private val SecurePayDarkColorScheme = darkColorScheme(
-    primary = EmeraldGreen,
+private val TBDark = darkColorScheme(
+    primary = Gold,
     onPrimary = DeepCharcoal,
-    primaryContainer = EmeraldGreen,
-    onPrimaryContainer = DeepCharcoal,
-    secondary = Amber,
+    primaryContainer = GoldDim,
+    onPrimaryContainer = OnDarkPrimary,
+    secondary = GoldBright,
     onSecondary = DeepCharcoal,
+    tertiary = Amber,
+    onTertiary = DeepCharcoal,
     error = VividCrimson,
     onError = OnDarkPrimary,
     background = DeepCharcoal,
     onBackground = OnDarkPrimary,
     surface = ElevatedSurface,
     onSurface = OnDarkPrimary,
-    surfaceVariant = ElevatedSurface,
+    surfaceVariant = SurfaceVariant,
     onSurfaceVariant = OnDarkSecondary,
-    outline = OnDarkSecondary
+    outline = Line
 )
 
-private val SecurePayLightColorScheme = lightColorScheme(
-    primary = ForestGreen,
+private val TBLight = lightColorScheme(
+    primary = GoldLight,
     onPrimary = LightSurface,
-    primaryContainer = SoftMint,
-    onPrimaryContainer = ForestGreen,
-    secondary = Amber,
-    onSecondary = TextDark,
+    primaryContainer = SoftGrayInput,
+    onPrimaryContainer = Ink,
+    secondary = Gold,
+    onSecondary = Ink,
+    tertiary = Amber,
+    onTertiary = Ink,
     error = VividCrimson,
     onError = LightSurface,
     background = LightBg,
-    onBackground = TextDark,
+    onBackground = Ink,
     surface = LightSurface,
-    onSurface = TextDark,
+    onSurface = Ink,
     surfaceVariant = SoftGrayInput,
-    onSurfaceVariant = TextGray,
-    outline = TextGray.copy(alpha = 0.5f)
+    onSurfaceVariant = Muted,
+    outline = DividerLight
 )
 
 object ThemeManager {
@@ -70,12 +75,7 @@ fun SecurePayAgentTheme(
     },
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) {
-        SecurePayDarkColorScheme
-    } else {
-        SecurePayLightColorScheme
-    }
-
+    val colorScheme = if (darkTheme) TBDark else TBLight
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,

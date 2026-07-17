@@ -38,7 +38,7 @@
 </script>
 
 <svelte:head>
-  <title>Customers · SecurePay Dealer Console</title>
+  <title>Customers · Touch Base</title>
 </svelte:head>
 
 <div class="page">
@@ -61,7 +61,7 @@
         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
           <path d="M12 5v14M5 12h14" stroke-linecap="round" />
         </svg>
-        New loan
+        Enroll customer
       </button>
     </div>
   </PageHeader>

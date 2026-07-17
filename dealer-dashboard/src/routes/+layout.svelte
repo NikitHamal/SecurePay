@@ -12,7 +12,7 @@
   import { dealer, isAuthenticated, initAuth } from '$lib/stores/auth';
   import {
     newLoanOpen, addDeviceOpen, provisionOpen, provisionInitialImei,
-    openProvision
+    openProvision, openNewLoan
   } from '$lib/stores/ui';
 
   let ready = false;
@@ -43,6 +43,11 @@
     closeLoan();
     if (e?.detail?.imei) openProvision(e.detail.imei);
   }
+
+  function onDeviceEnroll(e: CustomEvent) {
+    closeDevice();
+    openNewLoan(e?.detail || {});
+  }
 </script>
 
 {#if $page.url.pathname === '/login' || !$isAuthenticated}
@@ -62,6 +67,6 @@
   </div>
 
   <NewLoanModal open={$newLoanOpen} on:close={closeLoan} on:provision={onLoanProvision} />
-  <AddDeviceModal open={$addDeviceOpen} on:close={closeDevice} />
+  <AddDeviceModal open={$addDeviceOpen} on:close={closeDevice} on:enroll={onDeviceEnroll} />
   <ProvisionModal open={$provisionOpen} initialImei={$provisionInitialImei} on:close={closeProvision} />
 {/if}

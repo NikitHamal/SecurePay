@@ -57,7 +57,7 @@ import com.touchbase.agent.data.model.PaystackVerifyResponse
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.Amber
-import com.touchbase.agent.ui.theme.EmeraldGreen
+import com.touchbase.agent.ui.theme.Gold
 import com.touchbase.agent.ui.theme.VividCrimson
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,10 +96,10 @@ fun AgentPayWithMoMoDialog(
     val otpFocus = remember { FocusRequester() }
 
     val appTextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = EmeraldGreen,
+        focusedBorderColor = Gold,
         unfocusedBorderColor = surfaceVariant,
-        cursorColor = EmeraldGreen,
-        focusedLabelColor = EmeraldGreen,
+        cursorColor = Gold,
+        focusedLabelColor = Gold,
         unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         focusedTextColor = MaterialTheme.colorScheme.onSurface,
         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -218,7 +218,7 @@ fun AgentPayWithMoMoDialog(
                             },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen, contentColor = Color(0xFF07130F))
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))
                         ) { Text("Charge MoMo", fontWeight = FontWeight.Bold) }
                     }
 
@@ -248,7 +248,7 @@ fun AgentPayWithMoMoDialog(
                                         }.onFailure { error = it.message }
                                     }
                                 }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen, contentColor = Color(0xFF07130F))) {
+                                    colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))) {
                                     Text("Submit OTP", fontWeight = FontWeight.Bold)
                                 }
                                 OutlinedButton(onClick = { step = MomoStep.FORM; otp = ""; error = null },
@@ -262,7 +262,7 @@ fun AgentPayWithMoMoDialog(
                             subtitle = "Recorded via MoMo. Device will unlock on next sync.",
                             surfaceVariant = surfaceVariant, onSurface = onSurface, onSurfaceVariant = onSurfaceVariant)
                         Button(onClick = onPaymentRecorded, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen, contentColor = Color(0xFF07130F))) {
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))) {
                             Text("Done", fontWeight = FontWeight.Bold)
                         }
                     }
@@ -287,7 +287,7 @@ fun AgentPayWithMoMoDialog(
 private fun ProcessingBlock(text: String, surfaceVariant: Color, onSurface: Color, onSurfaceVariant: Color) {
     Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = surfaceVariant)) {
         Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator(color = EmeraldGreen, strokeWidth = 3.dp)
+            CircularProgressIndicator(color = Gold, strokeWidth = 3.dp)
             Text("Waiting for MoMo…", color = onSurface, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(text.ifBlank { "Customer must approve the prompt on their phone." }, color = onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
@@ -296,12 +296,12 @@ private fun ProcessingBlock(text: String, surfaceVariant: Color, onSurface: Colo
 
 @Composable
 private fun ResultBlock(success: Boolean, title: String, subtitle: String, surfaceVariant: Color, onSurface: Color, onSurfaceVariant: Color) {
-    val color = if (success) EmeraldGreen else VividCrimson
+    val color = if (success) Gold else VividCrimson
     Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f))) {
         Column(modifier = Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(modifier = Modifier.size(58.dp).background(color, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                 Icon(if (success) Icons.Filled.CheckCircle else Icons.Filled.Error, contentDescription = null,
-                    tint = if (success) Color(0xFF07130F) else Color.White, modifier = Modifier.size(30.dp))
+                    tint = if (success) Color(0xFF0B0B0C) else Color.White, modifier = Modifier.size(30.dp))
             }
             Text(title, color = onSurface, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             Text(subtitle, color = onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
@@ -312,10 +312,10 @@ private fun ResultBlock(success: Boolean, title: String, subtitle: String, surfa
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun chipColors(selected: Boolean) = FilterChipDefaults.filterChipColors(
-    containerColor = if (selected) EmeraldGreen else MaterialTheme.colorScheme.surfaceVariant,
-    labelColor = if (selected) Color(0xFF07130F) else MaterialTheme.colorScheme.onSurface,
-    selectedContainerColor = EmeraldGreen,
-    selectedLabelColor = Color(0xFF07130F)
+    containerColor = if (selected) Gold else MaterialTheme.colorScheme.surfaceVariant,
+    labelColor = if (selected) Color(0xFF0B0B0C) else MaterialTheme.colorScheme.onSurface,
+    selectedContainerColor = Gold,
+    selectedLabelColor = Color(0xFF0B0B0C)
 )
 
 

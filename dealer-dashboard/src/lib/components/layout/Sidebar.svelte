@@ -110,15 +110,16 @@
 >
   <!-- Logo / brand -->
   <div class="flex items-center gap-3 px-5 pt-5 pb-4">
-    <div class="relative flex h-9 w-9 items-center justify-center rounded-lg" style="background-color: var(--brand);" aria-hidden="true">
-      <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" stroke-linejoin="round" />
-        <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-    </div>
+    <img
+      src="/branding/touchbase-mark-64.png"
+      alt="Touch Base"
+      class="h-10 w-10 rounded-lg object-contain p-1"
+      style="background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);"
+      loading="eager"
+    />
     <div class="leading-tight">
-      <p class="text-[15px] font-semibold text-ink-primary">SecurePay</p>
-      <p class="text-[11px] text-ink-muted">Dealer Console · v1.0</p>
+      <p class="text-[15px] font-semibold text-ink-primary">Touch Base</p>
+      <p class="text-[11px] text-ink-muted">Dealer Console</p>
     </div>
   </div>
 
@@ -136,16 +137,16 @@
               on:click={() => sidebarOpen.set(false)}
               aria-current={active ? 'page' : undefined}
               class="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                     {active ? 'text-emerald' : 'text-ink-secondary hover:bg-hover hover:text-ink-primary'}"
-              style={active ? 'background-color: var(--brand-soft);' : ''}
+                     {active ? '' : 'text-ink-secondary hover:bg-hover hover:text-ink-primary'}"
+              style={active ? 'background-color: var(--brand-soft); color: var(--brand);' : ''}
             >
               {#if active}
                 <span class="nav-active-indicator" aria-hidden="true"></span>
               {/if}
               <span
                 class="flex h-7 w-7 items-center justify-center rounded-md
-                       {active ? 'text-emerald' : 'text-ink-muted group-hover:text-ink-secondary'}"
-                style={active ? 'background-color: var(--brand-soft);' : ''}
+                       {active ? '' : 'text-ink-muted group-hover:text-ink-secondary'}"
+                style={active ? 'background-color: var(--brand-soft); color: var(--brand);' : ''}
               >
                 <svg
                   class="h-[18px] w-[18px]"
@@ -184,7 +185,7 @@
       </span>
       <span class="flex-1 min-w-0">
         <span class="block text-sm font-medium text-ink-primary truncate">{$dealer?.name || 'Demo Dealer'}</span>
-        <span class="block text-[11px] text-ink-muted truncate">{$dealer?.email || 'dealer@securepay.io'}</span>
+        <span class="block text-[11px] text-ink-muted truncate">{$dealer?.email || 'dealer@touchbase.app'}</span>
       </span>
       <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" stroke-linecap="round" stroke-linejoin="round" />

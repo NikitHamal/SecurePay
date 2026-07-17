@@ -13,48 +13,74 @@
   }
 </script>
 
-<svelte:head><title>Sign in · SecurePay</title></svelte:head>
+<svelte:head><title>Sign in · Touch Base</title></svelte:head>
 
-<div class="flex min-h-screen items-center justify-center px-4 py-10" style="background-color: var(--bg-base);">
-  <div class="w-full max-w-sm">
-    <div class="mb-6 flex flex-col items-center">
-      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl" style="background-color: var(--brand);">
-        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/>
-        </svg>
-      </div>
-      <h1 class="text-xl font-semibold text-ink-primary">SecurePay</h1>
-      <p class="mt-0.5 text-sm text-ink-muted">Dealer Console</p>
+<div class="flex min-h-screen flex-col items-center justify-center px-4 py-10" style="background-color: var(--bg-base);">
+  <div class="w-full max-w-[400px]">
+    <!-- Brand -->
+    <div class="mb-8 flex flex-col items-center text-center">
+      <img
+        src="/branding/touchbase-mark-128.png"
+        alt="Touch Base"
+        class="mb-4 h-16 w-16 rounded-2xl object-contain"
+      />
+      <h1 class="text-2xl font-bold tracking-tight text-ink-primary">Touch Base</h1>
+      <p class="mt-1 text-sm text-ink-muted">Connect · Finance · Grow</p>
     </div>
 
-    <form on:submit={handleSubmit} class="card space-y-4 p-6">
+    <form on:submit={handleSubmit} class="card space-y-4 p-7">
+      <div class="space-y-1">
+        <h2 class="text-lg font-semibold text-ink-primary">Agent sign in</h2>
+        <p class="text-sm text-ink-muted">Welcome back. Sign in to manage financed devices and collections.</p>
+      </div>
+
       {#if $authError}
         <div class="rounded-lg border border-crimson/20 bg-crimson/10 px-3 py-2 text-sm text-crimson">
           {$authError}
         </div>
       {/if}
 
-      <div>
-        <label for="email" class="label">Email</label>
-        <input id="email" type="email" bind:value={email} placeholder="you@securepay.io" required class="input w-full" />
+      <div class="space-y-1.5">
+        <label for="email" class="text-sm font-medium text-ink-primary">Email</label>
+        <input
+          id="email"
+          type="email"
+          bind:value={email}
+          placeholder="you@touchbase.io"
+          autocomplete="email"
+          required
+          class="input w-full"
+        />
       </div>
 
-      <div>
-        <label for="password" class="label">Password</label>
-        <input id="password" type="password" bind:value={password} placeholder="••••••••" required class="input w-full" />
+      <div class="space-y-1.5">
+        <label for="password" class="text-sm font-medium text-ink-primary">Password</label>
+        <input
+          id="password"
+          type="password"
+          bind:value={password}
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+          class="input w-full"
+        />
       </div>
 
-      <button type="submit" disabled={submitting} class="btn-primary w-full">
+      <button type="submit" disabled={submitting} class="btn-primary mt-2 w-full py-2.5 text-[15px] font-semibold">
         {#if submitting}
-          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--avatar-text)] border-t-transparent"></span>
           Signing in…
         {:else}Sign in{/if}
       </button>
 
-      <div class="text-center">
-        <a href="/register" class="text-sm text-emerald hover:underline">Become an agent? Register here</a>
+      <div class="flex items-center justify-between pt-2 text-sm">
+        <a href="/register" style="color: var(--brand);" class="font-medium hover:underline">Become an agent? Register</a>
+        <span class="text-ink-muted">v1.0</span>
       </div>
     </form>
+
+    <p class="mt-6 text-center text-xs text-ink-dim">
+      Secure dealer access. Device-financing operations console.
+    </p>
   </div>
 </div>

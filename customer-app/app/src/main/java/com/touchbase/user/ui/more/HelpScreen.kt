@@ -39,7 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.touchbase.user.BuildConfig
-import com.touchbase.user.ui.theme.Emerald
+import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
@@ -115,7 +115,7 @@ private fun ContactRow(
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, color = TextSecondary)
             }
-            Icon(icon, contentDescription = null, tint = Emerald, modifier = Modifier.size(28.dp))
+            Icon(icon, contentDescription = null, tint = Gold, modifier = Modifier.size(28.dp))
         }
     }
 }

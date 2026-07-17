@@ -59,7 +59,7 @@
   $: totalRevenue = agents.reduce((s, a) => s + (a.totalRevenue || 0), 0);
 </script>
 
-<svelte:head><title>Agents · SecurePay</title></svelte:head>
+<svelte:head><title>Agents · Touch Base</title></svelte:head>
 
 <div class="page">
   <TopBar showSearch={false} />

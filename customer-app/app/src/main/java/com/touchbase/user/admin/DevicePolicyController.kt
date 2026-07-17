@@ -36,7 +36,7 @@ class DevicePolicyController(context: Context) {
         putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
         putExtra(
             DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-            "TB User requires device management to enforce your financing terms."
+            "Touch Base requires device management to enforce your financing terms."
         )
     }
 
@@ -95,7 +95,7 @@ class DevicePolicyController(context: Context) {
     /**
      * Final loan-settlement path. The DPC is intentionally allowed to remove its
      * own management state after the server approves release, so the customer can
-     * uninstall TB User without a factory reset.
+     * uninstall Touch Base without a factory reset.
      */
     fun releaseManagementForPaidLoan(): Boolean {
         if (!isAdminActive) return true

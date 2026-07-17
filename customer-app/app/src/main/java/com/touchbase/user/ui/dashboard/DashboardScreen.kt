@@ -74,7 +74,7 @@ import com.touchbase.user.ui.theme.Charcoal
 import com.touchbase.user.ui.theme.CharcoalElevated
 import com.touchbase.user.ui.theme.CharcoalSurfaceVariant
 import com.touchbase.user.ui.theme.Crimson
-import com.touchbase.user.ui.theme.Emerald
+import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
 
@@ -116,8 +116,8 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("TB User", fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("Device financing dashboard", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                        Text("Touch Base", fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("Device financing", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Charcoal)
@@ -129,7 +129,7 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Emerald)
+                CircularProgressIndicator(color = Gold)
             }
             return@Scaffold
         }
@@ -169,7 +169,7 @@ fun DashboardScreen(
 @Composable
 private fun HeroStatusCard(state: DeviceUiState) {
     val (title, subtitle, icon, accent) = when (state.status) {
-        DeviceStatus.ACTIVE -> Quad("Device Active", "Your loan device is currently enabled.", Icons.Filled.VerifiedUser, Emerald)
+        DeviceStatus.ACTIVE -> Quad("Device Active", "Your loan device is currently enabled.", Icons.Filled.VerifiedUser, Gold)
         DeviceStatus.WARNING -> Quad("Payment Due Soon", "Please keep your next payment on time.", Icons.Filled.NotificationsActive, Amber)
         DeviceStatus.LOCKED -> Quad("Device Locked", "Sync after payment or dealer unlock to restore access.", Icons.Filled.Lock, Crimson)
     }
@@ -217,7 +217,7 @@ private fun HeroStatusCard(state: DeviceUiState) {
 @Composable
 private fun LoanSummaryCard(account: LoanAccount) {
     val progress = account.repaymentProgress
-    InfoCard(title = "Loan Summary", icon = Icons.Filled.CreditCard, accent = Emerald) {
+    InfoCard(title = "Loan Summary", icon = Icons.Filled.CreditCard, accent = Gold) {
         Text(
             text = formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode),
             style = MaterialTheme.typography.headlineMedium,
@@ -229,7 +229,7 @@ private fun LoanSummaryCard(account: LoanAccount) {
         LinearProgressIndicator(
             progress = progress,
             modifier = Modifier.fillMaxWidth().height(8.dp),
-            color = Emerald,
+            color = Gold,
             trackColor = CharcoalSurfaceVariant
         )
         Spacer(Modifier.height(14.dp))
@@ -255,7 +255,7 @@ private fun ActionGrid(
             enabled = !state.isProcessingPayment,
             modifier = Modifier.fillMaxWidth().height(58.dp),
             shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald, contentColor = Color(0xFF07130F))
+            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF0B0B0C))
         ) {
             Icon(Icons.Filled.AccountBalanceWallet, contentDescription = null)
             Spacer(Modifier.width(8.dp))
@@ -270,7 +270,7 @@ private fun ActionGrid(
             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
         ) {
             if (state.isProcessingPayment) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Emerald)
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Gold)
             } else {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -325,7 +325,7 @@ private fun PermissionHealthCard() {
     InfoCard(
         title = if (missing.isEmpty()) "Permissions Ready" else "Permissions Need Attention",
         icon = Icons.Filled.Security,
-        accent = if (missing.isEmpty()) Emerald else Amber
+        accent = if (missing.isEmpty()) Gold else Amber
     ) {
         Text(
             text = if (missing.isEmpty()) {

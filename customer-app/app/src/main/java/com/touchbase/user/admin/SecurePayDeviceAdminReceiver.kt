@@ -11,15 +11,15 @@ class SecurePayDeviceAdminReceiver : DeviceAdminReceiver() {
         SecureLog.forceError(TAG, "DeviceAdminReceiver.onEnabled() called — DPC is being enabled by system")
         ProvisioningExtrasStore.recordStage(context, "DEVICE_ADMIN_ENABLED")
         ProvisioningExtrasStore.persistFromIntent(context, intent)
-        SecureLog.i(TAG, "TB User device administration enabled.")
+        SecureLog.i(TAG, "Touch Base device administration enabled.")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
-        SecureLog.i(TAG, "TB User device administration disabled.")
+        SecureLog.i(TAG, "Touch Base device administration disabled.")
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
-        return "Removing TB User management will violate your financing agreement " +
+        return "Removing Touch Base management will violate your financing agreement " +
             "and may immediately restrict this device."
     }
 

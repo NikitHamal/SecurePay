@@ -71,7 +71,7 @@
         </svg>
       </div>
       <h1 class="text-2xl font-bold text-white">Become an Agent</h1>
-      <p class="mt-1 text-sm text-ink-secondary">Register to start selling with SecurePay</p>
+      <p class="mt-1 text-sm text-ink-secondary">Register to start selling with Touch Base</p>
     </div>
 
     {#if success}

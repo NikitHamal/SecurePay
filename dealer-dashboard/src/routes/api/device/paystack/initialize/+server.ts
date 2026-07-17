@@ -66,7 +66,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!normalizedPhone.startsWith('+')) normalizedPhone = '+' + normalizedPhone;
 
   const email = getCustomerEmail(account, normalizedPhone);
-  const reference = generateReference('SPD'); // SPD = SecurePay Device
+  const reference = generateReference('SPD'); // SPD = SP Device
 
   try {
     const result = await initializeCharge({

@@ -5,68 +5,79 @@
 @layer base {
   :root,
   [data-theme='light'] {
-    --bg-base: #F6FAF7;
+    --bg-base: #F8F6F0;
     --bg-surface: #FFFFFF;
-    --bg-surface-50: #F3F4F6;
-    --bg-surface-100: #F3F4F6;
+    --bg-surface-50: #F1EFE8;
+    --bg-surface-100: #F1EFE8;
     --bg-surface-200: #FFFFFF;
     --bg-surface-300: #FFFFFF;
     --bg-elevated: #FFFFFF;
-    --bg-sidebar: #FFFFFF;
-    --bg-input: #F3F4F6;
-    --bg-hover: rgba(17,24,39,0.05);
-    --border-default: rgba(17,24,39,0.08);
-    --border-strong: rgba(17,24,39,0.14);
-    --border-subtle: rgba(17,24,39,0.05);
-    --text-primary: #111827;
-    --text-secondary: #4B5563;
+    --bg-sidebar: #FBF9F3;
+    --bg-input: #F1EFE8;
+    --bg-hover: rgba(11,11,12,0.05);
+    --border-default: rgba(11,11,12,0.08);
+    --border-strong: rgba(11,11,12,0.14);
+    --border-subtle: rgba(11,11,12,0.05);
+    --text-primary: #0B0B0C;
+    --text-secondary: #3F3F46;
     --text-muted: #6B7280;
     --text-dim: #9CA3AF;
-    --shadow-card: 0 1px 2px rgba(17,24,39,0.04);
-    --shadow-card-hover: 0 4px 12px rgba(17,24,39,0.08);
-    --scrollbar-thumb: rgba(17,24,39,0.12);
-    --scrollbar-thumb-hover: rgba(17,24,39,0.22);
-    --selection-bg: rgba(0,75,48,0.18);
-    --selection-text: #111827;
-    --overlay-bg: rgba(17,24,39,0.4);
-    --progress-track: #E5E7EB;
-    --avatar-text: #FFFFFF;
-    --brand: #004B30;
-    --brand-soft: #EAF5EE;
-    --brand-accent: #10B981;
+    --shadow-card: 0 1px 2px rgba(11,11,12,0.04);
+    --shadow-card-hover: 0 6px 18px rgba(11,11,12,0.08);
+    --scrollbar-thumb: rgba(11,11,12,0.12);
+    --scrollbar-thumb-hover: rgba(11,11,12,0.22);
+    --selection-bg: rgba(212,175,55,0.28);
+    --selection-text: #0B0B0C;
+    --overlay-bg: rgba(11,11,12,0.4);
+    --progress-track: #E7E4DA;
+    --avatar-text: #0B0B0C;
+    /* Touch Base gold */
+    --brand: #B8941F;
+    --brand-soft: rgba(212,175,55,0.14);
+    --brand-accent: #D4AF37;
+    /* Success = green (paid / verified / in-stock) */
+    --success: #10B981;
+    --success-soft: rgba(16,185,129,0.14);
+    --danger: #DC2626;
+    --warning: #F59E0B;
   }
 
   .dark,
   [data-theme='dark'] {
-    --bg-base: #121212;
-    --bg-surface: #1E1E1E;
-    --bg-surface-50: #262626;
-    --bg-surface-100: #262626;
-    --bg-surface-200: #1E1E1E;
-    --bg-surface-300: #181818;
-    --bg-elevated: #262626;
-    --bg-sidebar: #181818;
-    --bg-input: #262626;
+    --bg-base: #0F0F10;
+    --bg-surface: #1A1A1C;
+    --bg-surface-50: #262629;
+    --bg-surface-100: #262629;
+    --bg-surface-200: #1A1A1C;
+    --bg-surface-300: #151517;
+    --bg-elevated: #262629;
+    --bg-sidebar: #141416;
+    --bg-input: #262629;
     --bg-hover: rgba(255,255,255,0.06);
     --border-default: rgba(255,255,255,0.08);
     --border-strong: rgba(255,255,255,0.12);
     --border-subtle: rgba(255,255,255,0.05);
-    --text-primary: #E5E7EB;
-    --text-secondary: #9CA3AF;
-    --text-muted: #6B7280;
-    --text-dim: #4B5563;
-    --shadow-card: 0 1px 2px rgba(0,0,0,0.4);
-    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.5);
-    --scrollbar-thumb: rgba(255,255,255,0.1);
+    --text-primary: #F2F2F3;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --text-dim: #52525B;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.5);
+    --shadow-card-hover: 0 6px 20px rgba(0,0,0,0.55);
+    --scrollbar-thumb: rgba(255,255,255,0.10);
     --scrollbar-thumb-hover: rgba(255,255,255,0.18);
-    --selection-bg: rgba(16,185,129,0.25);
+    --selection-bg: rgba(212,175,55,0.30);
     --selection-text: #fff;
-    --overlay-bg: rgba(0,0,0,0.6);
+    --overlay-bg: rgba(0,0,0,0.65);
     --progress-track: rgba(255,255,255,0.08);
-    --avatar-text: #121212;
-    --brand: #10B981;
-    --brand-soft: rgba(16,185,129,0.12);
-    --brand-accent: #34D399;
+    --avatar-text: #0B0B0C;
+    /* Touch Base gold */
+    --brand: #D4AF37;
+    --brand-soft: rgba(212,175,55,0.14);
+    --brand-accent: #E9C969;
+    --success: #10B981;
+    --success-soft: rgba(16,185,129,0.16);
+    --danger: #DC2626;
+    --warning: #F59E0B;
   }
 
   html, body {
@@ -118,125 +129,29 @@
            whitespace-nowrap;
   }
 
-  .btn, button {
-    white-space: nowrap;
-  }
-
-  .btn > *, button > * {
-    min-width: 0;
-    max-width: 100%;
-  }
-
   .btn-primary {
-    @apply btn bg-emerald text-white hover:bg-emerald-200
-           focus-visible:ring-emerald/40;
+    @apply btn text-[color:var(--avatar-text)];
+    background-color: var(--brand);
   }
-  .dark .btn-primary {
-    @apply bg-emerald hover:bg-emerald-50;
-  }
-  :root:not(.dark) [data-theme='light'] .btn-primary,
-  [data-theme='light'] .btn-primary {
-    background-color: #004B30;
-  }
-  :root:not(.dark) [data-theme='light'] .btn-primary:hover,
-  [data-theme='light'] .btn-primary:hover {
-    background-color: #003d27;
-  }
-
-  .btn-ghost {
-    @apply btn text-ink-secondary hover:bg-hover hover:text-ink-primary;
-  }
-  .btn-outline {
-    @apply btn border border-edge text-ink-primary hover:bg-hover;
-  }
-  .btn-emerald {
-    @apply btn bg-emerald/10 text-emerald hover:bg-emerald/20 focus-visible:ring-emerald/30;
-  }
-  .btn-crimson {
-    @apply btn bg-crimson/10 text-crimson hover:bg-crimson/20 focus-visible:ring-crimson/30;
-  }
-  .btn-amber {
-    @apply btn bg-amber/10 text-amber hover:bg-amber/20 focus-visible:ring-amber/30;
-  }
-
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-edge
-           px-2 py-0.5 text-xs font-medium text-ink-secondary;
-    background: var(--bg-surface-100);
-  }
-  .chip-emerald {
-    @apply chip border-emerald/30 bg-emerald/10 text-emerald;
-  }
-  .chip-amber {
-    @apply chip border-amber/30 bg-amber/10 text-amber;
-  }
-  .chip-crimson {
-    @apply chip border-crimson/30 bg-crimson/10 text-crimson;
-  }
-  .chip-sky {
-    @apply chip border-sky/30 bg-sky/10 text-sky;
-  }
+  .btn-primary:hover { background-color: var(--brand-accent); }
 
   .input {
-    @apply w-full rounded-lg border px-3 py-2 text-sm text-ink-primary
-           focus:outline-none focus:ring-2 focus:ring-emerald/30 transition-colors;
-    border-color: var(--border-strong);
-    background-color: var(--bg-input);
-  }
-  .input::placeholder { color: var(--text-muted); opacity: 1; }
-  .input:focus { border-color: var(--brand); }
-
-  .label {
-    @apply block text-xs font-medium text-ink-secondary mb-1.5;
+    @apply w-full rounded-lg border border-edge bg-[var(--bg-input)] px-3 py-2 text-sm
+           text-ink-primary placeholder:text-ink-dim
+           focus:border-brand focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-soft)];
   }
 
-  .data-table {
-    @apply w-full border-separate border-spacing-0 text-left text-sm;
-  }
-  .data-table thead th {
-    @apply sticky top-0 z-10 border-b border-edge bg-surface-200 px-4 py-3 text-2xs font-semibold uppercase tracking-wider text-ink-muted;
-  }
-  .data-table tbody td {
-    @apply border-b border-edge px-4 py-3 align-middle;
-  }
-  .data-table tbody tr:last-child td { @apply border-b-0; }
-
-  .section-title {
-    @apply text-xs font-semibold uppercase tracking-wider text-ink-muted;
-  }
-
-  .page {
-    @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
-  }
-
-  .skeleton {
-    @apply relative overflow-hidden bg-surface-100 animate-pulse;
-  }
-
-  /* Solid (non-gradient) avatar helper */
-  .avatar-solid {
-    @apply flex shrink-0 items-center justify-center rounded-lg font-semibold text-white;
-    background-color: var(--brand);
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold;
   }
 
   .nav-active-indicator {
-    @apply absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full;
+    position: absolute;
+    left: -12px;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 999px;
     background-color: var(--brand);
-  }
-}
-
-@layer utilities {
-  .tabular-nums { font-variant-numeric: tabular-nums; }
-  .text-balance { text-wrap: balance; }
-  .bg-dot {
-    background-image: radial-gradient(var(--border-default) 1px, transparent 1px);
-    background-size: 14px 14px;
-  }
-  .bg-hover { background-color: var(--bg-hover); }
-  .truncate-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 }

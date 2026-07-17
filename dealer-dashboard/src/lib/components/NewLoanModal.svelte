@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import { addDevice, createAccount, listDevices, listPlans } from '$lib/api/client';
   import { load } from '$lib/stores/customers';
+  import { newLoanPrefill } from '$lib/stores/ui';
 
   export let open = false;
 
@@ -25,6 +26,11 @@
   let termDays = '365';
   let downPayment = '0';
 
+  // Inventory devices (for "pick from stock" selector)
+  let inStockDevices: { id: string; imei: string; model: string }[] = [];
+  let selectedStockId = '';
+  let loadingDevices = false;
+
   // Plans from server
   let plans: { id: string; name: string; termDays: number; totalAmount: number; dailyRate: number; minDownPayment: number }[] = [];
   let loadingPlans = false;
@@ -32,9 +38,38 @@
   // Enrollment result
   let result: { accountNumber: string; temporaryPin: string; customerId: string; deviceImei: string } | null = null;
 
-  $: if (open && plans.length === 0 && !loadingPlans) {
-    loadingPlans = true;
-    listPlans().then(p => { plans = p; }).catch(() => {}).finally(() => { loadingPlans = false; });
+  $: if (open) {
+    // Apply prefill (from inventory row, etc.)
+    const pf = $newLoanPrefill || {};
+    if (pf.imei) imei = pf.imei;
+    if (pf.deviceModel) deviceModel = pf.deviceModel;
+    if (pf.customerName) customerName = pf.customerName;
+    if (pf.phone) phoneNumber = pf.phone;
+    selectedStockId = '';
+
+    if (plans.length === 0 && !loadingPlans) {
+      loadingPlans = true;
+      listPlans().then(p => { plans = p; }).catch(() => {}).finally(() => { loadingPlans = false; });
+    }
+    if (!loadingDevices) {
+      loadingDevices = true;
+      listDevices().then(ds => {
+        inStockDevices = (ds || []).filter((d: any) => d.status === 'in_stock' && !d.customerName);
+      }).catch(() => {}).finally(() => { loadingDevices = false; });
+    }
+  }
+
+  function pickStockDevice(id: string) {
+    selectedStockId = id;
+    const d = inStockDevices.find(x => x.id === id);
+    if (d) {
+      imei = d.imei;
+      deviceModel = d.model;
+      addImeiToInventory = false; // already in inventory
+    } else {
+      imei = '';
+      deviceModel = '';
+    }
   }
 
   function pickPlan(id: string) {
@@ -52,6 +87,8 @@
     customerName = ''; nationalId = ''; phoneNumber = ''; imei = ''; deviceModel = '';
     planId = ''; dailyRate = ''; totalAmount = ''; termDays = '365'; downPayment = '0';
     addImeiToInventory = true; error = ''; submitting = false; step = 'form'; result = null;
+    selectedStockId = '';
+    newLoanPrefill.set({});
   }
 
   async function submit() {
@@ -67,10 +104,9 @@
     submitting = true;
     try {
       // Ensure device exists in inventory
-      if (addImeiToInventory) {
+      if (addImeiToInventory && !selectedStockId) {
         try { await addDevice(imei.trim(), deviceModel.trim()); }
         catch (e) {
-          // If already exists, ignore (unique constraint); rethrow otherwise
           const msg = e instanceof Error ? e.message : String(e);
           if (!/already|exists|duplicate/i.test(msg)) throw e;
         }
@@ -96,6 +132,10 @@
       };
       step = 'success';
       await load(); // refresh customers store
+      // also refresh inventory devices list
+      listDevices().then(ds => {
+        inStockDevices = (ds || []).filter((d: any) => d.status === 'in_stock' && !d.customerName);
+      }).catch(() => {});
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to create loan';
     } finally {
@@ -114,9 +154,9 @@
   }
 </script>
 
-<Modal open={open} title={step === 'form' ? 'New Loan · Enroll Customer' : 'Customer Enrolled'} on:close={close} size="lg">
+<Modal open={open} title={step === 'form' ? 'Enroll Customer · New Loan' : 'Customer Enrolled'} on:close={close} size="lg">
   {#if step === 'form'}
-    <div class="space-y-4">
+    <div class="space-y-5">
       {#if error}
         <div class="rounded-lg border border-crimson/20 bg-crimson/10 px-3 py-2 text-sm text-crimson">{error}</div>
       {/if}
@@ -133,25 +173,65 @@
             <input id="nl-phone" class="input" bind:value={phoneNumber} placeholder="024 xxx xxxx" />
           </div>
           <div class="sm:col-span-2">
-            <label class="label" for="nl-nid">Ghana Card / National ID</label>
+            <label class="label" for="nl-nid">Ghana Card / National ID <span class="text-ink-muted text-xs">(optional)</span></label>
             <input id="nl-nid" class="input" bind:value={nationalId} placeholder="GHA-xxxx-xxxx-xxxx" />
           </div>
         </div>
       </div>
 
       <div>
-        <p class="section-title mb-3">Device</p>
+        <div class="mb-3 flex items-center justify-between">
+          <p class="section-title !mb-0">Device</p>
+          {#if inStockDevices.length > 0}
+            <span class="text-xs text-ink-muted">{inStockDevices.length} in stock</span>
+          {/if}
+        </div>
+
+        {#if inStockDevices.length > 0}
+          <label class="label" for="nl-pick">Pick from inventory</label>
+          <select
+            id="nl-pick"
+            class="input mb-3"
+            value={selectedStockId}
+            on:change={(e) => pickStockDevice(e.currentTarget.value)}
+          >
+            <option value="">— Type IMEI manually —</option>
+            {#each inStockDevices as d (d.id)}
+              <option value={d.id}>{d.model} · {d.imei}</option>
+            {/each}
+          </select>
+        {/if}
+
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label class="label" for="nl-imei">IMEI (15 digits)</label>
-            <input id="nl-imei" class="input font-mono" bind:value={imei} maxlength={15} placeholder="35xxxxxxxxxxxxx" />
+            <input
+              id="nl-imei"
+              class="input font-mono"
+              bind:value={imei}
+              maxlength={15}
+              placeholder="35xxxxxxxxxxxxx"
+              readonly={selectedStockId !== ''}
+            />
           </div>
           <div>
             <label class="label" for="nl-model">Device model</label>
-            <input id="nl-model" class="input" bind:value={deviceModel} placeholder="e.g. Samsung A05s" />
+            <input
+              id="nl-model"
+              class="input"
+              bind:value={deviceModel}
+              placeholder="e.g. Samsung A05s"
+              readonly={selectedStockId !== ''}
+            />
           </div>
           <label class="sm:col-span-2 flex items-center gap-2 text-sm text-ink-secondary">
-            <input type="checkbox" bind:checked={addImeiToInventory} class="h-4 w-4 rounded border-edge text-emerald" />
+            <input
+              type="checkbox"
+              bind:checked={addImeiToInventory}
+              disabled={selectedStockId !== ''}
+              class="h-4 w-4 rounded border-edge"
+              style="accent-color: var(--brand);"
+            />
             Add this IMEI to inventory if it isn't already
           </label>
         </div>
@@ -166,13 +246,16 @@
                 type="button"
                 on:click={() => pickPlan(p.id)}
                 class="rounded-lg border px-3 py-2 text-left text-xs transition-colors
-                       {planId === p.id ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-100 text-ink-secondary hover:bg-hover'}"
+                       {planId === p.id ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-edge bg-surface-100 text-ink-secondary hover:bg-hover'}"
+                style={planId === p.id ? 'color: var(--brand);' : ''}
               >
-                <p class="font-semibold">{p.name}</p>
+                <p class="font-semibold" style={planId === p.id ? 'color: var(--brand);' : ''}>{p.name}</p>
                 <p class="text-ink-muted">{p.termDays}d · GH₵{(p.totalAmount/100).toFixed(0)}</p>
               </button>
             {/each}
           </div>
+        {:else if loadingPlans}
+          <p class="text-sm text-ink-muted">Loading plans…</p>
         {/if}
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
@@ -196,7 +279,7 @@
     </div>
   {:else if result}
     <div class="space-y-4 text-center">
-      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald/10 text-emerald">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full" style="background: var(--success-soft, rgba(16,185,129,0.14)); color: var(--success, #10B981);">
         <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -213,7 +296,7 @@
         {#if result.temporaryPin}
           <div class="flex justify-between gap-4">
             <span class="text-ink-muted">Temporary PIN</span>
-            <span class="text-emerald font-semibold tracking-widest">{result.temporaryPin}</span>
+            <span class="font-semibold tracking-widest" style="color: var(--success, #10B981);">{result.temporaryPin}</span>
           </div>
         {/if}
         <div class="flex justify-between gap-4">
@@ -221,7 +304,7 @@
           <span class="text-ink-primary">{result.deviceImei}</span>
         </div>
       </div>
-      <p class="text-xs text-amber bg-amber/10 border border-amber/20 rounded-lg p-3 text-left">
+      <p class="text-xs rounded-lg border p-3 text-left" style="border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.10); color: #F59E0B;">
         <strong>Important:</strong> Save the temporary PIN now. It is shown once and cannot be retrieved. Next, generate a Device Owner QR to provision the phone.
       </p>
     </div>
@@ -232,7 +315,7 @@
       <button class="btn-outline" on:click={close} disabled={submitting}>Cancel</button>
       <button class="btn-primary" on:click={submit} disabled={submitting}>
         {#if submitting}
-          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--avatar-text)] border-t-transparent"></span>
           Creating…
         {:else}Create loan{/if}
       </button>

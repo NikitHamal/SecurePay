@@ -106,7 +106,7 @@ class SecurePayApplication : Application() {
         runCatching {
             val channel = NotificationChannel(
                 FCM_CHANNEL_ID,
-                "SecurePay notifications",
+                "Touch Base notifications",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Device lock and payment notifications"

@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.touchbase.user.BuildConfig
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.ui.components.CustomerBottomBar
-import com.touchbase.user.ui.theme.Emerald
+import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextSecondary
 import com.touchbase.user.util.BatteryOptimizationHelper
 
@@ -124,7 +124,7 @@ private fun MoreRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(46.dp)) {
-                Icon(icon, contentDescription = null, tint = Emerald, modifier = Modifier.padding(11.dp))
+                Icon(icon, contentDescription = null, tint = Gold, modifier = Modifier.padding(11.dp))
             }
             Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold)
