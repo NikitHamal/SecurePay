@@ -901,10 +901,11 @@ fun CustomerDetailScreen(
         )
     }
 
-    if (showMoMoDialog && repository != null && account != null) {
+    val currentAccount = account
+    if (showMoMoDialog && repository != null && currentAccount != null) {
         AgentPayWithMoMoDialog(
             repository = repository,
-            account = account,
+            account = currentAccount,
             onDismiss = { showMoMoDialog = false },
             onPaymentRecorded = {
                 showMoMoDialog = false
