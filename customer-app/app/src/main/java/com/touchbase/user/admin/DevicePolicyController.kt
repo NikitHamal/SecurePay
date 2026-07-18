@@ -266,16 +266,20 @@ class DevicePolicyController(context: Context) {
     private fun setInstallAndAppControlRestrictions() {
         if (!isDeviceOwner) return
         runCatching {
-            dpm.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+            // Do not block APK updates. Dealer technicians update Touch Base using
+            // the signed APK over USB/Downloads when Play Protect or QR provisioning
+            // is unavailable. Uninstall, factory reset, debugging and app-control
+            // restrictions below still protect the financed device.
+            dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+            dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_APPS_CONTROL)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_MODIFY_ACCOUNTS)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_CREDENTIALS)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                dpm.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY)
-            }
-            runCatching { dpm.setSecureSetting(admin, Settings.Secure.INSTALL_NON_MARKET_APPS, "0") }
+            // Keep the package installer available for signed dealer APK updates.
+            // Do not set INSTALL_NON_MARKET_APPS=0; that setting blocks the manual
+            // update path on Samsung file manager/package installer.
         }.onFailure { SecureLog.w(TAG, "App/install restrictions denied: ${it.message}") }
     }
 
