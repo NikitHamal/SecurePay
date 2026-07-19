@@ -333,43 +333,39 @@ private fun PermissionHealthCard() {
     }
     val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
 
+    if (missing.isEmpty()) return
+
     InfoCard(
-        title = if (missing.isEmpty()) "Permissions Ready" else "Permissions Need Attention",
+        title = "Permissions Need Attention",
         icon = Icons.Filled.Security,
-        accent = if (missing.isEmpty()) Gold else Amber
+        accent = Amber
     ) {
         Text(
-            text = if (missing.isEmpty()) {
-                "Location, background service, and notification permissions are available. In Device Owner mode these are granted silently by policy."
-            } else {
-                "Some runtime permissions are missing. Tracking may not upload GPS until they are granted."
-            },
+            text = "Some runtime permissions are missing. Tracking may not upload GPS until they are granted.",
             color = TextSecondary,
             style = MaterialTheme.typography.bodyMedium
         )
-        if (missing.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = {
-                        val activity = context as? Activity
-                        if (activity != null) {
-                            ActivityCompat.requestPermissions(activity, missing.toTypedArray(), CUSTOMER_APP_PERMISSION_REQUEST)
-                        }
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Color(0xFF1A1200))
-                ) { Text("Grant") }
-                OutlinedButton(
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        runCatching { context.startActivity(intent) }
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
-                ) { Text("Settings") }
-            }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        ActivityCompat.requestPermissions(activity, missing.toTypedArray(), CUSTOMER_APP_PERMISSION_REQUEST)
+                    }
+                },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Color(0xFF1A1200))
+            ) { Text("Grant") }
+            OutlinedButton(
+                onClick = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    runCatching { context.startActivity(intent) }
+                },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+            ) { Text("Settings") }
         }
     }
 }
