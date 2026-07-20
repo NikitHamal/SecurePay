@@ -36,8 +36,8 @@ android {
         applicationId = "com.touchbase.securepay.client"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "1.5.0"
+        versionCode = 23
+        versionName = "1.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -98,6 +98,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.compose.foundation:foundation:1.6.0")
+    implementation("androidx.compose.foundation:foundation-layout:1.6.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("com.google.firebase:firebase-messaging:24.0.0")
     implementation("com.google.firebase:firebase-common:21.0.0")

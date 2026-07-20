@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +30,8 @@ fun CustomerBottomBar(
     selected: String,
     onHome: () -> Unit,
     onPayments: () -> Unit,
-    onMore: () -> Unit
+    onMore: () -> Unit,
+    onAccount: () -> Unit = {}
 ) {
     val containerColor = MaterialTheme.colorScheme.surface
     val primary = MaterialTheme.colorScheme.primary
@@ -41,6 +43,7 @@ fun CustomerBottomBar(
     val tabs = listOf(
         Tab("home", Icons.Filled.Home, onHome),
         Tab("payments", Icons.Filled.ReceiptLong, onPayments),
+        Tab("account", Icons.Filled.Person, onAccount),
         Tab("more", Icons.Filled.MoreHoriz, onMore)
     )
 

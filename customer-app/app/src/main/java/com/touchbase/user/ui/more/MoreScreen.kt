@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -52,7 +53,8 @@ fun MoreScreen(
     onHome: () -> Unit,
     onPayments: () -> Unit,
     onHelp: () -> Unit,
-    onCheckUpdates: () -> Unit
+    onCheckUpdates: () -> Unit,
+    onAccount: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -69,7 +71,8 @@ fun MoreScreen(
                 selected = "more",
                 onHome = onHome,
                 onPayments = onPayments,
-                onMore = {}
+                onMore = {},
+                onAccount = onAccount
             )
         }
     ) { padding ->
@@ -93,6 +96,10 @@ fun MoreScreen(
             MoreRow(Icons.Filled.Info, "Battery reliability", "Open power settings only when needed") {
                 BatteryOptimizationHelper.requestIfRegistered(context)
             }
+
+            Spacer(Modifier.height(12.dp))
+            SectionTitle("Account")
+            MoreRow(Icons.Filled.Person, "My Account", "Change password and manage account", onAccount)
 
             Spacer(Modifier.height(12.dp))
             SectionTitle("Support")

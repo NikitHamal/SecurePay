@@ -10,4 +10,5 @@ sealed class Screen(val route: String) {
     data object Updates : Screen("updates")
     data object Provisioning : Screen("provisioning")
     data object PayWithMoMo : Screen("pay-momo")
+    data object Account : Screen("account")
 }

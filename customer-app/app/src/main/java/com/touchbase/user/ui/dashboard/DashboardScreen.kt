@@ -71,6 +71,7 @@ import com.touchbase.user.data.model.DeviceStatus
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.formatCentsAsCurrency
 import com.touchbase.user.ui.DeviceUiState
+import com.touchbase.user.ui.components.AdSlideView
 import com.touchbase.user.ui.components.CustomerBottomBar
 import com.touchbase.user.ui.theme.Amber
 import com.touchbase.user.ui.theme.Charcoal
@@ -93,6 +94,7 @@ fun DashboardScreen(
     onPayNow: () -> Unit,
     onCheckUpdates: () -> Unit,
     onMore: () -> Unit,
+    onAccount: () -> Unit = {},
     securityReport: SecurityChecker.SecurityReport? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -112,7 +114,8 @@ fun DashboardScreen(
                 selected = "home",
                 onHome = {},
                 onPayments = onViewPayments,
-                onMore = onMore
+                onMore = onMore,
+                onAccount = onAccount
             )
         },
         topBar = {
@@ -171,6 +174,17 @@ fun DashboardScreen(
                 onCheckUpdates = onCheckUpdates
             )
 
+            // Ads Section - Green highlighted area
+            // Ads are hidden when permissions are ready, but kept in DOM
+            // According to client: "That place I said we will remove (the one which is highlighted, don't remove just keep it hidden when permissions are ready)"
+            // For now, we'll show ads when permissions are NOT ready
+            // In production, this will be controlled by a flag from the dashboard
+            val showAds = remember { true } // TODO: Replace with actual logic based on permissions
+            
+            if (showAds) {
+                AdSlideSection()
+            }
+            
             PermissionHealthCard()
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -434,6 +448,62 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
     Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
         Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
+/**
+ * Ads section with slide view.
+ * Shows up to 3 ads in a carousel format.
+ */
+@Composable
+private fun AdSlideSection() {
+    // Mock ads for demonstration
+    // In production, these would be fetched from the repository
+    val mockAds = remember {
+        listOf(
+            com.touchbase.user.data.model.AdModel(
+                id = "1",
+                title = "Special Offer",
+                description = "Get 10% discount on your next payment!",
+                linkUrl = "https://touchbasedata.com/offer1",
+                isActive = true,
+                order = 1
+            ),
+            com.touchbase.user.data.model.AdModel(
+                id = "2",
+                title = "New Phones Available",
+                description = "Check out our latest phone models",
+                linkUrl = "https://touchbasedata.com/phones",
+                isActive = true,
+                order = 2
+            ),
+            com.touchbase.user.data.model.AdModel(
+                id = "3",
+                title = "Extended Warranty",
+                description = "Protect your device with extended warranty",
+                linkUrl = "https://touchbasedata.com/warranty",
+                isActive = true,
+                order = 3
+            )
+        )
+    }
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Ads",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextSecondary,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        AdSlideView(
+            ads = mockAds,
+            modifier = Modifier.fillMaxWidth(),
+            autoScroll = true,
+            scrollInterval = 5000L
+        )
     }
 }
 

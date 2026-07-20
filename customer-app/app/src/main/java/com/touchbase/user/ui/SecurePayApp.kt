@@ -30,6 +30,7 @@ import com.touchbase.user.ui.more.MoreScreen
 import com.touchbase.user.ui.more.HelpScreen
 import com.touchbase.user.ui.update.UpdateScreen
 import com.touchbase.user.ui.release.ReleaseApprovedScreen
+import com.touchbase.user.ui.account.AccountScreen
 import kotlinx.coroutines.launch
 import com.touchbase.user.worker.TrackingService
 
@@ -204,6 +205,7 @@ fun SecurePayApp(
                 onPayNow = { navController.navigate(Screen.PayWithMoMo.route) },
                 onCheckUpdates = { navController.navigate(Screen.Updates.route) },
                 onMore = { navController.navigate(Screen.More.route) },
+                onAccount = { navController.navigate(Screen.Account.route) },
                 securityReport = securityReport
             )
         }
@@ -234,7 +236,8 @@ fun SecurePayApp(
                 onHome = { navController.navigate(Screen.Dashboard.route) { launchSingleTop = true } },
                 onPayments = { navController.navigate(Screen.Payments.route) },
                 onHelp = { navController.navigate(Screen.Help.route) },
-                onCheckUpdates = { navController.navigate(Screen.Updates.route) }
+                onCheckUpdates = { navController.navigate(Screen.Updates.route) },
+                onAccount = { navController.navigate(Screen.Account.route) }
             )
         }
 
@@ -246,6 +249,16 @@ fun SecurePayApp(
             UpdateScreen(
                 repository = repository,
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Account.route) {
+            AccountScreen(
+                account = state.account,
+                onBack = { navController.popBackStack() },
+                onHome = { navController.navigate(Screen.Dashboard.route) { launchSingleTop = true } },
+                onPayments = { navController.navigate(Screen.Payments.route) },
+                onMore = { navController.navigate(Screen.More.route) }
             )
         }
     }
