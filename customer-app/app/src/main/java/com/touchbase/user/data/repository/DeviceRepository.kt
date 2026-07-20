@@ -362,6 +362,7 @@ class DeviceRepository(
 fun AccountResponse.toLoanAccount(): LoanAccount = LoanAccount(
     id = id,
     customerName = customerName,
+    phoneNumber = phoneNumber,
     imei = imei,
     deviceModel = deviceModel,
     planName = planName,

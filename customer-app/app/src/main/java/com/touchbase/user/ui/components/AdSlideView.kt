@@ -14,13 +14,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Ics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import kotlinx.coroutines.flow.collect
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -50,6 +52,7 @@ import kotlinx.coroutines.delay
  * A horizontal slide view for displaying advertisements.
  * Shows up to 3 ads in a carousel format.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AdSlideView(
     ads: List<AdModel>,
@@ -58,7 +61,7 @@ fun AdSlideView(
     scrollInterval: Long = 5000L
 ) {
     val context = LocalContext.current
-    val pagerState = rememberPagerState(initialPage = 0)
+    val pagerState = rememberPagerState(initialPage = 0) { ads.size }
     var autoScrollEnabled by remember { mutableStateOf(autoScroll) }
     
     // Auto-scroll effect
@@ -74,7 +77,7 @@ fun AdSlideView(
     
     // Pause auto-scroll when user interacts
     LaunchedEffect(pagerState) {
-        pagerState.interactionSource.collect { interaction ->
+        pagerState.interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is androidx.compose.foundation.interaction.PressInteraction.Press -> {
                     autoScrollEnabled = false
@@ -95,7 +98,6 @@ fun AdSlideView(
     
     Column(modifier = modifier) {
         HorizontalPager(
-            count = ads.size,
             state = pagerState,
             modifier = Modifier.fillMaxWidth()
         ) { page ->

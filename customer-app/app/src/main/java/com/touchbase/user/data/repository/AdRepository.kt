@@ -3,7 +3,7 @@ package com.touchbase.user.data.repository
 import com.touchbase.user.data.model.AdModel
 import com.touchbase.user.data.model.AdsResponse
 import com.touchbase.user.data.remote.SecurePayApi
-import com.touchbase.user.admin.SecureLog
+import com.touchbase.user.util.SecureLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

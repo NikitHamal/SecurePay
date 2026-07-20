@@ -99,6 +99,7 @@ data class AccountResponse(
 data class LoanAccount(
     val id: String,
     val customerName: String,
+    val phoneNumber: String = "",
     val imei: String,
     val deviceModel: String,
     val planName: String,
