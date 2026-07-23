@@ -246,15 +246,15 @@ jobs:
           retention-days: 30
 
       - name: Install AWS CLI for R2 publish
-        if: ${{ inputs.module == 'customer-app' }}
+        if: ${{ inputs.module == 'customer-app' || inputs.module == 'agent-app' }}
         run: |
           which aws && exit 0
           curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
           unzip -q -o /tmp/awscliv2.zip -d /tmp/awscliv2
           sudo /tmp/awscliv2/aws/install --update
 
-      - name: Publish immutable customer APK and manifest to R2
-        if: ${{ inputs.module == 'customer-app' }}
+      - name: Publish immutable APK and manifest to R2
+        if: ${{ inputs.module == 'customer-app' || inputs.module == 'agent-app' }}
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -265,7 +265,7 @@ jobs:
           set -euo pipefail
           for name in R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT R2_BUCKET R2_PUBLIC_URL; do
             if [ -z "${!name:-}" ]; then
-              echo "::error::$name is required to publish the customer DPC used by QR provisioning."
+              echo "::error::$name is required to publish the APK to R2."
               exit 1
             fi
           done
@@ -277,7 +277,11 @@ jobs:
           APK_SHA_B64="${{ steps.apk.outputs.apk_sha_b64 }}"
           CERT_HEX="${{ steps.apk.outputs.cert_hex }}"
           CERT_SHA_B64="${{ steps.apk.outputs.cert_sha_b64 }}"
-          APK_KEY="tb-user-v${VERSION_CODE}-${APK_SHA_HEX:0:16}.apk"
+          if [ "${{ inputs.module }}" = "customer-app" ]; then
+            APK_KEY="tb-user-v${VERSION_CODE}-${APK_SHA_HEX:0:16}.apk"
+          else
+            APK_KEY="tb-agent-v${VERSION_CODE}-${APK_SHA_HEX:0:16}.apk"
+          fi
           PUB_URL="${R2_PUBLIC_URL%/}/${APK_KEY}"
           UPDATED_AT="$(date +%s)"
 
@@ -290,7 +294,12 @@ jobs:
             --content-type "application/vnd.android.package-archive" \
             --cache-control "public,max-age=31536000,immutable"
 
-          cat > latest.json <<JSON
+          if [ "${{ inputs.module }}" = "customer-app" ]; then
+            MANIFEST="latest.json"
+          else
+            MANIFEST="agent-latest.json"
+          fi
+          cat > "$MANIFEST" <<JSON
           {
             "url": "$PUB_URL",
             "sha256Base64": "$APK_SHA_B64",
@@ -303,7 +312,7 @@ jobs:
           JSON
 
           # Publish the pointer last so the dashboard never references a partly uploaded APK.
-          aws s3 cp latest.json "s3://$R2_BUCKET/latest.json" \
+          aws s3 cp "$MANIFEST" "s3://$R2_BUCKET/$MANIFEST" \
             --endpoint-url "$R2_ENDPOINT" \
             --content-type "application/json" \
             --cache-control "no-store,max-age=0"
