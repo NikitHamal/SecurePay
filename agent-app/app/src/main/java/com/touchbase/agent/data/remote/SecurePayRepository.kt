@@ -1,5 +1,6 @@
 package com.touchbase.agent.data.remote
 
+import com.touchbase.agent.BuildConfig
 import com.touchbase.agent.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -250,6 +251,14 @@ class SecurePayRepository(
 
     suspend fun getMySales(): Result<List<SaleItem>> = withContext(Dispatchers.IO) {
         try { Result.success(api.getMySales()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    suspend fun checkForAppUpdate(): Result<AppUpdateResponse> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.appUpdate(BuildConfig.VERSION_CODE))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.friendlyMessage()))
+        }
     }
 
     // ---- Paystack mobile money --------------------------------------------------

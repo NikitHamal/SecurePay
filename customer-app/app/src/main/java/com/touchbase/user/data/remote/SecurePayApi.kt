@@ -2,6 +2,7 @@ package com.touchbase.user.data.remote
 
 import com.touchbase.user.data.model.AccountResponse
 import com.touchbase.user.data.model.ActivateResponse
+import com.touchbase.user.data.model.AdsResponse
 import com.touchbase.user.data.model.DeviceCheckResponse
 import com.touchbase.user.data.model.CustomerLoginRequest
 import com.touchbase.user.data.model.InitializePaystackRequest
@@ -87,4 +88,7 @@ interface SecurePayApi {
         @Query("accountId") accountId: String,
         @Query("imei") imei: String
     ): VerifyPaystackResponse
+
+    @GET("api/ads")
+    suspend fun getAds(@Query("active") active: Boolean = true): AdsResponse
 }

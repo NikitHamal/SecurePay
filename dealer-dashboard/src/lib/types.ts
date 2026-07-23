@@ -119,3 +119,15 @@ export interface Notification {
   relatedEntityId?: string | null;
   createdAt: number;
 }
+
+export interface Ad {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  isActive: boolean;
+  order: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}

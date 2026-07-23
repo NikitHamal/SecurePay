@@ -301,14 +301,20 @@ export async function findUnusedActivationCode(
   throw new Error('Unable to allocate a unique activation code after retries');
 }
 
-export async function readApkMeta(event: { platform?: App.Platform | null }): Promise<ApkMeta> {
-  const r2 = getR2(event);
-  const obj = await r2.get('latest.json');
-  if (!obj) {
-    throw new Error('APK manifest not published yet — run CI to publish the TB User APK to R2');
-  }
+export async function readAgentApkMeta(event: { platform?: App.Platform | null }): Promise<ApkMeta> {
+  return readApkMetaFromR2(event, 'agent-latest.json');
+}
 
-  const parsed = JSON.parse(await obj.text()) as Partial<ApkMeta>;
+async function readApkMetaFromR2(event: { platform?: App.Platform | null }, key: string): Promise<ApkMeta> {
+  const r2 = getR2(event);
+  const obj = await r2.get(key);
+  if (!obj) {
+    throw new Error(`APK manifest (${key}) not published yet — run CI to publish the APK to R2`);
+  }
+  return parseApkMeta(JSON.parse(await obj.text()) as Partial<ApkMeta>);
+}
+
+function parseApkMeta(parsed: Partial<ApkMeta>): ApkMeta {
   const url = String(parsed.url ?? '');
   const sha256Base64 = String(parsed.sha256Base64 ?? '');
   const versionName = String(parsed.versionName ?? '');
@@ -344,6 +350,10 @@ export async function readApkMeta(event: { platform?: App.Platform | null }): Pr
     versionCode,
     updatedAt
   };
+}
+
+export async function readApkMeta(event: { platform?: App.Platform | null }): Promise<ApkMeta> {
+  return readApkMetaFromR2(event, 'latest.json');
 }
 
 type JsonPrimitive = string | number | boolean | null;

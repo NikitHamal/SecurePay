@@ -32,8 +32,8 @@ android {
         applicationId = "com.touchbase.agent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.2.0"
+        versionCode = 7
+        versionName = "1.3.0"
 
         buildConfigField("String", "SUPPORT_PHONE", buildConfigString(supportPhone))
         buildConfigField("String", "SUPPORT_WHATSAPP", buildConfigString(supportWhatsapp))
@@ -137,6 +137,8 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

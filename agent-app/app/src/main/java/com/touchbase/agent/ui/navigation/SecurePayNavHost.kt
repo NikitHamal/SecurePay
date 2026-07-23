@@ -36,6 +36,7 @@ import com.touchbase.agent.ui.provisioning.ProvisioningViewModel
 import com.touchbase.agent.ui.tracking.TrackingMapScreen
 import com.touchbase.agent.ui.more.MoreScreen
 import com.touchbase.agent.ui.more.ContactUsScreen
+import com.touchbase.agent.ui.update.UpdateScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -223,6 +224,7 @@ fun SecurePayNavHost(
                 onNavigateToLedger = { navigateToTab(Screen.Ledger.route) },
                 onNavigateToTheme = { navController.navigate(Screen.Settings.route) },
                 onNavigateToContact = { navController.navigate(Screen.ContactUs.route) },
+                onNavigateToUpdates = { navController.navigate(Screen.Updates.route) },
                 onLogout = {
                     scope.launch {
                         repository.logout()
@@ -236,6 +238,13 @@ fun SecurePayNavHost(
 
         composable(Screen.ContactUs.route) {
             ContactUsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.Updates.route) {
+            UpdateScreen(
+                repository = repository,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }

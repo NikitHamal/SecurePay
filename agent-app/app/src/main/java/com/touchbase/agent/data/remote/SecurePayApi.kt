@@ -116,4 +116,7 @@ interface SecurePayApi {
 
     @GET("paystack/verify/{reference}")
     suspend fun paystackVerify(@Path("reference") reference: String): PaystackVerifyResponse
+
+    @GET("agent/app-update")
+    suspend fun appUpdate(@Query("currentVersionCode") currentVersionCode: Int): AppUpdateResponse
 }

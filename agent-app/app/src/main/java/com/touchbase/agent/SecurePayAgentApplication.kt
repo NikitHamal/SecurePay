@@ -5,6 +5,7 @@ import com.touchbase.agent.admin.SecurityChecker
 import com.touchbase.agent.data.remote.ApiModule
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.data.remote.TokenManager
+import com.touchbase.agent.worker.AppUpdateWorker
 
 class SecurePayAgentApplication : Application() {
 
@@ -22,5 +23,6 @@ class SecurePayAgentApplication : Application() {
         super.onCreate()
         Thread.setDefaultUncaughtExceptionHandler(CrashHandler(this))
         securityReport = SecurityChecker.runAllChecks(this)
+        runCatching { AppUpdateWorker.schedule(this) }
     }
 }

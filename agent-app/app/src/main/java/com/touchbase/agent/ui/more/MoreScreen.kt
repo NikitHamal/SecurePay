@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,6 +63,7 @@ fun MoreScreen(
     onNavigateToLedger: () -> Unit,
     onNavigateToTheme: () -> Unit,
     onNavigateToContact: () -> Unit,
+    onNavigateToUpdates: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -138,6 +140,7 @@ fun MoreScreen(
             MoreRow(Icons.Filled.Palette, "App theme", "System, light or dark", onClick = onNavigateToTheme)
             MoreRow(Icons.Filled.Gavel, "Legal", "Privacy and authorized-use notice", onClick = { showLegal = true })
             MoreRow(Icons.Filled.SupportAgent, "Contact us", "Chat, WhatsApp, call or email", onClick = onNavigateToContact)
+            MoreRow(Icons.Filled.SystemUpdate, "Check for Updates", "Version ${BuildConfig.VERSION_NAME} · Tap to check", onClick = onNavigateToUpdates)
             MoreRow(Icons.Filled.Logout, "Log out", "Sign out of this dealer account", tint = Color.Red, onClick = { confirmLogout = true })
             Spacer(Modifier.height(18.dp))
         }
