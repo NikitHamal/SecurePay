@@ -22,13 +22,13 @@
     --text-secondary: #27272A;
     --text-muted: #52525B;
     --text-dim: #71717A;
-    --shadow-card: 0 1px 2px rgba(11,11,12,0.04);
-    --shadow-card-hover: 0 6px 18px rgba(11,11,12,0.08);
-    --scrollbar-thumb: rgba(11,11,12,0.12);
-    --scrollbar-thumb-hover: rgba(11,11,12,0.22);
-    --selection-bg: rgba(212,175,55,0.28);
+    --shadow-card: none;
+    --shadow-card-hover: none;
+    --scrollbar-thumb: rgba(11,11,12,0.05);
+    --scrollbar-thumb-hover: rgba(11,11,12,0.12);
+    --selection-bg: rgba(197,155,39,0.2);
     --selection-text: #0B0B0C;
-    --overlay-bg: rgba(11,11,12,0.4);
+    --overlay-bg: rgba(11,11,12,0.3);
     --progress-track: #E7E4DA;
     --avatar-text: #FFFFFF;
     --btn-text: #FFFFFF;
@@ -62,13 +62,13 @@
     --text-secondary: #A1A1AA;
     --text-muted: #71717A;
     --text-dim: #52525B;
-    --shadow-card: 0 1px 2px rgba(0,0,0,0.5);
-    --shadow-card-hover: 0 6px 20px rgba(0,0,0,0.55);
-    --scrollbar-thumb: rgba(255,255,255,0.10);
-    --scrollbar-thumb-hover: rgba(255,255,255,0.18);
-    --selection-bg: rgba(212,175,55,0.30);
+    --shadow-card: none;
+    --shadow-card-hover: none;
+    --scrollbar-thumb: rgba(255,255,255,0.06);
+    --scrollbar-thumb-hover: rgba(255,255,255,0.12);
+    --selection-bg: rgba(229,194,71,0.2);
     --selection-text: #fff;
-    --overlay-bg: rgba(0,0,0,0.65);
+    --overlay-bg: rgba(0,0,0,0.5);
     --progress-track: rgba(255,255,255,0.08);
     --avatar-text: #0B0B0C;
     /* Touch Base gold — slightly brighter in dark for legibility. */
@@ -117,10 +117,10 @@
   }
 
   .card-hover {
-    @apply transition-all duration-150;
+    @apply transition-colors duration-150;
   }
   .card-hover:hover {
-    @apply border-edge-strong shadow-card-hover;
+    @apply border-edge-strong;
   }
 
   .btn {
