@@ -216,24 +216,19 @@
       </div>
     </Card>
   {:else}
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
       {#each agencies as agency (agency.id)}
         <Card>
-          <div class="flex flex-col h-full justify-between gap-4">
+          <div class="flex flex-col h-full justify-between">
             <div>
-              <div class="flex items-start justify-between gap-2">
-                <div class="flex items-center gap-2.5">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-gold-400 border border-edge">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 class="text-base font-semibold text-ink-primary leading-tight">{agency.name}</h3>
-                    {#if agency.ownerName}
-                      <p class="text-2xs text-ink-muted mt-0.5">Owner: <span class="text-ink-secondary font-medium">{agency.ownerName}</span></p>
-                    {/if}
-                  </div>
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="text-base font-semibold text-ink-primary leading-snug">{agency.name}</h3>
+                  {#if agency.ownerName}
+                    <p class="text-xs text-ink-muted mt-0.5">
+                      Owner: <span class="text-ink-secondary font-medium">{agency.ownerName}</span>
+                    </p>
+                  {/if}
                 </div>
                 {#if agency.isActive}
                   <Badge variant="active">Active</Badge>
@@ -242,36 +237,38 @@
                 {/if}
               </div>
 
-              <div class="mt-4 space-y-2.5 border-t border-edge/60 pt-3 text-xs">
-                {#if agency.region}
-                  <div class="flex items-center gap-2 text-ink-secondary">
-                    <svg class="h-4 w-4 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Region: <strong class="font-medium text-ink-primary">{agency.region}</strong></span>
-                  </div>
-                {/if}
+              {#if agency.region || agency.phone}
+                <div class="mt-4 space-y-2 text-xs text-ink-secondary">
+                  {#if agency.region}
+                    <div class="flex items-center gap-2">
+                      <svg class="h-4 w-4 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>Region: <strong class="font-medium text-ink-primary">{agency.region}</strong></span>
+                    </div>
+                  {/if}
 
-                {#if agency.phone}
-                  <div class="flex items-center gap-2 text-ink-secondary">
-                    <svg class="h-4 w-4 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span>{agency.phone}</span>
-                  </div>
-                {/if}
-              </div>
+                  {#if agency.phone}
+                    <div class="flex items-center gap-2">
+                      <svg class="h-4 w-4 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <span>{agency.phone}</span>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
             </div>
 
-            <div class="grid grid-cols-2 gap-2 border-t border-edge/60 pt-3 text-xs">
-              <div class="rounded-lg bg-surface-100 p-2 text-center border border-edge">
-                <span class="block text-2xs text-ink-muted">Branches</span>
-                <span class="text-sm font-semibold text-ink-primary">{agency.branchCount}</span>
+            <div class="mt-5 pt-3.5 border-t border-edge/50 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5">
+                <span class="text-ink-muted">Branches:</span>
+                <span class="font-semibold text-ink-primary">{agency.branchCount}</span>
               </div>
-              <div class="rounded-lg bg-surface-100 p-2 text-center border border-edge">
-                <span class="block text-2xs text-ink-muted">Agents</span>
-                <span class="text-sm font-semibold text-ink-primary">{agency.agentCount}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-ink-muted">Agents:</span>
+                <span class="font-semibold text-ink-primary">{agency.agentCount}</span>
               </div>
             </div>
           </div>
