@@ -376,7 +376,7 @@ private fun compressAndToBase64(bitmap: Bitmap): String {
 fun KycStepPreview() {
     SecurePayAgentTheme {
         KycStep(
-            state = EnrollmentUiState(draft = EnrollmentDraft(customerName = "John Doe", nationalId = "12345678", phoneNumber = "0712345678")),
+            state = EnrollmentUiState(draft = EnrollmentDraft(firstName = "John", surname = "Doe", nationalId = "12345678", phoneNumber = "0712345678")),
             onNameChange = {},
             onNationalIdChange = {},
             onIdTypeChange = {},

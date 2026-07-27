@@ -138,6 +138,7 @@ data class EnrollmentUiState(
     // ---- Customer information ----
     val isFirstNameValid: Boolean get() = draft.firstName.trim().length >= 2
     val isSurnameValid: Boolean get() = draft.surname.trim().length >= 2
+    val isNameValid: Boolean get() = isFirstNameValid && isSurnameValid
     val isNationalIdValid: Boolean get() = draft.nationalId.trim().length in 6..20
     val isIdTypeValid: Boolean get() = draft.idType.isNotBlank()
     val isPhoneValid: Boolean get() = draft.phoneNumber.isValidPhone()
@@ -222,6 +223,11 @@ data class EnrollmentUiState(
     /** OFFERS screen is complete once an offer card (or valid custom terms) is chosen. */
     val isOffersStepValid: Boolean
         get() = isPlanSelected || (isDailyRateValid && isTotalAmountValid && isTermDaysValid)
+
+    val isReferencesStepValid: Boolean get() = isContactsStepValid
+    val isSignerStepValid: Boolean get() = isContactsStepValid
+    val isDeviceStepValid: Boolean get() = isProductStepValid
+    val isPlanStepValid: Boolean get() = isOffersStepValid
 
     val isDownPaymentValid: Boolean
         get() {

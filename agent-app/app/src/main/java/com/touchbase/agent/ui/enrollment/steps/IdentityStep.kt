@@ -320,7 +320,7 @@ private fun CaptureSourceSheet(
 private fun hasCameraPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
-internal fun compressAndToBase64(bitmap: Bitmap): String {
+private fun compressAndToBase64(bitmap: Bitmap): String {
     val maxDimension = 800
     val resized = if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
         val aspect = bitmap.width.toFloat() / bitmap.height.toFloat()

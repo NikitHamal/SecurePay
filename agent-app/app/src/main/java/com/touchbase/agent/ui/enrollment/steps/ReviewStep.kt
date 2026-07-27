@@ -106,7 +106,7 @@ fun ReviewStep(
                     title = "Identity document",
                     subtitle = "${state.draft.customerName.trim()} • ${state.draft.idType.ifBlank { "ID" }} ${state.draft.nationalId.trim()}",
                     passed = state.isNameValid && state.isNationalIdValid && state.isIdTypeValid,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.KYC)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.IDENTITY)) }
                 )
                 ReviewDivider()
                 ReviewRow(
@@ -114,7 +114,7 @@ fun ReviewStep(
                     title = "Customer photo",
                     subtitle = if (state.draft.customerPhotoBase64 != null) "Selfie attached" else "Selfie required",
                     passed = state.draft.customerPhotoBase64 != null,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.KYC)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.IDENTITY)) }
                 )
                 ReviewDivider()
                 ReviewRow(
@@ -126,7 +126,7 @@ fun ReviewStep(
                         else -> "Front and back required"
                     },
                     passed = state.draft.nationalIdFrontBase64 != null && state.draft.nationalIdBackBase64 != null,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.KYC)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.IDENTITY)) }
                 )
                 ReviewDivider()
                 ReviewRow(
@@ -136,7 +136,7 @@ fun ReviewStep(
                         "${state.draft.nextOfKinName.trim()} (${state.draft.nextOfKinRelation.ifBlank { "—" }})"
                     else "Not captured",
                     passed = state.isReferencesStepValid,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.REFERENCES)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.CONTACTS)) }
                 )
                 ReviewDivider()
                 ReviewRow(
@@ -144,7 +144,7 @@ fun ReviewStep(
                     title = "Guarantor (co-signer)",
                     subtitle = state.draft.guarantorName.trim().ifBlank { "Not captured" },
                     passed = state.isSignerStepValid,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.SIGNER)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.CONTACTS)) }
                 )
                 ReviewDivider()
                 ReviewRow(
@@ -163,7 +163,7 @@ fun ReviewStep(
                     else "No device selected",
                     passed = state.isDeviceStepValid,
                     subtitleMono = state.isImeiValid,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.DEVICE)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.PRODUCT)) }
                 )
                 ReviewDivider()
                 ReviewRow(
@@ -171,7 +171,7 @@ fun ReviewStep(
                     title = "Financing plan",
                     subtitle = planSubtitle(state),
                     passed = state.isPlanStepValid,
-                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.PLAN)) }
+                    onClick = { onEditStep(EnrollmentStep.ordered.indexOf(EnrollmentStep.OFFERS)) }
                 )
             }
         }
