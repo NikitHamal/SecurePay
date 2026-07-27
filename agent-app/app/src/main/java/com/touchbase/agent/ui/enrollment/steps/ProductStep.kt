@@ -46,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.data.model.Device
-import com.touchbase.agent.data.model.Plan
 import com.touchbase.agent.ui.components.BarcodeScannerSheet
 import com.touchbase.agent.ui.enrollment.AgreementText
 import com.touchbase.agent.ui.enrollment.DeviceLookupStatus
@@ -59,7 +58,7 @@ import java.util.Locale
 /**
  * M-KOPA "Product information": three wizard steps in one file.
  *  - PRODUCT: "Select the product serial you want to sell." (radio cards from stock)
- *  - OFFERS:  "Select an offer for your customer" (plan offer cards + custom)
+ *  - OFFERS:  "Set the price for this sale" (dealer-entered total / term / daily rate)
  *  - LOAN:    "Loan details" summary card + editable initial payment
  */
 @Composable
@@ -68,8 +67,6 @@ fun ProductStep(
     phase: EnrollmentStep,
     onSelectDevice: (Device) -> Unit,
     onRefreshDevices: () -> Unit,
-    onSelectPlan: (Plan?) -> Unit,
-    onSelectCustomPlan: () -> Unit,
     onDailyRateChange: (String) -> Unit,
     onTotalAmountChange: (String) -> Unit,
     onTermDaysChange: (String) -> Unit,
@@ -82,7 +79,7 @@ fun ProductStep(
     Column(modifier = modifier.fillMaxWidth()) {
         when (phase) {
             EnrollmentStep.PRODUCT -> SerialSelect(state, onSelectDevice, onRefreshDevices, onImeiChange, onDeviceModelChange)
-            EnrollmentStep.OFFERS -> OfferSelect(state, onSelectPlan, onSelectCustomPlan, onTotalAmountChange, onDailyRateChange, onTermDaysChange, onEditSerial)
+            EnrollmentStep.OFFERS -> OfferSelect(state, onTotalAmountChange, onDailyRateChange, onTermDaysChange, onEditSerial)
             else -> LoanDetails(state, onDownPaymentChange)
         }
     }
@@ -295,13 +292,16 @@ private fun ManualSerialDialog(
     )
 }
 
-// ---------------------------------------------------------------- offers
+// ---------------------------------------------------------------- offer (custom pricing)
 
+/**
+ * Pricing is 100% dealer-controlled: there are no preset packages any more, so the
+ * agent types the exact price agreed with the customer. A suggested daily rate is
+ * computed from (total − deposit) ÷ days but can always be overridden.
+ */
 @Composable
 private fun OfferSelect(
     state: EnrollmentUiState,
-    onSelectPlan: (Plan?) -> Unit,
-    onSelectCustomPlan: () -> Unit,
     onTotalAmountChange: (String) -> Unit,
     onDailyRateChange: (String) -> Unit,
     onTermDaysChange: (String) -> Unit,
@@ -358,49 +358,90 @@ private fun OfferSelect(
         }
 
         Text(
-            "Select an offer for your customer",
-            style = MaterialTheme.typography.titleSmall,
+            "Set the price for this sale",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            "Your prices, your terms — type the amounts you agreed with this customer.",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        state.availablePlans.forEach { plan ->
-            OfferCard(
-                title = plan.name,
-                initialPayment = AgreementText.money(plan.minDownPayment),
-                dailyRate = AgreementText.money(plan.dailyRate),
-                termDays = plan.termDays,
-                total = AgreementText.money(plan.totalAmount),
-                selected = state.selectedPlan?.id == plan.id,
-                onClick = { onSelectPlan(plan) }
-            )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                WizardTextField(
+                    label = "Total price (GH\u20B5)",
+                    value = state.totalAmountInput,
+                    onValueChange = onTotalAmountChange,
+                    keyboardType = KeyboardType.Decimal,
+                    isError = state.totalAmountInput.isNotEmpty() && !state.isTotalAmountValid,
+                    supportingText = "Full amount the customer repays, e.g. 2277.80"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                WizardTextField(
+                    label = "Repayment period (days)",
+                    value = state.termDaysInput,
+                    onValueChange = onTermDaysChange,
+                    keyboardType = KeyboardType.Number,
+                    isError = state.termDaysInput.isNotEmpty() && !state.isTermDaysValid,
+                    supportingText = "Whole days, e.g. 119"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                WizardTextField(
+                    label = "Daily repayment rate (GH\u20B5)",
+                    value = state.dailyRateInput,
+                    onValueChange = onDailyRateChange,
+                    keyboardType = KeyboardType.Decimal,
+                    isError = state.dailyRateInput.isNotEmpty() && !state.isDailyRateValid,
+                    supportingText = "Amount due each day, e.g. 16.20"
+                )
+
+                val suggested = state.suggestedDailyRateCents
+                if (suggested > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Suggested ${AgreementText.money(suggested)} / day",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = {
+                            onDailyRateChange(String.format(Locale.UK, "%.2f", suggested / 100.0))
+                        }) { Text("Use") }
+                    }
+                }
+            }
         }
 
-        CustomOfferCard(
-            state = state,
-            onSelectCustom = onSelectCustomPlan,
-            onTotalAmountChange = onTotalAmountChange,
-            onDailyRateChange = onDailyRateChange,
-            onTermDaysChange = onTermDaysChange
-        )
+        if (state.isOffersStepValid) {
+            OfferSummaryCard(
+                total = AgreementText.money((state.totalAmountInput.toDoubleOrNull() ?: 0.0).let { (it * 100).toInt() }),
+                dailyRate = AgreementText.money((state.dailyRateInput.toDoubleOrNull() ?: 0.0).let { (it * 100).toInt() }),
+                termDays = state.termDaysInput.toIntOrNull() ?: 0
+            )
+        }
     }
 }
 
+/** M-KOPA style offer card, rendered live from the dealer's own numbers. */
 @Composable
-private fun OfferCard(
-    title: String,
-    initialPayment: String,
-    dailyRate: String,
-    termDays: Int,
+private fun OfferSummaryCard(
     total: String,
-    selected: Boolean,
-    onClick: () -> Unit
+    dailyRate: String,
+    termDays: Int
 ) {
     Card(
-        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -412,14 +453,13 @@ private fun OfferCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    title,
+                    "Your offer",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            LockedAmountRow("Initial payment $initialPayment")
             LockedAmountRow("Daily repayment rate $dailyRate")
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -479,76 +519,6 @@ private fun LockedAmountRow(text: String) {
     }
 }
 
-@Composable
-private fun CustomOfferCard(
-    state: EnrollmentUiState,
-    onSelectCustom: () -> Unit,
-    onTotalAmountChange: (String) -> Unit,
-    onDailyRateChange: (String) -> Unit,
-    onTermDaysChange: (String) -> Unit
-) {
-    val selected = state.selectedPlan == null
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Custom offer",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        "Set your own loan terms for this sale",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (!selected) {
-                    TextButton(onClick = onSelectCustom) {
-                        Text("Edit")
-                    }
-                }
-            }
-            if (selected) {
-                Spacer(modifier = Modifier.height(10.dp))
-                WizardTextField(
-                    label = "Total loan amount (GH₵)",
-                    value = state.totalAmountInput,
-                    onValueChange = onTotalAmountChange,
-                    keyboardType = KeyboardType.Decimal,
-                    isError = state.totalAmountInput.isNotEmpty() && !state.isTotalAmountValid,
-                    supportingText = "Required, greater than 0"
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                WizardTextField(
-                    label = "Daily repayment rate (GH₵)",
-                    value = state.dailyRateInput,
-                    onValueChange = onDailyRateChange,
-                    keyboardType = KeyboardType.Decimal,
-                    isError = state.dailyRateInput.isNotEmpty() && !state.isDailyRateValid,
-                    supportingText = "Required, greater than 0"
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                WizardTextField(
-                    label = "Repayment period (days)",
-                    value = state.termDaysInput,
-                    onValueChange = onTermDaysChange,
-                    keyboardType = KeyboardType.Number,
-                    isError = state.termDaysInput.isNotEmpty() && !state.isTermDaysValid,
-                    supportingText = "Required, whole days"
-                )
-            }
-        }
-    }
-}
-
 // ---------------------------------------------------------------- loan details
 
 @Composable
@@ -557,7 +527,7 @@ private fun LoanDetails(
     onDownPaymentChange: (String) -> Unit
 ) {
     val draft = state.draft
-    val planName = state.selectedPlan?.name ?: "Custom offer"
+    val planName = draft.deviceModel.ifBlank { "Your offer" }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // DEVICE IMEI card (M-KOPA stacked grey card)
@@ -639,11 +609,7 @@ private fun LoanDetails(
             onValueChange = onDownPaymentChange,
             keyboardType = KeyboardType.Decimal,
             isError = state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid,
-            supportingText = if (state.selectedPlan != null) {
-                "Minimum ${AgreementText.money(state.selectedPlan.minDownPayment)}"
-            } else {
-                "Deposit paid today, up to the total amount"
-            }
+            supportingText = "Deposit paid today \u2014 any amount from 0 up to the total price"
         )
     }
 }

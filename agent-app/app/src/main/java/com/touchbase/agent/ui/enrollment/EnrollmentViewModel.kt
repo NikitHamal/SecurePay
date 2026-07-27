@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.touchbase.agent.data.model.CreateAccountRequest
 import com.touchbase.agent.data.model.Device
-import com.touchbase.agent.data.model.Plan
 import com.touchbase.agent.data.remote.SecurePayRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,29 +18,10 @@ class EnrollmentViewModel(
     private val _uiState = MutableStateFlow(EnrollmentUiState())
     val uiState: StateFlow<EnrollmentUiState> = _uiState.asStateFlow()
 
-    private var plansLoaded = false
     private var devicesLoaded = false
 
     init {
-        loadPlans()
         loadDevices()
-    }
-
-    private fun loadPlans() {
-        if (plansLoaded) return
-        if (repository == null) {
-            plansLoaded = true
-            return
-        }
-        viewModelScope.launch {
-            repository.listPlans().fold(
-                onSuccess = { plans ->
-                    _uiState.update { it.copy(availablePlans = plans) }
-                    plansLoaded = true
-                },
-                onFailure = { }
-            )
-        }
     }
 
     private fun loadDevices() {
@@ -150,41 +130,6 @@ class EnrollmentViewModel(
 
     fun updateDeviceModel(value: String) = updateDraft { it.copy(deviceModel = value) }
 
-    fun selectPlan(plan: Plan?) = _uiState.update { state ->
-        if (plan == null) {
-            state.copy(
-                selectedPlan = null,
-                dailyRateInput = "",
-                totalAmountInput = "",
-                termDaysInput = "",
-                downPaymentInput = "",
-                draft = state.draft.copy(planName = "", totalLoanAmount = 0, dailyRate = 0, termDays = 0, downPayment = 0)
-            )
-        } else {
-            val planDaily = (plan.dailyRate / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
-            val planTotal = (plan.totalAmount / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
-            state.copy(
-                selectedPlan = plan,
-                dailyRateInput = planDaily,
-                totalAmountInput = planTotal,
-                termDaysInput = plan.termDays.toString(),
-                downPaymentInput = (plan.minDownPayment / 100.0).toBigDecimal().stripTrailingZeros().toPlainString(),
-                draft = state.draft.copy(
-                    planName = plan.name,
-                    totalLoanAmount = plan.totalAmount,
-                    dailyRate = plan.dailyRate,
-                    termDays = plan.termDays,
-                    downPayment = plan.minDownPayment
-                )
-            )
-        }
-    }
-
-    /** Switches to custom-terms mode but keeps whatever numbers were already typed. */
-    fun selectCustomPlan() = _uiState.update { state ->
-        state.copy(selectedPlan = null, draft = state.draft.copy(planName = ""))
-    }
-
     fun updateDailyRate(value: String) = _uiState.update { state ->
         val sanitized = value.filter { it.isDigit() || it == '.' }
         val parsed = sanitized.toDoubleOrNull() ?: 0.0
@@ -278,13 +223,11 @@ class EnrollmentViewModel(
                 return@launch
             }
             val d = state.draft
-            val plan = state.selectedPlan
             val request = CreateAccountRequest(
                 customerName = d.customerName,
                 nationalId = d.nationalId,
                 phoneNumber = d.phoneNumber,
                 imei = d.imei,
-                planId = plan?.id,
                 dailyRate = if (d.dailyRate > 0) d.dailyRate else null,
                 totalAmount = if (d.totalLoanAmount > 0) d.totalLoanAmount else null,
                 termDays = if (d.termDays > 0) d.termDays else null,

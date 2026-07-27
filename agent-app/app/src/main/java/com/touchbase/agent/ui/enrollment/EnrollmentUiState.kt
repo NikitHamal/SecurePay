@@ -1,7 +1,6 @@
 package com.touchbase.agent.ui.enrollment
 
 import com.touchbase.agent.data.model.Device
-import com.touchbase.agent.data.model.Plan
 
 /**
  * The M-KOPA "Start Application" flow — one small focus per screen, grouped
@@ -105,11 +104,9 @@ data class EnrollmentDraft(
 data class EnrollmentUiState(
     val stepIndex: Int = 0,
     val draft: EnrollmentDraft = EnrollmentDraft(),
-    val availablePlans: List<Plan> = emptyList(),
     val availableDevices: List<Device> = emptyList(),
     val isLoadingDevices: Boolean = false,
     val deviceLookupStatus: DeviceLookupStatus = DeviceLookupStatus.Idle,
-    val selectedPlan: Plan? = null,
     val dailyRateInput: String = "",
     val totalAmountInput: String = "",
     val termDaysInput: String = "",
@@ -208,36 +205,47 @@ data class EnrollmentUiState(
     val isProductStepValid: Boolean
         get() = isImeiValid && isDeviceModelValid && deviceLookupStatus !is DeviceLookupStatus.AlreadySold
 
-    // ---- Offers & loan ----
+    // ---- Offer & loan (always custom: the dealer sets the price for this sale) ----
     private val dailyRateCents: Int get() = (dailyRateInput.toDoubleOrNull() ?: 0.0).let { (it * 100).toInt() }
     private val totalAmountCents: Int get() = (totalAmountInput.toDoubleOrNull() ?: 0.0).let { (it * 100).toInt() }
     private val termDaysValue: Int get() = termDaysInput.toIntOrNull() ?: 0
     private val downPaymentValue: Double? get() = downPaymentInput.toDoubleOrNull()
     private val downPaymentCents: Int get() = (downPaymentValue ?: 0.0).let { (it * 100).toInt() }
 
-    val isPlanSelected: Boolean get() = selectedPlan != null
-    val isCustomPlan: Boolean get() = !isPlanSelected
-    val isDailyRateValid: Boolean get() = if (isPlanSelected) true else dailyRateCents > 0
-    val isTotalAmountValid: Boolean get() = if (isPlanSelected) true else totalAmountCents > 0
-    val isTermDaysValid: Boolean get() = if (isPlanSelected) true else termDaysValue > 0
-    /** OFFERS screen is complete once an offer card (or valid custom terms) is chosen. */
+    val isDailyRateValid: Boolean get() = dailyRateCents > 0
+    val isTotalAmountValid: Boolean get() = totalAmountCents > 0
+    val isTermDaysValid: Boolean get() = termDaysValue > 0
+
+    /** OFFERS screen is complete once the dealer has priced the sale. */
     val isOffersStepValid: Boolean
-        get() = isPlanSelected || (isDailyRateValid && isTotalAmountValid && isTermDaysValid)
+        get() = isDailyRateValid && isTotalAmountValid && isTermDaysValid
 
-    val isReferencesStepValid: Boolean get() = isContactsStepValid
-    val isSignerStepValid: Boolean get() = isContactsStepValid
     val isDeviceStepValid: Boolean get() = isProductStepValid
-    val isPlanStepValid: Boolean get() = isOffersStepValid
 
+    /**
+     * Suggested daily rate so the balance clears exactly over the chosen term:
+     * (total - deposit) / term days, rounded up to the nearest pesewa. Only a hint,
+     * the dealer can always type their own figure.
+     */
+    val suggestedDailyRateCents: Int
+        get() {
+            val term = termDaysValue
+            if (term <= 0) return 0
+            val outstanding = (totalAmountCents - downPaymentCents).coerceAtLeast(0)
+            if (outstanding == 0) return 0
+            return ((outstanding + term - 1) / term)
+        }
+
+    /**
+     * The deposit is whatever the dealer agreed with the customer: anything from
+     * zero up to the full price. No plan minimum is imposed any more.
+     */
     val isDownPaymentValid: Boolean
         get() {
             val value = downPaymentValue ?: return false
+            if (value < 0) return false
             val valueCents = (value * 100).toInt()
-            val effectiveTotal = if (isPlanSelected) selectedPlan?.totalAmount ?: 0 else totalAmountCents
-            val effectiveMin = selectedPlan?.minDownPayment ?: 0
-            val rangeEnd = maxOf(effectiveTotal, 1)
-            if (effectiveMin > rangeEnd) return false
-            return valueCents in effectiveMin..rangeEnd
+            return valueCents <= maxOf(totalAmountCents, 1)
         }
 
     // ---- Consent ----

@@ -261,8 +261,6 @@ fun EnrollmentWizardScreen(
                                 phase = state.currentStep,
                                 onSelectDevice = viewModel::selectDevice,
                                 onRefreshDevices = viewModel::refreshDevices,
-                                onSelectPlan = viewModel::selectPlan,
-                                onSelectCustomPlan = viewModel::selectCustomPlan,
                                 onDailyRateChange = viewModel::updateDailyRate,
                                 onTotalAmountChange = viewModel::updateTotalAmount,
                                 onTermDaysChange = viewModel::updateTermDays,

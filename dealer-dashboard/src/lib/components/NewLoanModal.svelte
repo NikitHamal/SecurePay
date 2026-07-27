@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
-  import { addDevice, createAccount, listDevices, listPlans } from '$lib/api/client';
+  import { addDevice, createAccount, listDevices } from '$lib/api/client';
   import { load } from '$lib/stores/customers';
   import { newLoanPrefill } from '$lib/stores/ui';
   import { buildAgreement, agreementMoney, agreementToday } from '$lib/utils/agreement';
@@ -74,12 +74,7 @@
   let inStockDevices: { id: string; imei: string; model: string; createdAt?: number }[] = [];
   let loadingDevices = false;
 
-  // ---- offers / loan ----
-  interface PlanOption { id: string; name: string; termDays: number; totalAmount: number; dailyRate: number; minDownPayment: number }
-  let plans: PlanOption[] = [];
-  let loadingPlans = false;
-  let planId = '';
-  let customMode = false;
+  // ---- pricing (always set by the admin/dealer for this specific sale) ----
   let totalAmount = '';
   let dailyRate = '';
   let termDays = '';
@@ -113,10 +108,6 @@
       deviceModel = pf.deviceModel ?? '';
       manualSerial = true;
     }
-    if (plans.length === 0 && !loadingPlans) {
-      loadingPlans = true;
-      listPlans().then((p) => { plans = p as PlanOption[]; }).catch(() => {}).finally(() => { loadingPlans = false; });
-    }
     if (inStockDevices.length === 0 && !loadingDevices) {
       loadingDevices = true;
       listDevices().then((ds) => {
@@ -137,12 +128,15 @@
     ? `${dateOfBirthIso.slice(8, 10)}/${dateOfBirthIso.slice(5, 7)}/${dateOfBirthIso.slice(0, 4)}`
     : '';
 
-  $: plan = plans.find((p) => p.id === planId) ?? null;
-  $: totalCents = plan ? plan.totalAmount : Math.round((parseFloat(totalAmount) || 0) * 100);
-  $: dailyCents = plan ? plan.dailyRate : Math.round((parseFloat(dailyRate) || 0) * 100);
-  $: termDaysValue = plan ? plan.termDays : parseInt(termDays || '0', 10) || 0;
-  $: planName = plan ? plan.name : 'Custom terms';
+  $: totalCents = Math.round((parseFloat(totalAmount) || 0) * 100);
+  $: dailyCents = Math.round((parseFloat(dailyRate) || 0) * 100);
+  $: termDaysValue = parseInt(termDays || '0', 10) || 0;
+  $: planName = deviceModel.trim() || 'Custom terms';
   $: downCents = Math.round((parseFloat(downPayment) || 0) * 100);
+  // Suggested daily rate so the balance clears exactly over the chosen term.
+  $: suggestedDaily = termDaysValue > 0
+    ? Math.ceil(Math.max(totalCents - downCents, 0) / termDaysValue)
+    : 0;
 
   $: stepValid = (() => {
     switch (step) {
@@ -166,11 +160,10 @@
       case 'product':
         return /^\d{15}$/.test(imei.trim()) && deviceModel.trim() !== '';
       case 'offers':
-        return !!plan || (totalCents > 0 && dailyCents > 0 && termDaysValue > 0);
-      case 'loan': {
-        const min = plan ? plan.minDownPayment : 0;
-        return downCents >= min && downCents <= Math.max(totalCents, 1) && downPayment !== '';
-      }
+        return totalCents > 0 && dailyCents > 0 && termDaysValue > 0;
+      case 'loan':
+        // Any deposit from zero up to the full price — the dealer decides.
+        return downPayment !== '' && downCents >= 0 && downCents <= Math.max(totalCents, 1);
       case 'verify':
         return idFrontData !== '' && idBackData !== '' && selfieData !== '';
       case 'consent':
@@ -191,21 +184,8 @@
     addImeiToInventory = false;
   }
 
-  function pickPlan(id: string) {
-    planId = id;
-    customMode = false;
-    const p = plans.find((pp) => pp.id === id);
-    if (p) {
-      totalAmount = (p.totalAmount / 100).toFixed(2);
-      dailyRate = (p.dailyRate / 100).toFixed(2);
-      termDays = String(p.termDays);
-      downPayment = (p.minDownPayment / 100).toFixed(2);
-    }
-  }
-
-  function pickCustom() {
-    planId = '';
-    customMode = true;
+  function useSuggestedDaily() {
+    if (suggestedDaily > 0) dailyRate = (suggestedDaily / 100).toFixed(2);
   }
 
   async function pickImage(kind: 'front' | 'back' | 'selfie', e: Event) {
@@ -356,7 +336,7 @@
     idFrontData = ''; idBackData = ''; selfieData = '';
     region = ''; district = ''; physicalAddress = ''; preferredLanguage = '';
     imei = ''; deviceModel = ''; manualSerial = false; addImeiToInventory = false; selectedStockId = '';
-    planId = ''; customMode = false; totalAmount = ''; dailyRate = ''; termDays = ''; downPayment = '';
+    totalAmount = ''; dailyRate = ''; termDays = ''; downPayment = '';
     consentChecked = false; signatureDataUrl = ''; sigDirty = false; agreementOpen = false;
     result = null;
     newLoanPrefill.set({});
@@ -382,7 +362,6 @@
         nationalId: nationalId.trim(),
         phoneNumber: phoneNumber.trim(),
         imei: imei.trim(),
-        planId: plan?.id || undefined,
         dailyRate: dailyCents > 0 ? dailyCents : undefined,
         totalAmount: totalCents > 0 ? totalCents : undefined,
         termDays: termDaysValue > 0 ? termDaysValue : undefined,
@@ -780,60 +759,47 @@
       <div class="mb-3 flex justify-end">
         <button type="button" class="rounded-full border px-3 py-1 text-xs font-bold" style="border-color: var(--brand); color: var(--brand);" on:click={() => stepTo('product')}>Change product</button>
       </div>
-      <p class="mb-3 text-sm font-semibold text-ink-secondary">Select an offer for your customer</p>
-      <div class="max-h-80 space-y-3 overflow-y-auto pr-1">
-        {#each plans as p (p.id)}
-          <button
-            type="button"
-            on:click={() => pickPlan(p.id)}
-            class="w-full rounded-lg border p-3.5 text-left transition-colors {planId === p.id ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-edge bg-surface-100 hover:bg-hover'}"
-          >
-            <div class="flex items-center gap-2">
-              <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/></svg>
-              <p class="text-sm font-bold text-ink-primary">{p.name}</p>
-            </div>
-            <p class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
-              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
-              Initial payment {formatCurrency(p.minDownPayment)}
-            </p>
-            <p class="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
-              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
-              Daily repayment rate {formatCurrency(p.dailyRate)}
-            </p>
-            <div class="mt-2.5 flex items-center justify-between">
-              <span class="rounded-full bg-surface-200 px-2.5 py-1 text-2xs font-bold text-ink-muted">{p.termDays} DAYS</span>
-              <span class="text-sm font-bold text-ink-primary">Total {formatCurrency(p.totalAmount)}</span>
-            </div>
-          </button>
-        {/each}
-        <div class="rounded-lg border p-3.5 {customMode || (plans.length === 0 && !loadingPlans) ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-edge bg-surface-100'}">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-bold text-ink-primary">Custom offer</p>
-              <p class="text-xs text-ink-muted">Set your own loan terms for this sale</p>
-            </div>
-            {#if planId}
-              <button type="button" class="text-xs font-bold" style="color: var(--brand);" on:click={pickCustom}>Edit</button>
-            {/if}
+      <p class="mb-1 text-sm font-bold text-ink-primary">Set the price for this sale</p>
+      <p class="mb-3 text-xs text-ink-muted">Your prices, your terms — enter the amounts you agreed with this customer.</p>
+      <div class="rounded-lg border p-3.5" style="border-color: var(--brand);">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label class="label" for="nl-total">Total price (GH₵)</label>
+            <input id="nl-total" type="number" step="0.01" min="0" class="input" bind:value={totalAmount} placeholder="2277.80" />
           </div>
-          {#if customMode || planId === ''}
-            <div class="mt-3 grid grid-cols-3 gap-2">
-              <div>
-                <label class="label" for="nl-total">Total (GH₵)</label>
-                <input id="nl-total" type="number" step="0.01" min="0" class="input" bind:value={totalAmount} />
-              </div>
-              <div>
-                <label class="label" for="nl-daily">Daily (GH₵)</label>
-                <input id="nl-daily" type="number" step="0.01" min="0" class="input" bind:value={dailyRate} />
-              </div>
-              <div>
-                <label class="label" for="nl-term">Days</label>
-                <input id="nl-term" type="number" min="1" class="input" bind:value={termDays} />
-              </div>
-            </div>
-          {/if}
+          <div>
+            <label class="label" for="nl-term">Repayment period (days)</label>
+            <input id="nl-term" type="number" min="1" class="input" bind:value={termDays} placeholder="119" />
+          </div>
+          <div>
+            <label class="label" for="nl-daily">Daily rate (GH₵)</label>
+            <input id="nl-daily" type="number" step="0.01" min="0" class="input" bind:value={dailyRate} placeholder="16.20" />
+          </div>
         </div>
+        {#if suggestedDaily > 0}
+          <div class="mt-3 flex items-center justify-between">
+            <p class="text-2xs text-ink-muted">Suggested {formatCurrency(suggestedDaily)} / day to clear the balance in {termDaysValue} days</p>
+            <button type="button" class="text-xs font-bold" style="color: var(--brand);" on:click={useSuggestedDaily}>Use</button>
+          </div>
+        {/if}
       </div>
+
+      {#if totalCents > 0 && dailyCents > 0 && termDaysValue > 0}
+        <div class="mt-3 rounded-lg border border-edge bg-surface-100 p-3.5">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/></svg>
+            <p class="text-sm font-bold text-ink-primary">Your offer</p>
+          </div>
+          <p class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
+            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+            Daily repayment rate {formatCurrency(dailyCents)}
+          </p>
+          <div class="mt-2.5 flex items-center justify-between">
+            <span class="rounded-full bg-surface-200 px-2.5 py-1 text-2xs font-bold text-ink-muted">{termDaysValue} DAYS</span>
+            <span class="text-sm font-bold text-ink-primary">Total {formatCurrency(totalCents)}</span>
+          </div>
+        </div>
+      {/if}
     {/if}
 
     <!-- ============ LOAN DETAILS ============ -->
@@ -869,9 +835,7 @@
       <div class="mt-4">
         <label class="label" for="nl-down">Initial payment (deposit)</label>
         <input id="nl-down" type="number" step="0.01" min="0" class="input" bind:value={downPayment} />
-        {#if plan}
-          <p class="mt-1 text-2xs text-ink-muted">Minimum {formatCurrency(plan.minDownPayment)}</p>
-        {/if}
+        <p class="mt-1 text-2xs text-ink-muted">Any amount from 0 up to the total price {formatCurrency(totalCents)}</p>
       </div>
     {/if}
 

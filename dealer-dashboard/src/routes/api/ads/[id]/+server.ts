@@ -63,6 +63,10 @@ export const PUT: RequestHandler = async ({ params, locals, request, platform })
     FROM ads WHERE id = ?
   `).bind(params.id).first();
 
+  // The row was just written in this request, so a null here means the ad was
+  // deleted concurrently — report that instead of dereferencing null.
+  if (!updated) return errorResponse('Ad not found', 404);
+
   return json({
     success: true,
     ad: {
