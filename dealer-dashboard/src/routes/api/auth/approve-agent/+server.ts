@@ -23,7 +23,15 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!req) return errorResponse('Request not found or already processed', 404);
 
   const originalBranch = String(req.requested_branch_id ?? '').trim();
-  const assignedBranch = requestedAssignment || originalBranch || String(locals.dealer.branchId ?? '').trim();
+  let assignedBranch = requestedAssignment || originalBranch || String(locals.dealer.branchId ?? '').trim();
+  if (!assignedBranch && locals.dealer.role === 'SUPER_ADMIN') {
+    // Last-resort: the super admin has no branch of their own — fall back to
+    // the oldest active branch so approvals never hard-block on assignment.
+    const fallback = await db.prepare(
+      "SELECT id FROM branches WHERE is_active = 1 ORDER BY created_at ASC LIMIT 1"
+    ).first();
+    if (fallback) assignedBranch = String(fallback.id);
+  }
   if (!assignedBranch) return errorResponse('A valid branch assignment is required', 400);
 
   const branch = await db.prepare('SELECT id, agency_id FROM branches WHERE id = ? AND is_active = 1')

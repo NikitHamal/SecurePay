@@ -17,7 +17,16 @@
     createdAt: number;
   }
 
+  interface Branch {
+    id: string;
+    name: string;
+    agencyName?: string;
+  }
+
   let requests: AgentRequest[] = [];
+  let branches: Branch[] = [];
+  // requestId -> branch chosen in the row picker (server requires a branch).
+  let assignBranch: Record<string, string> = {};
   let loading = true;
   let error = '';
   let processing = '';
@@ -26,7 +35,29 @@
   let approvedCount = 0;
   let rejectedCount = 0;
 
-  onMount(fetchRequests);
+  onMount(async () => {
+    await Promise.all([fetchRequests(), fetchBranches()]);
+  });
+
+  async function fetchBranches() {
+    try {
+      const res = await apiClient('/api/branches');
+      if (res.ok) branches = await res.json();
+    } catch { /* picker stays empty; approve shows server error */ }
+    applyBranchDefaults();
+  }
+
+  function applyBranchDefaults() {
+    const next = { ...assignBranch };
+    for (const req of requests) {
+      if (req.status !== 'PENDING') continue;
+      const wanted = req.requestedBranchId || '';
+      next[req.id] = wanted && branches.some(b => b.id === wanted)
+        ? wanted
+        : (next[req.id] && branches.some(b => b.id === next[req.id]) ? next[req.id] : (branches[0]?.id ?? ''));
+    }
+    assignBranch = next;
+  }
 
   async function fetchRequests() {
     loading = true;
@@ -45,6 +76,7 @@
       pendingCount = p.length;
       approvedCount = a.length;
       rejectedCount = r.length;
+      applyBranchDefaults();
     } catch (e) {
       error = e instanceof Error ? e.message : 'Unknown error';
     } finally {
@@ -57,7 +89,7 @@
     try {
       const res = await apiClient('/api/auth/approve-agent', {
         method: 'POST',
-        body: JSON.stringify({ requestId })
+        body: JSON.stringify({ requestId, branchId: assignBranch[requestId] || '' })
       });
       if (!res.ok) {
         const data = await res.json();
@@ -210,11 +242,24 @@
                 </td>
                 <td class="text-right">
                   {#if req.status === 'PENDING'}
-                    <div class="flex justify-end gap-2">
+                    <div class="flex items-center justify-end gap-2">
+                      {#if branches.length === 0}
+                        <span class="text-xs text-amber">Create a branch first</span>
+                      {:else}
+                        <select
+                          class="input !w-auto !py-1.5 !px-2 text-xs"
+                          bind:value={assignBranch[req.id]}
+                          title="Branch to assign this agent to"
+                        >
+                          {#each branches as b (b.id)}
+                            <option value={b.id}>{b.name}{b.agencyName ? ` — ${b.agencyName}` : ''}</option>
+                          {/each}
+                        </select>
+                      {/if}
                       <button
                         type="button"
                         class="btn-primary !py-1.5 !px-3 text-xs"
-                        disabled={processing === req.id}
+                        disabled={processing === req.id || branches.length === 0 || !assignBranch[req.id]}
                         on:click={() => approveRequest(req.id)}
                       >
                         {#if processing === req.id}

@@ -51,8 +51,18 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import android.view.Gravity
+import android.view.WindowManager
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -402,7 +412,6 @@ private fun DeviceStatusBadge(status: String) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddDeviceBottomSheet(
     onDismiss: () -> Unit,
@@ -412,105 +421,147 @@ private fun AddDeviceBottomSheet(
     var model by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showScanner by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
+    // The old ModalBottomSheet dialog window could inherit ALT_FOCUSABLE_IM /
+    // NOT_FOCUSABLE flags (material3 1.2.x on several devices): the IME never
+    // opened and both fields felt "frozen". A plain Dialog with the window
+    // flags cleared explicitly + ADJUST_RESIZE is the robust bottom sheet.
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceVariant
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Column(
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.let { window ->
+                window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                )
+                window.setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE
+                )
+                window.setGravity(Gravity.BOTTOM)
+                window.setLayout(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT
+                )
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+            }
+        }
+
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 32.dp, top = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .imePadding()
+                .navigationBarsPadding(),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 3.dp
         ) {
-            Text("Add Device", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-
-            // Quick scan action — biggest time-saver for stock intake.
-            androidx.compose.material3.Button(
-                onClick = { showScanner = true },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(360.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp, top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(8.dp))
-                ButtonText("Scan IMEI Barcode")
-            }
+                Text("Add Device", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
 
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("IMEI (15 digits)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedTextField(
-                    value = imei,
-                    onValueChange = { imei = it.filter { c -> c.isDigit() }.take(15) },
-                    placeholder = { Text("Scan or enter IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
-                    singleLine = true,
+                // Quick scan action — biggest time-saver for stock intake.
+                androidx.compose.material3.Button(
+                    onClick = { showScanner = true },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedContainerColor = MaterialTheme.colorScheme.background,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.background,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    ),
                     shape = RoundedCornerShape(360.dp),
-                    trailingIcon = {
-                        IconButton(onClick = { showScanner = true }) {
-                            Icon(
-                                Icons.Filled.QrCodeScanner,
-                                contentDescription = "Scan IMEI",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.size(8.dp))
+                    ButtonText("Scan IMEI Barcode")
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("IMEI (15 digits)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = imei,
+                        onValueChange = { imei = it.filter { c -> c.isDigit() }.take(15) },
+                        placeholder = { Text("Scan or enter IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.None,
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Transparent,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(360.dp),
+                        trailingIcon = {
+                            IconButton(onClick = { showScanner = true }) {
+                                Icon(
+                                    Icons.Filled.QrCodeScanner,
+                                    contentDescription = "Scan IMEI",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        supportingText = {
+                            Text("${imei.length}/15 digits", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Device model", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        placeholder = { Text("e.g. SM-A075F/DS", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Done
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Transparent,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(360.dp)
+                    )
+                }
+                if (errorMessage != null) {
+                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                androidx.compose.material3.Button(
+                    onClick = {
+                        if (imei.length != 15) { errorMessage = "IMEI must be 15 digits"; return@Button }
+                        if (model.isBlank()) { errorMessage = "Model is required"; return@Button }
+                        onAdd(imei, model)
                     },
-                    supportingText = {
-                        Text("${imei.length}/15 digits", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    }
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Device model", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    placeholder = { Text("e.g. SM-A075F/DS", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedContainerColor = MaterialTheme.colorScheme.background,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.background,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.primary
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(360.dp)
-                )
+                ) { ButtonText("Add to Inventory") }
             }
-            if (errorMessage != null) {
-                Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            androidx.compose.material3.Button(
-                onClick = {
-                    if (imei.length != 15) { errorMessage = "IMEI must be 15 digits"; return@Button }
-                    if (model.isBlank()) { errorMessage = "Model is required"; return@Button }
-                    onAdd(imei, model)
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(360.dp)
-            ) { ButtonText("Add to Inventory") }
         }
     }
 

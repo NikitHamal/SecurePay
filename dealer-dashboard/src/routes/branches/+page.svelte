@@ -18,7 +18,13 @@
     createdAt: number;
   }
 
+  interface Agency {
+    id: string;
+    name: string;
+  }
+
   let branches: Branch[] = [];
+  let agencies: Agency[] = [];
   let loading = true;
   let error = '';
   let showCreateForm = false;
@@ -32,8 +38,20 @@
   };
 
   onMount(async () => {
-    await fetchBranches();
+    await Promise.all([fetchBranches(), fetchAgencies()]);
   });
+
+  // Agencies power a real dropdown — typing an opaque AGY-xxx id by hand was
+  // the source of the "Agency not found" failures.
+  async function fetchAgencies() {
+    try {
+      const res = await apiClient('/api/agencies');
+      if (res.ok) {
+        agencies = (await res.json()).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name }));
+        if (!newBranch.agencyId && agencies.length === 1) newBranch.agencyId = agencies[0].id;
+      }
+    } catch { /* dropdown stays empty */ }
+  }
 
   async function fetchBranches() {
     loading = true;
@@ -102,15 +120,19 @@
             />
           </div>
           <div>
-            <label for="agencyId" class="mb-1 block text-sm font-medium text-ink-secondary">Agency ID *</label>
-            <input
-              id="agencyId"
-              type="text"
-              bind:value={newBranch.agencyId}
-              placeholder="AGY-XXXXXXXX"
-              required
-              class="input w-full"
-            />
+            <label for="agencyId" class="mb-1 block text-sm font-medium text-ink-secondary">Agency *</label>
+            {#if agencies.length === 0}
+              <p class="rounded-lg border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
+                No agencies found — create an agency first from the Agencies page.
+              </p>
+            {:else}
+              <select id="agencyId" bind:value={newBranch.agencyId} required class="input w-full">
+                <option value="" disabled>Select agency…</option>
+                {#each agencies as agency (agency.id)}
+                  <option value={agency.id}>{agency.name} ({agency.id})</option>
+                {/each}
+              </select>
+            {/if}
           </div>
           <div>
             <label for="address" class="mb-1 block text-sm font-medium text-ink-secondary">Address</label>

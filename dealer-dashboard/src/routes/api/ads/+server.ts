@@ -3,8 +3,28 @@ import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
 
+// Self-healing: on a fresh D1 the ads migration may not have run yet — a
+// carousels-worth of 500s is exactly what a client demo must never show.
+async function ensureAdsTable(db: ReturnType<typeof getDb>) {
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS ads (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      image_url TEXT,
+      link_url TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    )`).run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_ads_active_sort ON ads(is_active, sort_order)').run();
+  } catch { /* table exists / read-only replica — queries below will surface it */ }
+}
+
 export const GET: RequestHandler = async ({ url, locals, platform }) => {
   const db = getDb({ platform });
+  await ensureAdsTable(db);
   const activeOnly = url.searchParams.get('active') === 'true';
 
   if (activeOnly) {
@@ -64,6 +84,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!title || !title.trim()) return errorResponse('Title is required', 400);
 
   const db = getDb({ platform });
+  await ensureAdsTable(db);
   const adId = `AD-${uuidv4().slice(0, 8).toUpperCase()}`;
   const now = Math.floor(Date.now() / 1000);
 

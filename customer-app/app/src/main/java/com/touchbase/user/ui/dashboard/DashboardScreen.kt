@@ -53,7 +53,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.touchbase.user.data.model.AdModel
+import com.touchbase.user.data.remote.ApiModule
+import com.touchbase.user.data.repository.AdRepository
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -453,41 +459,25 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 
 /**
  * Ads section with slide view.
- * Shows up to 3 ads in a carousel format.
+ * Fetches live ads managed from the dealer dashboard (touchbasedata.com):
+ * up to 3 active ads, sorted by the dashboard order. Fails soft — when the
+ * server is unreachable or has no active ads the section keeps a subtle
+ * placeholder so the layout never collapses mid-demo.
  */
 @Composable
 private fun AdSlideSection() {
-    // Mock ads for demonstration
-    // In production, these would be fetched from the repository
-    val mockAds = remember {
-        listOf(
-            com.touchbase.user.data.model.AdModel(
-                id = "1",
-                title = "Special Offer",
-                description = "Get 10% discount on your next payment!",
-                linkUrl = "https://touchbasedata.com/offer1",
-                isActive = true,
-                order = 1
-            ),
-            com.touchbase.user.data.model.AdModel(
-                id = "2",
-                title = "New Phones Available",
-                description = "Check out our latest phone models",
-                linkUrl = "https://touchbasedata.com/phones",
-                isActive = true,
-                order = 2
-            ),
-            com.touchbase.user.data.model.AdModel(
-                id = "3",
-                title = "Extended Warranty",
-                description = "Protect your device with extended warranty",
-                linkUrl = "https://touchbasedata.com/warranty",
-                isActive = true,
-                order = 3
-            )
-        )
+    var ads by remember { mutableStateOf<List<AdModel>?>(null) }
+
+    LaunchedEffect(Unit) {
+        val repo = AdRepository(ApiModule.provideApi())
+        ads = repo.getActiveAds().getOrNull() ?: emptyList()
     }
-    
+
+    val loaded = ads
+    // Keep the DOM slot stable while loading and hide (gracefully) when the
+    // dashboard has no active ads at all.
+    if (loaded != null && loaded.isEmpty()) return
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -498,12 +488,30 @@ private fun AdSlideSection() {
             color = TextSecondary,
             modifier = Modifier.padding(horizontal = 4.dp)
         )
-        AdSlideView(
-            ads = mockAds,
-            modifier = Modifier.fillMaxWidth(),
-            autoScroll = true,
-            scrollInterval = 5000L
-        )
+        if (loaded == null) {
+            // Loading placeholder — same footprint as a filled slide row.
+            AdSlideView(
+                ads = listOf(
+                    AdModel(
+                        id = "loading",
+                        title = "Loading offers…",
+                        description = "",
+                        isActive = true,
+                        order = 0
+                    )
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                autoScroll = false,
+                scrollInterval = 5000L
+            )
+        } else {
+            AdSlideView(
+                ads = loaded,
+                modifier = Modifier.fillMaxWidth(),
+                autoScroll = true,
+                scrollInterval = 5000L
+            )
+        }
     }
 }
 
