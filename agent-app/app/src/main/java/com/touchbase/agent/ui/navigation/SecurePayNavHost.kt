@@ -7,7 +7,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -22,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.data.local.WifiSettingsStore
+import com.touchbase.agent.data.remote.SessionEvents
 import com.touchbase.agent.data.remote.TokenManager
 import com.touchbase.agent.ui.auth.LoginScreen
 import com.touchbase.agent.ui.auth.RegisterScreen
@@ -50,6 +53,19 @@ fun SecurePayNavHost(
     val wifiSettingsStore = remember(appContext) { WifiSettingsStore(appContext) }
 
     val startDestination = if (isLoggedIn != null) Screen.Dashboard.route else Screen.Login.route
+
+    // Session expiry (HTTP 401 from any endpoint): the interceptor already wiped the
+    // stored token — here we take the agent straight to the sign-in screen instead of
+    // leaving an "Unauthorized" message stuck on the page until a manual logout.
+    LaunchedEffect(Unit) {
+        SessionEvents.sessionExpired.collect { reason ->
+            Toast.makeText(appContext, reason, Toast.LENGTH_LONG).show()
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
 
     fun navigateToTab(route: String) {
         navController.navigate(route) {

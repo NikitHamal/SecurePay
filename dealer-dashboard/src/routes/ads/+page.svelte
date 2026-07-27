@@ -253,34 +253,34 @@
     {/if}
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-ink-secondary">Title *</label>
-      <input type="text" class="input" placeholder="e.g. Special Offer" bind:value={formTitle} />
+      <label class="mb-1 block text-xs font-medium text-ink-secondary" for="ad-title">Title *</label>
+      <input id="ad-title" type="text" class="input" placeholder="e.g. Special Offer" bind:value={formTitle} />
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-ink-secondary">Description</label>
-      <textarea class="input min-h-[80px] resize-y" placeholder="Ad body text" bind:value={formDescription}></textarea>
+      <label class="mb-1 block text-xs font-medium text-ink-secondary" for="ad-description">Description</label>
+      <textarea id="ad-description" class="input min-h-[80px] resize-y" placeholder="Ad body text" bind:value={formDescription}></textarea>
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-ink-secondary">Image URL</label>
-      <input type="url" class="input" placeholder="https://example.com/ad-image.png" bind:value={formImageUrl} />
+      <label class="mb-1 block text-xs font-medium text-ink-secondary" for="ad-image-url">Image URL</label>
+      <input id="ad-image-url" type="url" class="input" placeholder="https://example.com/ad-image.png" bind:value={formImageUrl} />
       <p class="mt-1 text-2xs text-ink-muted">Optional. Leave empty to use text-only ad.</p>
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-ink-secondary">Link URL</label>
-      <input type="url" class="input" placeholder="https://example.com/offer" bind:value={formLinkUrl} />
+      <label class="mb-1 block text-xs font-medium text-ink-secondary" for="ad-link-url">Link URL</label>
+      <input id="ad-link-url" type="url" class="input" placeholder="https://example.com/offer" bind:value={formLinkUrl} />
       <p class="mt-1 text-2xs text-ink-muted">Optional. Opens when user taps the ad.</p>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="mb-1 block text-xs font-medium text-ink-secondary">Sort Order</label>
-        <input type="number" class="input" min="0" bind:value={formOrder} />
+        <label class="mb-1 block text-xs font-medium text-ink-secondary" for="ad-sort-order">Sort Order</label>
+        <input id="ad-sort-order" type="number" class="input" min="0" bind:value={formOrder} />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-ink-secondary">Status</label>
+        <span class="mb-1 block text-xs font-medium text-ink-secondary">Status</span>
         <div class="flex h-input items-center gap-3">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" bind:checked={formIsActive} class="h-4 w-4 rounded border-edge text-emerald focus:ring-emerald" />

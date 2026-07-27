@@ -71,12 +71,12 @@
     <Card>
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-xs font-medium text-ink-secondary">Account ID</label>
+          <span class="mb-1 block text-xs font-medium text-ink-secondary">Account ID</span>
           <SearchInput placeholder="e.g. ACC-XXXXXX or numeric account ID" bind:value={accountId} />
         </div>
 
         <div>
-          <label class="mb-1 block text-xs font-medium text-ink-secondary">Push Type</label>
+          <span class="mb-1 block text-xs font-medium text-ink-secondary">Push Type</span>
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {#each PUSH_TYPES as pt}
               <button
@@ -96,12 +96,12 @@
 
         {#if pushType === 'notification'}
           <div>
-            <label class="mb-1 block text-xs font-medium text-ink-secondary">Title</label>
-            <input type="text" class="input" placeholder="Notification heading" bind:value={title} />
+            <label class="mb-1 block text-xs font-medium text-ink-secondary" for="push-title">Title</label>
+            <input id="push-title" type="text" class="input" placeholder="Notification heading" bind:value={title} />
           </div>
           <div>
-            <label class="mb-1 block text-xs font-medium text-ink-secondary">Message</label>
-            <textarea class="input min-h-[80px] resize-y" placeholder="Notification body text" bind:value={message}></textarea>
+            <label class="mb-1 block text-xs font-medium text-ink-secondary" for="push-message">Message</label>
+            <textarea id="push-message" class="input min-h-[80px] resize-y" placeholder="Notification body text" bind:value={message}></textarea>
           </div>
         {/if}
 

@@ -29,10 +29,18 @@ function cleanText(value: unknown): string {
   return String(value ?? '').trim();
 }
 
-function parseSafeInteger(value: unknown, fieldName: string, minimum: number): number {
+/** Human readable cedis for error messages (values are stored in pesewas). */
+function cedis(pesewas: number): string {
+  return `GHS ${(pesewas / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function parseSafeInteger(value: unknown, fieldName: string, minimum: number, money = true): number {
   const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < minimum) {
-    throw new Error(`${fieldName} must be a whole number of pesewas and at least ${minimum}`);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error(`${fieldName} must be a whole number`);
+  }
+  if (parsed < minimum) {
+    throw new Error(`${fieldName} must be at least ${money ? cedis(minimum) : minimum}`);
   }
   return parsed;
 }
@@ -249,7 +257,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('imei must contain exactly 15 digits', 400);
   }
   if (!planId && body.dailyRate == null) {
-    return errorResponse('Either planId or custom dailyRate must be provided', 400);
+    return errorResponse('dailyRate is required (pricing is set per sale)', 400);
   }
 
   // M-KOPA style application fields: references, guarantor, consent, signature.
@@ -347,18 +355,24 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       ? parseSafeInteger(plan.daily_rate, 'plan daily rate', 1)
       : parseSafeInteger(body.dailyRate, 'dailyRate', 1);
     termDays = plan
-      ? parseSafeInteger(plan.term_days, 'plan term', 1)
-      : parseSafeInteger(body.termDays, 'termDays', 1);
-    const minimumDownPayment = plan ? parseSafeInteger(plan.min_down_payment, 'plan minimum down payment', 0) : 0;
+      ? parseSafeInteger(plan.term_days, 'plan term', 1, false)
+      : parseSafeInteger(body.termDays, 'termDays', 1, false);
+    // The deposit is whatever the dealer agreed with this customer. Legacy plans
+    // carry a suggested minimum, but it is never enforced any more: an admin who
+    // prices a sale at GH₵ 800 must not be blocked by a GH₵ 6,000 package floor.
+    const suggestedDownPayment = plan ? parseSafeInteger(plan.min_down_payment, 'plan minimum down payment', 0) : 0;
     downPayment = body.downPayment == null || body.downPayment === ''
-      ? minimumDownPayment
-      : parseSafeInteger(body.downPayment, 'downPayment', minimumDownPayment);
+      ? suggestedDownPayment
+      : parseSafeInteger(body.downPayment, 'downPayment', 0);
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : 'Invalid loan values', 400);
   }
 
   if (downPayment > totalLoanAmount) {
-    return errorResponse('downPayment cannot exceed total loan amount', 400);
+    return errorResponse(
+      `Initial payment ${cedis(downPayment)} cannot be more than the total price ${cedis(totalLoanAmount)}`,
+      400
+    );
   }
 
   const nowMillis = Date.now();

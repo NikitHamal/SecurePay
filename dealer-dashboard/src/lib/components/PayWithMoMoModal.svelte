@@ -175,7 +175,7 @@
         <input id="pm-phone" type="tel" class="input" bind:value={phone} placeholder="055xxxxxxx" />
       </div>
       <div>
-        <label class="label">Network</label>
+        <span class="label block">Network</span>
         <div class="grid grid-cols-3 gap-2">
           {#each [
             { id: 'mtn', label: 'MTN MoMo' },

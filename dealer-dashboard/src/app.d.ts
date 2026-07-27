@@ -23,6 +23,7 @@ declare global {
         HMAC_SECRET: string;
         FRP_ACCOUNT_IDS?: string;
         CUSTOMER_APP_MIN_SUPPORTED_VERSION_CODE?: string;
+        AGENT_APP_MIN_SUPPORTED_VERSION_CODE?: string;
         ALLOW_DEMO_SEED?: string;
         FCM_SERVICE_ACCOUNT_EMAIL?: string;
         FCM_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
