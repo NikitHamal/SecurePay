@@ -30,12 +30,12 @@
     --selection-text: #0B0B0C;
     --overlay-bg: rgba(11,11,12,0.4);
     --progress-track: #E7E4DA;
-    --avatar-text: #0B0B0C;
-    /* Touch Base gold — bright, warm gold used for primary actions.
-       Near-black text on bright gold reads at ~10:1 contrast (WCAG AAA). */
-    --brand: #D4AF37;
-    --brand-soft: rgba(212,175,55,0.16);
-    --brand-accent: #C99E1F;
+    --avatar-text: #FFFFFF;
+    --btn-text: #FFFFFF;
+    /* Touch Base gold — rich, warm gold with crisp white text for primary actions */
+    --brand: #C59B27;
+    --brand-soft: rgba(197,155,39,0.14);
+    --brand-accent: #B3891E;
     /* Success = green (paid / verified / in-stock) */
     --success: #10B981;
     --success-soft: rgba(16,185,129,0.14);
@@ -131,7 +131,7 @@
   }
 
   .btn-primary {
-    @apply btn text-[color:var(--avatar-text)];
+    @apply btn text-white;
     background-color: var(--brand);
     font-weight: 600;
     box-shadow: 0 1px 2px rgba(0,0,0,0.08);
