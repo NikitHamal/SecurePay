@@ -153,6 +153,35 @@ export async function createAccount(data: {
   totalAmount?: number;
   termDays?: number;
   downPayment?: number;
+  // M-KOPA style application payload (all optional server-side)
+  customerPhoto?: string;
+  nationalIdFront?: string;
+  nationalIdBack?: string;
+  idType?: string;
+  nextOfKinName?: string;
+  nextOfKinPhone?: string;
+  nextOfKinRelation?: string;
+  refereeName?: string;
+  refereePhone?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  guarantorIdNumber?: string;
+  guarantorRelation?: string;
+  consentTerms?: boolean;
+  consentData?: boolean;
+  customerSignature?: string;
+  surname?: string;
+  otherPhone?: string;
+  dateOfBirth?: string;
+  maritalStatus?: string;
+  employmentStatus?: string;
+  gender?: string;
+  isCustomerUser?: boolean;
+  region?: string;
+  district?: string;
+  physicalAddress?: string;
+  preferredLanguage?: string;
+  agreementText?: string;
 }): Promise<Customer> {
   return request<Customer>('/accounts', {
     method: 'POST',

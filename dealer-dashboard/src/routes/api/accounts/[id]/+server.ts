@@ -22,7 +22,19 @@ function applicationFields(row: Record<string, unknown>) {
     consentTerms: row.consent_terms === 1,
     consentData: row.consent_data === 1,
     consentAt: (row.consent_at ?? null) as number | null,
-    customerSignaturePath: (row.customer_signature_path ?? null) as string | null
+    customerSignaturePath: (row.customer_signature_path ?? null) as string | null,
+    surname: (row.surname ?? null) as string | null,
+    otherPhone: (row.other_phone ?? null) as string | null,
+    dateOfBirth: (row.date_of_birth ?? null) as string | null,
+    maritalStatus: (row.marital_status ?? null) as string | null,
+    employmentStatus: (row.employment_status ?? null) as string | null,
+    gender: (row.gender ?? null) as string | null,
+    isCustomerUser: row.is_customer_user == null ? null : row.is_customer_user === 1,
+    region: (row.region ?? null) as string | null,
+    district: (row.district ?? null) as string | null,
+    physicalAddress: (row.physical_address ?? null) as string | null,
+    preferredLanguage: (row.preferred_language ?? null) as string | null,
+    agreementText: (row.agreement_text ?? null) as string | null
   };
 }
 

@@ -3,18 +3,20 @@ package com.touchbase.agent.ui.enrollment.steps
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.touchbase.agent.ui.components.SelectionChips
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 
 /**
- * References step (M-KOPA "guarantors & next of kin" screen): the people we can
- * reach if the customer goes quiet. Relation is picked from chips — no typing.
+ * Personal references screen (our context on top of the M-KOPA flow):
+ * next of kin, referee and the guarantor who co-signs the agreement.
  */
 @Composable
 fun ContactsStep(
@@ -24,19 +26,19 @@ fun ContactsStep(
     onKinPhoneChange: (String) -> Unit,
     onRefereeNameChange: (String) -> Unit,
     onRefereePhoneChange: (String) -> Unit,
+    onGuarantorNameChange: (String) -> Unit,
+    onGuarantorRelationChange: (String) -> Unit,
+    onGuarantorPhoneChange: (String) -> Unit,
+    onGuarantorIdChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val draft = state.draft
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(
-            "Next of kin",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        ReferenceHeader("Next of kin")
 
         WizardTextField(
             label = "Full name",
@@ -47,12 +49,11 @@ fun ContactsStep(
             supportingText = "Enter at least 3 characters"
         )
 
-        SelectionChips(
-            label = "Relationship to customer",
+        WizardDropdown(
+            label = "Relationship",
+            value = draft.nextOfKinRelation,
             options = EnrollmentUiState.RELATIONS,
-            selected = draft.nextOfKinRelation,
-            onSelect = onKinRelationChange,
-            error = "Pick the relationship"
+            onSelect = onKinRelationChange
         )
 
         WizardTextField(
@@ -65,16 +66,9 @@ fun ContactsStep(
             supportingText = "Valid phone, different from the customer's"
         )
 
-        Text(
-            "Referee",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            "Someone else who knows the customer well — a different person from the next of kin.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 4.dp))
+
+        ReferenceHeader("Referee")
 
         WizardTextField(
             label = "Full name",
@@ -94,5 +88,59 @@ fun ContactsStep(
             isError = draft.refereePhone.isNotEmpty() && !state.isRefereePhoneValid,
             supportingText = "Must differ from the customer and next of kin"
         )
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 4.dp))
+
+        ReferenceHeader("Guarantor (co-signer)")
+        Text(
+            "The guarantor co-signs the financing agreement and can be contacted if the customer defaults.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        WizardTextField(
+            label = "Full name",
+            value = draft.guarantorName,
+            onValueChange = onGuarantorNameChange,
+            placeholder = "e.g. Kofi Boateng",
+            isError = draft.guarantorName.isNotEmpty() && !state.isGuarantorNameValid,
+            supportingText = "Enter at least 3 characters"
+        )
+
+        WizardDropdown(
+            label = "Relationship",
+            value = draft.guarantorRelation,
+            options = EnrollmentUiState.RELATIONS,
+            onSelect = onGuarantorRelationChange
+        )
+
+        WizardTextField(
+            label = "Phone number",
+            value = draft.guarantorPhone,
+            onValueChange = onGuarantorPhoneChange,
+            placeholder = "e.g. 020 555 0182",
+            keyboardType = KeyboardType.Phone,
+            isError = draft.guarantorPhone.isNotEmpty() && !state.isGuarantorPhoneValid,
+            supportingText = "Valid phone, different from the customer's"
+        )
+
+        WizardTextField(
+            label = "ID number",
+            value = draft.guarantorIdNumber,
+            onValueChange = onGuarantorIdChange,
+            placeholder = "Ghana Card / Voter / Passport number",
+            isError = draft.guarantorIdNumber.isNotEmpty() && !state.isGuarantorIdValid,
+            supportingText = "Enter 4–24 characters"
+        )
     }
+}
+
+@Composable
+private fun ReferenceHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onBackground
+    )
 }

@@ -34,8 +34,7 @@ class EnrollmentViewModel(
             return
         }
         viewModelScope.launch {
-            val result = repository.listPlans()
-            result.fold(
+            repository.listPlans().fold(
                 onSuccess = { plans ->
                     _uiState.update { it.copy(availablePlans = plans) }
                     plansLoaded = true
@@ -54,16 +53,12 @@ class EnrollmentViewModel(
         refreshDevices()
     }
 
-    /**
-     * Re-pulls the dealer's inventory so the device picker always shows the
-     * freshest "not yet sold" list. Called when the Device step is entered.
-     */
+    /** Re-pulls the dealer's inventory so the serial picker always shows the freshest "not yet sold" list. */
     fun refreshDevices() {
         if (repository == null) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingDevices = true) }
-            val result = repository.listDevices()
-            result.fold(
+            repository.listDevices().fold(
                 onSuccess = { devices ->
                     devicesLoaded = true
                     _uiState.update { state ->
@@ -90,89 +85,47 @@ class EnrollmentViewModel(
         }
     }
 
-    fun updateKycName(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(customerName = value))
+    fun updateDraft(transform: (EnrollmentDraft) -> EnrollmentDraft) = _uiState.update {
+        it.copy(draft = transform(it.draft))
     }
 
-    fun updateKycNationalId(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(nationalId = value))
-    }
+    fun updateFirstName(v: String) = updateDraft { it.copy(firstName = v) }
+    fun updateSurname(v: String) = updateDraft { it.copy(surname = v) }
+    fun updateIdType(v: String) = updateDraft { it.copy(idType = v) }
+    fun updateNationalId(v: String) = updateDraft { it.copy(nationalId = v) }
+    fun updatePhone(v: String) = updateDraft { it.copy(phoneNumber = v) }
+    fun updateOtherPhone(v: String) = updateDraft { it.copy(otherPhone = v) }
+    fun updateDateOfBirth(v: String) = updateDraft { it.copy(dateOfBirth = formatDobInput(v)) }
+    fun updateMaritalStatus(v: String) = updateDraft { it.copy(maritalStatus = v) }
+    fun updateEmploymentStatus(v: String) = updateDraft { it.copy(employmentStatus = v) }
+    fun updateGender(v: String) = updateDraft { it.copy(gender = v) }
+    fun updateIsCustomerUser(v: Boolean) = updateDraft { it.copy(isCustomerUser = v) }
+    fun updateRegion(v: String) = updateDraft { if (it.region == v) it else it.copy(region = v, district = "") }
+    fun updateDistrict(v: String) = updateDraft { it.copy(district = v) }
+    fun updatePhysicalAddress(v: String) = updateDraft { it.copy(physicalAddress = v) }
+    fun updatePreferredLanguage(v: String) = updateDraft { it.copy(preferredLanguage = v) }
 
-    fun updateKycPhone(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(phoneNumber = value))
-    }
+    fun updateNextOfKinName(v: String) = updateDraft { it.copy(nextOfKinName = v) }
+    fun updateNextOfKinRelation(v: String) = updateDraft { it.copy(nextOfKinRelation = v) }
+    fun updateNextOfKinPhone(v: String) = updateDraft { it.copy(nextOfKinPhone = v) }
+    fun updateRefereeName(v: String) = updateDraft { it.copy(refereeName = v) }
+    fun updateRefereePhone(v: String) = updateDraft { it.copy(refereePhone = v) }
+    fun updateGuarantorName(v: String) = updateDraft { it.copy(guarantorName = v) }
+    fun updateGuarantorRelation(v: String) = updateDraft { it.copy(guarantorRelation = v) }
+    fun updateGuarantorPhone(v: String) = updateDraft { it.copy(guarantorPhone = v) }
+    fun updateGuarantorIdNumber(v: String) = updateDraft { it.copy(guarantorIdNumber = v) }
 
-    fun updateKycPhoto(value: String?) = _uiState.update {
-        it.copy(draft = it.draft.copy(customerPhotoBase64 = value))
-    }
+    fun updateCustomerPhoto(v: String?) = updateDraft { it.copy(customerPhotoBase64 = v) }
+    fun updateIdFront(v: String?) = updateDraft { it.copy(nationalIdFrontBase64 = v) }
+    fun updateIdBack(v: String?) = updateDraft { it.copy(nationalIdBackBase64 = v) }
 
-    fun updateKycIdFront(value: String?) = _uiState.update {
-        it.copy(draft = it.draft.copy(nationalIdFrontBase64 = value))
-    }
-
-    fun updateKycIdBack(value: String?) = _uiState.update {
-        it.copy(draft = it.draft.copy(nationalIdBackBase64 = value))
-    }
-
-    fun updateKycIdType(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(idType = value))
-    }
-
-    fun updateNextOfKinName(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(nextOfKinName = value))
-    }
-
-    fun updateNextOfKinRelation(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(nextOfKinRelation = value))
-    }
-
-    fun updateNextOfKinPhone(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(nextOfKinPhone = value))
-    }
-
-    fun updateRefereeName(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(refereeName = value))
-    }
-
-    fun updateRefereePhone(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(refereePhone = value))
-    }
-
-    fun updateGuarantorName(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(guarantorName = value))
-    }
-
-    fun updateGuarantorRelation(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(guarantorRelation = value))
-    }
-
-    fun updateGuarantorPhone(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(guarantorPhone = value))
-    }
-
-    fun updateGuarantorIdNumber(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(guarantorIdNumber = value))
-    }
-
-    fun updateConsentTerms(value: Boolean) = _uiState.update {
-        it.copy(draft = it.draft.copy(consentTerms = value))
-    }
-
-    fun updateConsentData(value: Boolean) = _uiState.update {
-        it.copy(draft = it.draft.copy(consentData = value))
-    }
-
-    fun updateSignature(value: String?) = _uiState.update {
-        it.copy(draft = it.draft.copy(signatureBase64 = value))
-    }
+    fun updateConsentTerms(v: Boolean) = updateDraft { it.copy(consentTerms = v, consentData = v) }
+    fun updateSignature(v: String?) = updateDraft { it.copy(signatureBase64 = v) }
 
     fun updateImei(value: String) = _uiState.update {
         val sanitized = value.filter { ch -> ch.isDigit() }.take(IMEI_LENGTH)
-        val status = if (sanitized.length == IMEI_LENGTH) {
-            lookupDevice(sanitized, it.availableDevices)
-        } else {
-            DeviceLookupStatus.Idle
-        }
+        val status = if (sanitized.length == IMEI_LENGTH) lookupDevice(sanitized, it.availableDevices)
+        else DeviceLookupStatus.Idle
         val newModel = if (status is DeviceLookupStatus.Found) status.model else it.draft.deviceModel
         it.copy(
             draft = it.draft.copy(imei = sanitized, deviceModel = newModel),
@@ -188,17 +141,14 @@ class EnrollmentViewModel(
     }
 
     private fun lookupDevice(imei: String, devices: List<Device>): DeviceLookupStatus {
-        val device = devices.firstOrNull { it.imei == imei }
-            ?: return DeviceLookupStatus.NotFound
+        val device = devices.firstOrNull { it.imei == imei } ?: return DeviceLookupStatus.NotFound
         return when (device.status) {
             "sold" -> DeviceLookupStatus.AlreadySold
             else -> DeviceLookupStatus.Found(device.model)
         }
     }
 
-    fun updateDeviceModel(value: String) = _uiState.update {
-        it.copy(draft = it.draft.copy(deviceModel = value))
-    }
+    fun updateDeviceModel(value: String) = updateDraft { it.copy(deviceModel = value) }
 
     fun selectPlan(plan: Plan?) = _uiState.update { state ->
         if (plan == null) {
@@ -208,78 +158,59 @@ class EnrollmentViewModel(
                 totalAmountInput = "",
                 termDaysInput = "",
                 downPaymentInput = "",
-                draft = state.draft.copy(
-                    planName = "",
-                    totalLoanAmount = 0,
-                    dailyRate = 0,
-                    termDays = 0,
-                    downPayment = 0
-                )
+                draft = state.draft.copy(planName = "", totalLoanAmount = 0, dailyRate = 0, termDays = 0, downPayment = 0)
             )
         } else {
             val planDaily = (plan.dailyRate / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
             val planTotal = (plan.totalAmount / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
             state.copy(
                 selectedPlan = plan,
-                dailyRateInput = state.dailyRateInput.ifBlank { planDaily },
-                totalAmountInput = state.totalAmountInput.ifBlank { planTotal },
-                termDaysInput = state.termDaysInput.ifBlank { plan.termDays.toString() },
-                downPaymentInput = state.downPaymentInput.ifBlank {
-                    val minCents = plan.minDownPayment
-                    (minCents / 100.0).toBigDecimal().stripTrailingZeros().toPlainString()
-                },
+                dailyRateInput = planDaily,
+                totalAmountInput = planTotal,
+                termDaysInput = plan.termDays.toString(),
+                downPaymentInput = (plan.minDownPayment / 100.0).toBigDecimal().stripTrailingZeros().toPlainString(),
                 draft = state.draft.copy(
                     planName = plan.name,
                     totalLoanAmount = plan.totalAmount,
                     dailyRate = plan.dailyRate,
-                    termDays = plan.termDays
+                    termDays = plan.termDays,
+                    downPayment = plan.minDownPayment
                 )
             )
         }
     }
 
+    /** Switches to custom-terms mode but keeps whatever numbers were already typed. */
+    fun selectCustomPlan() = _uiState.update { state ->
+        state.copy(selectedPlan = null, draft = state.draft.copy(planName = ""))
+    }
+
     fun updateDailyRate(value: String) = _uiState.update { state ->
         val sanitized = value.filter { it.isDigit() || it == '.' }
         val parsed = sanitized.toDoubleOrNull() ?: 0.0
-        state.copy(
-            dailyRateInput = sanitized,
-            draft = state.draft.copy(dailyRate = (parsed * 100).toInt())
-        )
+        state.copy(dailyRateInput = sanitized, draft = state.draft.copy(dailyRate = (parsed * 100).toInt()))
     }
 
     fun updateTotalAmount(value: String) = _uiState.update { state ->
         val sanitized = value.filter { it.isDigit() || it == '.' }
         val parsed = sanitized.toDoubleOrNull() ?: 0.0
-        state.copy(
-            totalAmountInput = sanitized,
-            draft = state.draft.copy(totalLoanAmount = (parsed * 100).toInt())
-        )
+        state.copy(totalAmountInput = sanitized, draft = state.draft.copy(totalLoanAmount = (parsed * 100).toInt()))
     }
 
     fun updateTermDays(value: String) = _uiState.update { state ->
         val sanitized = value.filter { it.isDigit() }
-        state.copy(
-            termDaysInput = sanitized,
-            draft = state.draft.copy(termDays = sanitized.toIntOrNull() ?: 0)
-        )
+        state.copy(termDaysInput = sanitized, draft = state.draft.copy(termDays = sanitized.toIntOrNull() ?: 0))
     }
 
     fun updateDownPayment(value: String) = _uiState.update { state ->
         val sanitized = value.filter { it.isDigit() || it == '.' }
         val parsed = sanitized.toDoubleOrNull() ?: 0.0
-        state.copy(
-            downPaymentInput = sanitized,
-            draft = state.draft.copy(downPayment = (parsed * 100).toInt())
-        )
+        state.copy(downPaymentInput = sanitized, draft = state.draft.copy(downPayment = (parsed * 100).toInt()))
     }
 
     fun nextStep() = _uiState.update { state ->
         try {
-            if (state.isCurrentStepValid && !state.isLastStep) {
-                state.copy(stepIndex = state.stepIndex + 1)
-            } else {
-                state
-            }
+            if (state.isCurrentStepValid && !state.isLastStep) state.copy(stepIndex = state.stepIndex + 1) else state
         } catch (_: Exception) {
             state
         }
@@ -289,9 +220,49 @@ class EnrollmentViewModel(
         if (!state.isFirstStep) state.copy(stepIndex = state.stepIndex - 1) else state
     }
 
-    /** Jumps straight to a step — used by the Review screen's "tap to edit" rows. */
     fun goToStep(index: Int) = _uiState.update { state ->
         state.copy(stepIndex = index.coerceIn(0, EnrollmentStep.COUNT - 1))
+    }
+
+    /** The exact agreement text built from the current draft (shown before signing + sent to the server). */
+    fun buildAgreement(): String {
+        val s = _uiState.value
+        val d = s.draft
+        return AgreementText.build(
+            AgreementText.Parties(
+                firstName = d.firstName,
+                surname = d.surname,
+                idType = d.idType,
+                idNumber = d.nationalId,
+                phone = d.phoneNumber,
+                otherPhone = d.otherPhone,
+                dateOfBirth = d.dateOfBirth,
+                gender = d.gender,
+                maritalStatus = d.maritalStatus,
+                employmentStatus = d.employmentStatus,
+                region = d.region,
+                district = d.district,
+                physicalAddress = d.physicalAddress,
+                preferredLanguage = d.preferredLanguage,
+                customerName = d.customerName,
+                deviceModel = d.deviceModel,
+                imei = d.imei,
+                planName = d.planName,
+                totalLoanAmountCents = d.totalLoanAmount,
+                downPaymentCents = d.downPayment,
+                dailyRateCents = d.dailyRate,
+                termDays = d.termDays,
+                kinName = d.nextOfKinName,
+                kinRelation = d.nextOfKinRelation,
+                kinPhone = d.nextOfKinPhone,
+                refereeName = d.refereeName,
+                refereePhone = d.refereePhone,
+                guarantorName = d.guarantorName,
+                guarantorRelation = d.guarantorRelation,
+                guarantorPhone = d.guarantorPhone,
+                guarantorId = d.guarantorIdNumber
+            )
+        )
     }
 
     fun submit() {
@@ -306,33 +277,46 @@ class EnrollmentViewModel(
                 _uiState.update { it.copy(submission = SubmissionState.Success("LOCAL_PREVIEW_ENROLLMENT_ID", "0240000000", "12345678")) }
                 return@launch
             }
+            val d = state.draft
             val plan = state.selectedPlan
             val request = CreateAccountRequest(
-                customerName = state.draft.customerName,
-                nationalId = state.draft.nationalId,
-                phoneNumber = state.draft.phoneNumber,
-                imei = state.draft.imei,
+                customerName = d.customerName,
+                nationalId = d.nationalId,
+                phoneNumber = d.phoneNumber,
+                imei = d.imei,
                 planId = plan?.id,
-                dailyRate = if (state.draft.dailyRate > 0) state.draft.dailyRate else null,
-                totalAmount = if (state.draft.totalLoanAmount > 0) state.draft.totalLoanAmount else null,
-                termDays = if (state.draft.termDays > 0) state.draft.termDays else null,
-                downPayment = if (state.draft.downPayment > 0) state.draft.downPayment else null,
-                customerPhoto = state.draft.customerPhotoBase64,
-                nationalIdFront = state.draft.nationalIdFrontBase64,
-                nationalIdBack = state.draft.nationalIdBackBase64,
-                idType = state.draft.idType.ifBlank { null },
-                nextOfKinName = state.draft.nextOfKinName.ifBlank { null },
-                nextOfKinPhone = state.draft.nextOfKinPhone.ifBlank { null },
-                nextOfKinRelation = state.draft.nextOfKinRelation.ifBlank { null },
-                refereeName = state.draft.refereeName.ifBlank { null },
-                refereePhone = state.draft.refereePhone.ifBlank { null },
-                guarantorName = state.draft.guarantorName.ifBlank { null },
-                guarantorPhone = state.draft.guarantorPhone.ifBlank { null },
-                guarantorIdNumber = state.draft.guarantorIdNumber.ifBlank { null },
-                guarantorRelation = state.draft.guarantorRelation.ifBlank { null },
-                consentTerms = state.draft.consentTerms,
-                consentData = state.draft.consentData,
-                customerSignature = state.draft.signatureBase64
+                dailyRate = if (d.dailyRate > 0) d.dailyRate else null,
+                totalAmount = if (d.totalLoanAmount > 0) d.totalLoanAmount else null,
+                termDays = if (d.termDays > 0) d.termDays else null,
+                downPayment = if (d.downPayment > 0) d.downPayment else null,
+                customerPhoto = d.customerPhotoBase64,
+                nationalIdFront = d.nationalIdFrontBase64,
+                nationalIdBack = d.nationalIdBackBase64,
+                idType = d.idType.ifBlank { null },
+                nextOfKinName = d.nextOfKinName.ifBlank { null },
+                nextOfKinPhone = d.nextOfKinPhone.ifBlank { null },
+                nextOfKinRelation = d.nextOfKinRelation.ifBlank { null },
+                refereeName = d.refereeName.ifBlank { null },
+                refereePhone = d.refereePhone.ifBlank { null },
+                guarantorName = d.guarantorName.ifBlank { null },
+                guarantorPhone = d.guarantorPhone.ifBlank { null },
+                guarantorIdNumber = d.guarantorIdNumber.ifBlank { null },
+                guarantorRelation = d.guarantorRelation.ifBlank { null },
+                consentTerms = d.consentTerms,
+                consentData = d.consentData,
+                customerSignature = d.signatureBase64,
+                surname = d.surname.ifBlank { null },
+                otherPhone = d.otherPhone.ifBlank { null },
+                dateOfBirth = d.dateOfBirth.ifBlank { null },
+                maritalStatus = d.maritalStatus.ifBlank { null },
+                employmentStatus = d.employmentStatus.ifBlank { null },
+                gender = d.gender.ifBlank { null },
+                isCustomerUser = d.isCustomerUser,
+                region = d.region.ifBlank { null },
+                district = d.district.ifBlank { null },
+                physicalAddress = d.physicalAddress.ifBlank { null },
+                preferredLanguage = d.preferredLanguage.ifBlank { null },
+                agreementText = buildAgreement()
             )
 
             val result = repository.createAccount(request)
@@ -359,5 +343,16 @@ class EnrollmentViewModel(
 
     companion object {
         private const val IMEI_LENGTH = 15
+
+        /** Auto-inserts slashes while the agent types a date: dd/MM/yyyy. */
+        private fun formatDobInput(value: String): String {
+            val digits = value.filter { it.isDigit() }.take(8)
+            val sb = StringBuilder()
+            digits.forEachIndexed { index, c ->
+                if (index == 2 || index == 4) sb.append('/')
+                sb.append(c)
+            }
+            return sb.toString()
+        }
     }
 }

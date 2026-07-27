@@ -28,7 +28,21 @@ data class CreateAccountRequest(
     val guarantorRelation: String? = null,
     val consentTerms: Boolean = false,
     val consentData: Boolean = false,
-    val customerSignature: String? = null
+    val customerSignature: String? = null,
+    // M-KOPA style application profile
+    val surname: String? = null,
+    val otherPhone: String? = null,
+    val dateOfBirth: String? = null,
+    val maritalStatus: String? = null,
+    val employmentStatus: String? = null,
+    val gender: String? = null,
+    val isCustomerUser: Boolean? = null,
+    val region: String? = null,
+    val district: String? = null,
+    val physicalAddress: String? = null,
+    val preferredLanguage: String? = null,
+    /** The exact agreement text the customer signed (for the record). */
+    val agreementText: String? = null
 )
 
 @Serializable

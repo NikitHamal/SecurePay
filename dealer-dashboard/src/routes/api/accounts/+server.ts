@@ -59,7 +59,20 @@ async function ensureApplicationColumns(db: ReturnType<typeof getDb>) {
       ['consent_terms', 'INTEGER NOT NULL DEFAULT 0'],
       ['consent_data', 'INTEGER NOT NULL DEFAULT 0'],
       ['consent_at', 'INTEGER'],
-      ['customer_signature_path', 'TEXT']
+      ['customer_signature_path', 'TEXT'],
+      // 20260727_customer_profile.sql — M-KOPA style profile + signed agreement
+      ['surname', 'TEXT'],
+      ['other_phone', 'TEXT'],
+      ['date_of_birth', 'TEXT'],
+      ['marital_status', 'TEXT'],
+      ['employment_status', 'TEXT'],
+      ['gender', 'TEXT'],
+      ['is_customer_user', 'INTEGER'],
+      ['region', 'TEXT'],
+      ['district', 'TEXT'],
+      ['physical_address', 'TEXT'],
+      ['preferred_language', 'TEXT'],
+      ['agreement_text', 'TEXT']
     ];
     for (const [column, ddl] of defs) {
       if (!existing.has(column)) {
@@ -84,7 +97,19 @@ function applicationFields(row: Record<string, unknown>) {
     consentTerms: row.consent_terms === 1,
     consentData: row.consent_data === 1,
     consentAt: (row.consent_at ?? null) as number | null,
-    customerSignaturePath: (row.customer_signature_path ?? null) as string | null
+    customerSignaturePath: (row.customer_signature_path ?? null) as string | null,
+    surname: (row.surname ?? null) as string | null,
+    otherPhone: (row.other_phone ?? null) as string | null,
+    dateOfBirth: (row.date_of_birth ?? null) as string | null,
+    maritalStatus: (row.marital_status ?? null) as string | null,
+    employmentStatus: (row.employment_status ?? null) as string | null,
+    gender: (row.gender ?? null) as string | null,
+    isCustomerUser: row.is_customer_user == null ? null : row.is_customer_user === 1,
+    region: (row.region ?? null) as string | null,
+    district: (row.district ?? null) as string | null,
+    physicalAddress: (row.physical_address ?? null) as string | null,
+    preferredLanguage: (row.preferred_language ?? null) as string | null,
+    agreementText: (row.agreement_text ?? null) as string | null
   };
 }
 
@@ -242,6 +267,18 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     guarantorRelation: string | null;
     consentTerms: boolean;
     consentData: boolean;
+    surname: string | null;
+    otherPhone: string | null;
+    dateOfBirth: string | null;
+    maritalStatus: string | null;
+    employmentStatus: string | null;
+    gender: string | null;
+    isCustomerUser: number | null;
+    region: string | null;
+    district: string | null;
+    physicalAddress: string | null;
+    preferredLanguage: string | null;
+    agreementText: string | null;
   };
   let customerPhoto: EncodedImage | null;
   let nationalIdFront: EncodedImage | null;
@@ -260,7 +297,19 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       guarantorIdNumber: cleanOptText(body.guarantorIdNumber, 64),
       guarantorRelation: cleanOptText(body.guarantorRelation, 40),
       consentTerms: boolFlag(body.consentTerms),
-      consentData: boolFlag(body.consentData)
+      consentData: boolFlag(body.consentData),
+      surname: cleanOptText(body.surname, 60),
+      otherPhone: cleanOptPhone(body.otherPhone),
+      dateOfBirth: cleanOptText(body.dateOfBirth, 16),
+      maritalStatus: cleanOptText(body.maritalStatus, 24),
+      employmentStatus: cleanOptText(body.employmentStatus, 40),
+      gender: cleanOptText(body.gender, 12),
+      isCustomerUser: body.isCustomerUser == null ? null : (boolFlag(body.isCustomerUser) ? 1 : 0),
+      region: cleanOptText(body.region, 60),
+      district: cleanOptText(body.district, 80),
+      physicalAddress: cleanOptText(body.physicalAddress, 160),
+      preferredLanguage: cleanOptText(body.preferredLanguage, 40),
+      agreementText: cleanOptText(body.agreementText, 20000)
     };
     customerPhoto = decodeImage(body.customerPhoto, 'customerPhoto');
     nationalIdFront = decodeImage(body.nationalIdFront, 'nationalIdFront');
@@ -359,8 +408,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
         id_type, next_of_kin_name, next_of_kin_phone, next_of_kin_relation,
         referee_name, referee_phone, guarantor_name, guarantor_phone,
         guarantor_id_number, guarantor_relation, consent_terms, consent_data,
-        consent_at, customer_signature_path
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?, ?, 'GHS', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        consent_at, customer_signature_path,
+        surname, other_phone, date_of_birth, marital_status, employment_status, gender,
+        is_customer_user, region, district, physical_address, preferred_language, agreement_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?, ?, 'GHS', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       accountId,
       customerName,
@@ -399,7 +450,19 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       applicationData.consentTerms ? 1 : 0,
       applicationData.consentData ? 1 : 0,
       applicationData.consentTerms && applicationData.consentData ? nowSeconds : null,
-      customerSignaturePath
+      customerSignaturePath,
+      applicationData.surname,
+      applicationData.otherPhone,
+      applicationData.dateOfBirth,
+      applicationData.maritalStatus,
+      applicationData.employmentStatus,
+      applicationData.gender,
+      applicationData.isCustomerUser,
+      applicationData.region,
+      applicationData.district,
+      applicationData.physicalAddress,
+      applicationData.preferredLanguage,
+      applicationData.agreementText
     ),
     db.prepare("UPDATE devices SET status = 'sold' WHERE id = ? AND status = 'in_stock'").bind(device.id)
   ];

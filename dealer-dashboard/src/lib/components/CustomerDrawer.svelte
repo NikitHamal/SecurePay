@@ -10,6 +10,7 @@
   import { getAccountLocations } from '$lib/api/client';
   import { openProvision } from '$lib/stores/ui';
   import PayWithMoMoModal from '$lib/components/PayWithMoMoModal.svelte';
+  import AgreementModal from '$lib/components/AgreementModal.svelte';
 
   export let customerId: string | null = null;
   export let onClose: () => void = () => {};
@@ -17,6 +18,7 @@
   let editing = false;
   let payMoMoOpen = false;
   let momoRefreshTick = 0; // bump to force reload after payment
+  let agreementOpen = false;
   let saving = false;
   let editName = '';
   let editNationalId = '';
@@ -485,6 +487,89 @@
           </div>
         </div>
 
+        {#if customer.dateOfBirth || customer.gender || customer.maritalStatus || customer.employmentStatus || customer.otherPhone || customer.region || customer.physicalAddress || customer.preferredLanguage}
+          <div class="card mt-4 p-5">
+            <p class="section-title mb-3">Customer profile</p>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              {#if customer.dateOfBirth}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Date of birth</p><p class="text-ink-primary font-medium">{customer.dateOfBirth}</p></div>
+              {/if}
+              {#if customer.gender}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Gender</p><p class="text-ink-primary font-medium">{customer.gender}</p></div>
+              {/if}
+              {#if customer.maritalStatus}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Marital status</p><p class="text-ink-primary font-medium">{customer.maritalStatus}</p></div>
+              {/if}
+              {#if customer.employmentStatus}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Employment</p><p class="text-ink-primary font-medium">{customer.employmentStatus}</p></div>
+              {/if}
+              {#if customer.otherPhone}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Other phone</p><p class="text-ink-primary font-medium">{customer.otherPhone}</p></div>
+              {/if}
+              {#if customer.isCustomerUser != null}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Customer is user</p><p class="text-ink-primary font-medium">{customer.isCustomerUser ? 'Yes' : 'No'}</p></div>
+              {/if}
+              {#if customer.region || customer.district}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Region · District</p><p class="text-ink-primary font-medium">{[customer.region, customer.district].filter(Boolean).join(' · ')}</p></div>
+              {/if}
+              {#if customer.physicalAddress}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Physical address</p><p class="text-ink-primary font-medium">{customer.physicalAddress}</p></div>
+              {/if}
+              {#if customer.preferredLanguage}
+                <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Preferred language</p><p class="text-ink-primary font-medium">{customer.preferredLanguage}</p></div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        {#if customer.nextOfKinName || customer.refereeName || customer.guarantorName || customer.consentAt || customer.customerSignaturePath}
+          <div class="card mt-4 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <p class="section-title !mb-0">References & agreement</p>
+              {#if customer.consentAt}
+                <span class="text-2xs text-emerald font-semibold">✓ Consent signed</span>
+              {/if}
+            </div>
+            <div class="grid grid-cols-1 gap-2.5 text-sm">
+              {#if customer.nextOfKinName}
+                <div class="flex items-center justify-between">
+                  <span class="text-ink-secondary">Next of kin</span>
+                  <span class="text-ink-primary font-medium text-right">{customer.nextOfKinName}{customer.nextOfKinRelation ? ` (${customer.nextOfKinRelation})` : ''}{customer.nextOfKinPhone ? ` · ${customer.nextOfKinPhone}` : ''}</span>
+                </div>
+              {/if}
+              {#if customer.refereeName}
+                <div class="flex items-center justify-between">
+                  <span class="text-ink-secondary">Referee</span>
+                  <span class="text-ink-primary font-medium text-right">{customer.refereeName}{customer.refereePhone ? ` · ${customer.refereePhone}` : ''}</span>
+                </div>
+              {/if}
+              {#if customer.guarantorName}
+                <div class="flex items-center justify-between">
+                  <span class="text-ink-secondary">Guarantor</span>
+                  <span class="text-ink-primary font-medium text-right">{customer.guarantorName}{customer.guarantorRelation ? ` (${customer.guarantorRelation})` : ''}</span>
+                </div>
+                {#if customer.guarantorPhone}
+                  <div class="flex items-center justify-between">
+                    <span class="text-ink-secondary">Guarantor phone</span>
+                    <span class="text-ink-primary font-medium">{customer.guarantorPhone}</span>
+                  </div>
+                {/if}
+                {#if customer.guarantorIdNumber}
+                  <div class="flex items-center justify-between">
+                    <span class="text-ink-secondary">Guarantor ID</span>
+                    <span class="font-mono text-2xs text-ink-muted">{customer.guarantorIdNumber}</span>
+                  </div>
+                {/if}
+              {/if}
+              {#if customer.consentAt || customer.customerSignaturePath || customer.agreementText}
+                <button type="button" class="btn-outline mt-1 w-full" on:click={() => (agreementOpen = true)}>
+                  View signed loan agreement
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
         {#if customer.status === 'STOLEN' || locations.length > 0}
           <div class="card mt-4 p-5">
             <div class="flex items-center justify-between mb-3">
@@ -661,6 +746,10 @@
       </footer>
     </div>
   </div>
+{/if}
+
+{#if customer}
+  <AgreementModal open={agreementOpen} {customer} onClose={() => { agreementOpen = false; }} />
 {/if}
 
 <PayWithMoMoModal

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.CheckCircle
@@ -41,6 +42,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,6 +99,7 @@ fun CustomersScreen(
     onNavigateToLedger: () -> Unit,
     onNavigateToMore: () -> Unit,
     onCustomerClick: (String) -> Unit,
+    onNavigateToEnrollment: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
@@ -147,7 +151,19 @@ fun CustomersScreen(
                 onLedgerClick = onNavigateToLedger,
                 onMoreClick = onNavigateToMore
             )
-        }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onNavigateToEnrollment,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "New Enrollment", modifier = Modifier.size(28.dp))
+            }
+        },
+        floatingActionButtonPosition = androidx.compose.material3.FabPosition.End
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -460,7 +476,8 @@ fun CustomersScreenPreview() {
             onNavigateToInventory = {},
             onNavigateToLedger = {},
             onNavigateToMore = {},
-            onCustomerClick = {}
+            onCustomerClick = {},
+            onNavigateToEnrollment = {}
         )
     }
 }

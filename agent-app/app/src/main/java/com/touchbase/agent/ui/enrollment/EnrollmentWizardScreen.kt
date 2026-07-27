@@ -45,14 +45,15 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,26 +61,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.touchbase.agent.R
-import com.touchbase.agent.ui.theme.SecurePayAgentTheme
-import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.ButtonText
+import com.touchbase.agent.ui.enrollment.steps.WizardSectionHeader
+import com.touchbase.agent.ui.theme.SecurePayAgentTheme
+import com.touchbase.agent.ui.theme.isLight
 
 import com.touchbase.agent.ui.enrollment.steps.ConsentStep
 import com.touchbase.agent.ui.enrollment.steps.ContactsStep
-import com.touchbase.agent.ui.enrollment.steps.KycStep
-import com.touchbase.agent.ui.enrollment.steps.PlanStep
-import com.touchbase.agent.ui.enrollment.steps.ReviewStep
-import com.touchbase.agent.ui.enrollment.steps.ScannerStep
-import com.touchbase.agent.ui.enrollment.steps.SignerStep
+import com.touchbase.agent.ui.enrollment.steps.CustomerStep
+import com.touchbase.agent.ui.enrollment.steps.DetailsStep
+import com.touchbase.agent.ui.enrollment.steps.IdentityStep
+import com.touchbase.agent.ui.enrollment.steps.IntroStep
+import com.touchbase.agent.ui.enrollment.steps.LocationStep
+import com.touchbase.agent.ui.enrollment.steps.ProductStep
 
+/**
+ * M-KOPA "Start Application" flow, Touch Base edition.
+ * Dark background, gold accents, dots progress, one small task per screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnrollmentWizardScreen(
@@ -92,16 +97,6 @@ fun EnrollmentWizardScreen(
     val viewModel = remember { EnrollmentViewModel(repository) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val stepLabels = listOf(
-        stringResource(R.string.step_kyc),
-        stringResource(R.string.step_references),
-        stringResource(R.string.step_signer),
-        stringResource(R.string.step_device),
-        stringResource(R.string.step_plan),
-        stringResource(R.string.step_consent),
-        stringResource(R.string.step_review)
-    )
 
     LaunchedEffect(state.submission) {
         val submission = state.submission
@@ -130,10 +125,20 @@ fun EnrollmentWizardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.wizard_title), color = MaterialTheme.colorScheme.onBackground) },
+                title = {
+                    Text(
+                        "Start Application",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.onBackground)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Cancel",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -152,17 +157,27 @@ fun EnrollmentWizardScreen(
         ) {
             val submission = state.submission
             if (submission !is SubmissionState.Success) {
+                // M-KOPA dots: 6 sections, joined by progress lines.
                 WizardProgressDots(
-                    totalSteps = stepLabels.size,
-                    currentIndex = state.stepIndex,
+                    totalSteps = EnrollmentStep.DOT_COUNT,
+                    currentIndex = state.currentStep.dot,
                     modifier = Modifier.padding(top = 8.dp)
                 )
-                Text(
-                    text = sectionTitle(state.currentStep),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+
+                if (state.currentStep == EnrollmentStep.CONSENT) {
+                    // Long consent title (3 lines) — plain bold text like M-KOPA.
+                    Text(
+                        state.currentSection,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                } else if (state.currentStep != EnrollmentStep.INTRO) {
+                    WizardSectionHeader(
+                        title = state.currentSection,
+                        icon = com.touchbase.agent.ui.enrollment.steps.sectionIcon(state.currentStep)
+                    )
+                }
             }
 
             if (submission is SubmissionState.Success) {
@@ -198,57 +213,73 @@ fun EnrollmentWizardScreen(
                             .verticalScroll(rememberScrollState())
                     ) {
                         when (EnrollmentStep.ordered[index]) {
-                            EnrollmentStep.KYC -> KycStep(
+                            EnrollmentStep.INTRO -> IntroStep()
+                            EnrollmentStep.CUSTOMER -> CustomerStep(
                                 state = state,
-                                onNameChange = viewModel::updateKycName,
-                                onNationalIdChange = viewModel::updateKycNationalId,
-                                onIdTypeChange = viewModel::updateKycIdType,
-                                onPhoneChange = viewModel::updateKycPhone,
-                                onPhotoSelected = viewModel::updateKycPhoto,
-                                onIdFrontSelected = viewModel::updateKycIdFront,
-                                onIdBackSelected = viewModel::updateKycIdBack
+                                onFirstNameChange = viewModel::updateFirstName,
+                                onSurnameChange = viewModel::updateSurname,
+                                onIdTypeChange = viewModel::updateIdType,
+                                onNationalIdChange = viewModel::updateNationalId,
+                                onPhoneChange = viewModel::updatePhone,
+                                onOtherPhoneChange = viewModel::updateOtherPhone
                             )
-                            EnrollmentStep.REFERENCES -> ContactsStep(
+                            EnrollmentStep.DETAILS -> DetailsStep(
+                                state = state,
+                                onDateOfBirthChange = viewModel::updateDateOfBirth,
+                                onMaritalChange = viewModel::updateMaritalStatus,
+                                onEmploymentChange = viewModel::updateEmploymentStatus,
+                                onGenderChange = viewModel::updateGender,
+                                onIsCustomerUserChange = viewModel::updateIsCustomerUser
+                            )
+                            EnrollmentStep.CONTACTS -> ContactsStep(
                                 state = state,
                                 onKinNameChange = viewModel::updateNextOfKinName,
                                 onKinRelationChange = viewModel::updateNextOfKinRelation,
                                 onKinPhoneChange = viewModel::updateNextOfKinPhone,
                                 onRefereeNameChange = viewModel::updateRefereeName,
-                                onRefereePhoneChange = viewModel::updateRefereePhone
+                                onRefereePhoneChange = viewModel::updateRefereePhone,
+                                onGuarantorNameChange = viewModel::updateGuarantorName,
+                                onGuarantorRelationChange = viewModel::updateGuarantorRelation,
+                                onGuarantorPhoneChange = viewModel::updateGuarantorPhone,
+                                onGuarantorIdChange = viewModel::updateGuarantorIdNumber
                             )
-                            EnrollmentStep.SIGNER -> SignerStep(
+                            EnrollmentStep.IDENTITY -> IdentityStep(
                                 state = state,
-                                onNameChange = viewModel::updateGuarantorName,
-                                onRelationChange = viewModel::updateGuarantorRelation,
-                                onPhoneChange = viewModel::updateGuarantorPhone,
-                                onIdNumberChange = viewModel::updateGuarantorIdNumber
+                                onIdFrontSelected = viewModel::updateIdFront,
+                                onIdBackSelected = viewModel::updateIdBack,
+                                onPhotoSelected = viewModel::updateCustomerPhoto
                             )
-                            EnrollmentStep.DEVICE -> ScannerStep(
+                            EnrollmentStep.LOCATION -> LocationStep(
                                 state = state,
-                                onImeiChange = viewModel::updateImei,
-                                onDeviceModelChange = viewModel::updateDeviceModel,
+                                onRegionChange = viewModel::updateRegion,
+                                onDistrictChange = viewModel::updateDistrict,
+                                onAddressChange = viewModel::updatePhysicalAddress,
+                                onLanguageChange = viewModel::updatePreferredLanguage
+                            )
+                            EnrollmentStep.PRODUCT, EnrollmentStep.OFFERS, EnrollmentStep.LOAN -> ProductStep(
+                                state = state,
+                                phase = state.currentStep,
                                 onSelectDevice = viewModel::selectDevice,
-                                onRefreshDevices = viewModel::refreshDevices
-                            )
-                            EnrollmentStep.PLAN -> PlanStep(
-                                state = state,
+                                onRefreshDevices = viewModel::refreshDevices,
                                 onSelectPlan = viewModel::selectPlan,
+                                onSelectCustomPlan = viewModel::selectCustomPlan,
                                 onDailyRateChange = viewModel::updateDailyRate,
                                 onTotalAmountChange = viewModel::updateTotalAmount,
                                 onTermDaysChange = viewModel::updateTermDays,
-                                onDownPaymentChange = viewModel::updateDownPayment
+                                onDownPaymentChange = viewModel::updateDownPayment,
+                                onImeiChange = viewModel::updateImei,
+                                onDeviceModelChange = viewModel::updateDeviceModel,
+                                onEditSerial = { viewModel.goToStep(EnrollmentStep.PRODUCT.ordinal) }
                             )
+                            EnrollmentStep.VERIFY -> com.touchbase.agent.ui.enrollment.steps.VerificationPassedStep()
                             EnrollmentStep.CONSENT -> ConsentStep(
                                 state = state,
-                                onConsentTermsChange = viewModel::updateConsentTerms,
-                                onConsentDataChange = viewModel::updateConsentData,
+                                agreementText = viewModel.buildAgreement(),
+                                onConsentChecked = viewModel::updateConsentTerms,
                                 onSignatureChange = viewModel::updateSignature
                             )
-                            EnrollmentStep.REVIEW -> ReviewStep(
-                                state = state,
-                                onEditStep = viewModel::goToStep
-                            )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
 
@@ -265,17 +296,7 @@ fun EnrollmentWizardScreen(
     }
 }
 
-private fun sectionTitle(step: EnrollmentStep): String = when (step) {
-    EnrollmentStep.KYC -> "Identity verification"
-    EnrollmentStep.REFERENCES -> "Next of kin & referee"
-    EnrollmentStep.SIGNER -> "Guarantor (co-signer)"
-    EnrollmentStep.DEVICE -> "Device selection"
-    EnrollmentStep.PLAN -> "Financing plan"
-    EnrollmentStep.CONSENT -> "Customer consent & signature"
-    EnrollmentStep.REVIEW -> "Application review"
-}
-
-/** M-KOPA style stepper: filled dots joined by a progress line. */
+/** M-KOPA stepper: filled dots joined by a progress line. */
 @Composable
 private fun WizardProgressDots(
     totalSteps: Int,
@@ -312,7 +333,7 @@ private fun WizardProgressDots(
                 )
                 Box(
                     modifier = Modifier
-                        .width(28.dp)
+                        .width(24.dp)
                         .height(2.dp)
                         .background(lineColor)
                 )
@@ -321,6 +342,7 @@ private fun WizardProgressDots(
     }
 }
 
+/** M-KOPA bottom bar: circular back button left, big rectangular action right. */
 @Composable
 private fun WizardControls(
     state: EnrollmentUiState,
@@ -332,39 +354,54 @@ private fun WizardControls(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        OutlinedButton(
-            onClick = if (state.isFirstStep) onCancel else onBack,
-            enabled = !state.isSubmitting,
-            modifier = Modifier.weight(1f).height(52.dp)
-        ) {
-            ButtonText(stringResource(R.string.action_back), color = MaterialTheme.colorScheme.onBackground)
-        }
-
-        if (state.isLastStep) {
-            Button(
-                onClick = onSubmit,
-                enabled = state.isSubmitReady && !state.isSubmitting,
-                modifier = Modifier.weight(1f).height(52.dp)
+        if (!state.isFirstStep) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(48.dp)
             ) {
-                if (state.isSubmitting) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.padding(end = 8.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                IconButton(
+                    onClick = onBack,
+                    enabled = !state.isSubmitting
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                ButtonText(stringResource(R.string.action_submit))
             }
-        } else {
-            Button(
-                onClick = onNext,
-                enabled = state.isCurrentStepValid,
-                modifier = Modifier.weight(1f).height(52.dp)
-            ) {
-                ButtonText(stringResource(R.string.action_next))
+        }
+
+        val enabled = if (state.isLastStep) state.isSubmitReady else state.isCurrentStepValid
+        Button(
+            onClick = if (state.isLastStep) onSubmit else onNext,
+            enabled = enabled && !state.isSubmitting,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .weight(1f)
+                .height(52.dp)
+        ) {
+            if (state.isSubmitting) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(18.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             }
+            ButtonText(
+                when {
+                    state.isSubmitting -> "SUBMITTING…"
+                    state.isLastStep -> "AGREE & SUBMIT"
+                    state.isFirstStep -> "CONTINUE"
+                    else -> "NEXT"
+                }
+            )
         }
     }
 }
@@ -388,7 +425,6 @@ private fun EnrollmentSuccess(
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Big "Approved" banner — mirrors the verification-result card the client likes.
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -426,7 +462,7 @@ private fun EnrollmentSuccess(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(
                 modifier = Modifier
@@ -436,11 +472,11 @@ private fun EnrollmentSuccess(
             ) {
                 SuccessRow(label = "Reference", value = enrollmentId)
                 if (accountNumber.isNotBlank()) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SuccessRow(label = "Customer account", value = accountNumber, mono = true)
                 }
                 if (temporaryPin.isNotBlank()) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SuccessRow(label = "Temporary PIN", value = temporaryPin, mono = true)
                 }
             }
@@ -457,14 +493,16 @@ private fun EnrollmentSuccess(
         Button(
             onClick = onProvision,
             enabled = imei.length == 15,
+            shape = RoundedCornerShape(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)
         ) {
-            ButtonText(stringResource(R.string.action_next) + " — Provision this device")
+            ButtonText("NEXT — Provision this device")
         }
         OutlinedButton(
             onClick = onDone,
+            shape = RoundedCornerShape(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)

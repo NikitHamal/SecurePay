@@ -55,7 +55,20 @@ data class Account(
     val guarantorIdNumber: String? = null,
     val guarantorRelation: String? = null,
     val consentAt: Long? = null,
-    val customerSignaturePath: String? = null
+    val customerSignaturePath: String? = null,
+    // M-KOPA style application profile
+    val surname: String? = null,
+    val otherPhone: String? = null,
+    val dateOfBirth: String? = null,
+    val maritalStatus: String? = null,
+    val employmentStatus: String? = null,
+    val gender: String? = null,
+    val isCustomerUser: Boolean? = null,
+    val region: String? = null,
+    val district: String? = null,
+    val physicalAddress: String? = null,
+    val preferredLanguage: String? = null,
+    val agreementText: String? = null
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED

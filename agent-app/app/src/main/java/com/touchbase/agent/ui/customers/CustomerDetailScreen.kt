@@ -79,6 +79,12 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.touchbase.agent.ui.enrollment.AgreementText
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.data.model.Account
@@ -88,7 +94,7 @@ import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
-import com.touchbase.agent.ui.enrollment.steps.KycPhotoSelector
+import com.touchbase.agent.ui.components.KycPhotoSelector
 import kotlinx.coroutines.launch
 
 import com.touchbase.agent.data.model.UpdateAccountRequest
@@ -128,6 +134,7 @@ fun CustomerDetailScreen(
     var idBackBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var signatureBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var viewerBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var showAgreement by remember { mutableStateOf(false) }
     var verifyInProgress by remember { mutableStateOf(false) }
     var verifyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -529,12 +536,45 @@ fun CustomerDetailScreen(
             InfoCard(title = "Customer Information") {
                 InfoRow(icon = Icons.Filled.Person, label = "Name", value = acc.customerName)
                 InfoRow(icon = Icons.Filled.Phone, label = "Phone", value = acc.phoneNumber)
+                acc.otherPhone?.takeIf { it.isNotBlank() }?.let {
+                    InfoRow(icon = Icons.Filled.Phone, label = "Other phone", value = it)
+                }
                 InfoRow(
                     icon = Icons.Filled.Lock,
                     label = "National ID",
                     value = if (acc.idType.isNullOrBlank()) acc.nationalId
                     else "${acc.idType} — ${acc.nationalId}"
                 )
+                acc.dateOfBirth?.takeIf { it.isNotBlank() }?.let {
+                    InfoRow(icon = null, label = "Date of birth", value = it)
+                }
+                acc.gender?.takeIf { it.isNotBlank() }?.let {
+                    InfoRow(icon = null, label = "Gender", value = it)
+                }
+                acc.maritalStatus?.takeIf { it.isNotBlank() }?.let {
+                    InfoRow(icon = null, label = "Marital status", value = it)
+                }
+                acc.employmentStatus?.takeIf { it.isNotBlank() }?.let {
+                    InfoRow(icon = null, label = "Employment", value = it)
+                }
+            }
+
+            val hasLocationDetails = !acc.region.isNullOrBlank() || !acc.physicalAddress.isNullOrBlank()
+            if (hasLocationDetails) {
+                InfoCard(title = "Location Details") {
+                    acc.region?.takeIf { it.isNotBlank() }?.let {
+                        InfoRow(icon = Icons.Filled.LocationOn, label = "Region", value = it)
+                    }
+                    acc.district?.takeIf { it.isNotBlank() }?.let {
+                        InfoRow(icon = null, label = "District", value = it)
+                    }
+                    acc.physicalAddress?.takeIf { it.isNotBlank() }?.let {
+                        InfoRow(icon = null, label = "Physical address", value = it)
+                    }
+                    acc.preferredLanguage?.takeIf { it.isNotBlank() }?.let {
+                        InfoRow(icon = null, label = "Preferred language", value = it)
+                    }
+                }
             }
 
             val hasApplicationContacts = !acc.nextOfKinName.isNullOrBlank() ||
@@ -570,7 +610,24 @@ fun CustomerDetailScreen(
                         }
                     }
                     if (acc.consentAt != null) {
-                        InfoRow(icon = null, label = "Consent", value = "Given (terms + data)")
+                        InfoRow(
+                            icon = null,
+                            label = "Consent",
+                            value = "Given (terms + data) · ${epochSecondsToDate(acc.consentAt!!)}"
+                        )
+                    }
+                    if (!acc.agreementText.isNullOrBlank() || acc.customerSignaturePath != null || acc.consentAt != null) {
+                        OutlinedButton(
+                            onClick = { showAgreement = true },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.VerifiedUser, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("View loan agreement")
+                        }
                     }
                     if (signatureBitmap != null) {
                         Column {
@@ -592,6 +649,16 @@ fun CustomerDetailScreen(
                         }
                     }
                 }
+            }
+
+            if (showAgreement) {
+                AgreementRecordDialog(
+                    text = agreementForAccount(acc),
+                    signedAt = acc.consentAt,
+                    hasSignature = signatureBitmap != null,
+                    onViewSignature = { signatureBitmap?.let { viewerBitmap = it } },
+                    onDismiss = { showAgreement = false }
+                )
             }
 
             InfoCard(title = "Device & Plan") {
@@ -1230,6 +1297,122 @@ private fun PaymentBottomSheet(
             ) {
                 if (isSubmitting) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
                 else ButtonText("Record")
+            }
+        }
+    }
+}
+
+private fun epochSecondsToDate(value: Long): String {
+    val millis = if (value < 1_000_000_000_000L) value * 1000 else value
+    return runCatching { SimpleDateFormat("dd/MM/yyyy", Locale.UK).format(Date(millis)) }.getOrDefault("")
+}
+
+/** The signed agreement: uses the exact server-stored text when present, otherwise regenerates it from the account. */
+private fun agreementForAccount(acc: Account): String {
+    acc.agreementText?.takeIf { it.isNotBlank() }?.let { return it }
+    return AgreementText.build(
+        AgreementText.Parties(
+            surname = acc.surname.orEmpty(),
+            idType = acc.idType.orEmpty(),
+            idNumber = acc.nationalId,
+            phone = acc.phoneNumber,
+            otherPhone = acc.otherPhone.orEmpty(),
+            dateOfBirth = acc.dateOfBirth.orEmpty(),
+            gender = acc.gender.orEmpty(),
+            maritalStatus = acc.maritalStatus.orEmpty(),
+            employmentStatus = acc.employmentStatus.orEmpty(),
+            region = acc.region.orEmpty(),
+            district = acc.district.orEmpty(),
+            physicalAddress = acc.physicalAddress.orEmpty(),
+            preferredLanguage = acc.preferredLanguage.orEmpty(),
+            customerName = acc.customerName,
+            deviceModel = acc.deviceModel,
+            imei = acc.imei,
+            planName = acc.planName,
+            totalLoanAmountCents = acc.totalLoanAmount,
+            downPaymentCents = acc.downPayment,
+            dailyRateCents = acc.dailyRate,
+            termDays = acc.termDays,
+            kinName = acc.nextOfKinName.orEmpty(),
+            kinRelation = acc.nextOfKinRelation.orEmpty(),
+            kinPhone = acc.nextOfKinPhone.orEmpty(),
+            refereeName = acc.refereeName.orEmpty(),
+            refereePhone = acc.refereePhone.orEmpty(),
+            guarantorName = acc.guarantorName.orEmpty(),
+            guarantorRelation = acc.guarantorRelation.orEmpty(),
+            guarantorPhone = acc.guarantorPhone.orEmpty(),
+            guarantorId = acc.guarantorIdNumber.orEmpty()
+        )
+    )
+}
+
+/** Full-screen read of the signed Device Financing Agreement record. */
+@Composable
+private fun AgreementRecordDialog(
+    text: String,
+    signedAt: Long?,
+    hasSignature: Boolean,
+    onViewSignature: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        androidx.compose.material3.Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Loan Agreement",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        if (signedAt != null) {
+                            Text(
+                                "Signed ${epochSecondsToDate(signedAt)} · countersigned digitally",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                )
+                if (hasSignature) {
+                    OutlinedButton(
+                        onClick = onViewSignature,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 10.dp)
+                    ) {
+                        Text("View signature", color = MaterialTheme.colorScheme.onBackground)
+                    }
+                }
             }
         }
     }

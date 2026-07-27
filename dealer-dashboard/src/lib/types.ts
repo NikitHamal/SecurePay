@@ -41,6 +41,18 @@ export interface Customer {
   consentData?: boolean;
   consentAt?: number | null;
   customerSignaturePath?: string | null;
+  surname?: string | null;
+  otherPhone?: string | null;
+  dateOfBirth?: string | null;
+  maritalStatus?: string | null;
+  employmentStatus?: string | null;
+  gender?: string | null;
+  isCustomerUser?: boolean | null;
+  region?: string | null;
+  district?: string | null;
+  physicalAddress?: string | null;
+  preferredLanguage?: string | null;
+  agreementText?: string | null;
   nationalIdFrontPath?: string | null;
   nationalIdBackPath?: string | null;
   termDays: number;

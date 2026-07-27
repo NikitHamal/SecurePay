@@ -122,6 +122,7 @@ fun SecurePayNavHost(
 
         composable(Screen.Customers.route) {
             CustomersScreen(
+                onNavigateToEnrollment = { navController.navigate(Screen.Enrollment.route) },
                 repository = repository,
                 onBack = { navController.popBackStack() },
                 onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
