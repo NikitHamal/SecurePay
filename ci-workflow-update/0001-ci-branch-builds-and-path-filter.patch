@@ -1,0 +1,440 @@
+From 3ce67f46a3d15e244b7948e1e4afe8c7645820c9 Mon Sep 17 00:00:00 2001
+From: Nikit Hamal <iamnikithamal@gmail.com>
+Date: Mon, 27 Jul 2026 16:12:09 +0000
+Subject: [PATCH] CI: build APKs from any branch, and stop wasting a runner on
+ non-app commits
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Trigger
+- push now matches every branch, but is gated by a paths: filter on
+  agent-app/**, customer-app/** and the two workflow files. GitHub evaluates
+  paths: before allocating a runner, so a dashboard-only commit no longer
+  spends ~20s spinning up detect-changes just to decide there is nothing to do
+  — the run is never created.
+- workflow_dispatch can now be pointed at any branch from the Actions tab, with
+  a build_target (both / customer-app / agent-app) and a publish checkbox.
+
+detect-changes
+- Dropped actions/checkout and dorny/paths-filter. Cloning the repo purely to
+  diff it was most of this job's runtime; one compare API call returns the same
+  file list. Manual runs skip the API entirely.
+- Fail-safe: no base sha (new branch/force push), an empty response, or a
+  truncated 300-file diff all build both apps rather than silently skipping.
+- Removed the old 'workflow' output that OR'd into both build jobs; a workflow
+  change now just sets customer=true and agent=true directly.
+
+Publishing
+- New publish input on the reusable workflow, defaulting to false. The R2 steps
+  (which rewrite latest.json / agent-latest.json and therefore offer the build
+  to every installed device) are gated on it.
+- publish is true only for pushes to main, or a manual run with the box ticked.
+  Branch and PR builds now produce a signed APK/AAB artifact and touch nothing
+  in production.
+- Added a job summary showing version, package, artifact name and whether the
+  build was published.
+
+Co-authored-by: arena-agent <297053741+arena-agent@users.noreply.github.com>
+---
+ .github/workflows/build-apks.yml       | 339 +++++++++++++++----------
+ .github/workflows/build-single-apk.yml |  24 +-
+ 2 files changed, 233 insertions(+), 130 deletions(-)
+
+diff --git a/.github/workflows/build-apks.yml b/.github/workflows/build-apks.yml
+index 70011db..66ae38d 100644
+--- a/.github/workflows/build-apks.yml
++++ b/.github/workflows/build-apks.yml
+@@ -1,128 +1,211 @@
+-name: Build & Sign SecurePay APKs
+-
+-on:
+-  push:
+-    branches: [main]
+-  pull_request:
+-    branches: [main]
+-  workflow_dispatch:
+-    inputs:
+-      build_target:
+-        description: 'Which apps to build'
+-        required: true
+-        default: 'both'
+-        type: choice
+-        options:
+-          - both
+-          - customer-app
+-          - agent-app
+-
+-permissions:
+-  contents: read
+-
+-concurrency:
+-  group: build-apks-${{ github.ref }}
+-  cancel-in-progress: true
+-
+-jobs:
+-  detect-changes:
+-    name: Detect changed apps
+-    runs-on: ubuntu-latest
+-    outputs:
+-      customer: ${{ steps.merge.outputs.customer }}
+-      agent: ${{ steps.merge.outputs.agent }}
+-      workflow: ${{ steps.merge.outputs.workflow }}
+-    steps:
+-      - name: Checkout repository
+-        uses: actions/checkout@v4
+-
+-      - name: Filter paths
+-        if: github.event_name != 'workflow_dispatch'
+-        id: filter
+-        uses: dorny/paths-filter@v3
+-        with:
+-          filters: |
+-            customer:
+-              - 'customer-app/**'
+-            agent:
+-              - 'agent-app/**'
+-            workflow:
+-              - '.github/workflows/build-apks.yml'
+-              - '.github/workflows/build-single-apk.yml'
+-
+-      - name: Override for manual dispatch
+-        if: github.event_name == 'workflow_dispatch'
+-        id: dispatch
+-        run: |
+-          TARGET="${{ inputs.build_target }}"
+-          case "$TARGET" in
+-            both)          echo "customer=true" >> "$GITHUB_OUTPUT"; echo "agent=true" >> "$GITHUB_OUTPUT" ;;
+-            customer-app) echo "customer=true" >> "$GITHUB_OUTPUT"; echo "agent=false" >> "$GITHUB_OUTPUT" ;;
+-            agent-app)    echo "customer=false" >> "$GITHUB_OUTPUT"; echo "agent=true" >> "$GITHUB_OUTPUT" ;;
+-          esac
+-
+-      - name: Merge filter + dispatch outputs
+-        id: merge
+-        run: |
+-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+-            echo "customer=${{ steps.dispatch.outputs.customer }}" >> "$GITHUB_OUTPUT"
+-            echo "agent=${{ steps.dispatch.outputs.agent }}" >> "$GITHUB_OUTPUT"
+-            echo "workflow=false" >> "$GITHUB_OUTPUT"
+-          else
+-            echo "customer=${{ steps.filter.outputs.customer }}" >> "$GITHUB_OUTPUT"
+-            echo "agent=${{ steps.filter.outputs.agent }}" >> "$GITHUB_OUTPUT"
+-            echo "workflow=${{ steps.filter.outputs.workflow }}" >> "$GITHUB_OUTPUT"
+-          fi
+-
+-  build-customer:
+-    name: Build customer-app
+-    needs: detect-changes
+-    if: needs.detect-changes.outputs.customer == 'true' || needs.detect-changes.outputs.workflow == 'true'
+-    uses: ./.github/workflows/build-single-apk.yml
+-    with:
+-      module: customer-app
+-      artifact: SecurePay-CustomerApp
+-    secrets:
+-      HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
+-      SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
+-      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+-      KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+-      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+-      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+-      R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+-      FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+-      FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
+-      FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
+-      FCM_APPLICATION_ID: ${{ secrets.FCM_APPLICATION_ID }}
+-      SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
+-      SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
+-      SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
+-
+-  build-agent:
+-    name: Build agent-app
+-    needs: detect-changes
+-    if: needs.detect-changes.outputs.agent == 'true' || needs.detect-changes.outputs.workflow == 'true'
+-    uses: ./.github/workflows/build-single-apk.yml
+-    with:
+-      module: agent-app
+-      artifact: SecurePay-AgentApp
+-    secrets:
+-      HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
+-      SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
+-      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+-      KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+-      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+-      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+-      R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+-      SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
+-      SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
+-      SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
+-
++name: Build & Sign SecurePay APKs
++
++# When does this run?
++#
++#   push        — on ANY branch, but ONLY when app code (or these workflows)
++#                 actually changed. The `paths:` filter below is evaluated by
++#                 GitHub itself before a runner is ever allocated, so a
++#                 dashboard-only commit costs exactly zero seconds: the run is
++#                 never created at all.
++#   pull_request— same path filter, PRs into main.
++#   dispatch    — build any branch on demand from the Actions tab
++#                 (Run workflow -> pick branch -> pick app -> optionally publish).
++#
++# Publishing to R2 (which updates latest.json / agent-latest.json and therefore
++# pushes the build to every installed device) only happens for main, or when the
++# "publish" box is explicitly ticked on a manual run. Branch builds are safe:
++# they produce a signed APK/AAB artifact and touch nothing in production.
++on:
++  push:
++    branches: ['**']
++    paths:
++      - 'agent-app/**'
++      - 'customer-app/**'
++      - '.github/workflows/build-apks.yml'
++      - '.github/workflows/build-single-apk.yml'
++  pull_request:
++    branches: [main]
++    paths:
++      - 'agent-app/**'
++      - 'customer-app/**'
++      - '.github/workflows/build-apks.yml'
++      - '.github/workflows/build-single-apk.yml'
++  workflow_dispatch:
++    inputs:
++      build_target:
++        description: 'Which apps to build'
++        required: true
++        default: 'both'
++        type: choice
++        options:
++          - both
++          - customer-app
++          - agent-app
++      publish:
++        description: 'Publish to R2 (updates latest.json — pushes the update to live devices)'
++        required: false
++        default: false
++        type: boolean
++
++permissions:
++  contents: read
++
++concurrency:
++  group: build-apks-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  detect-changes:
++    name: Detect changed apps
++    runs-on: ubuntu-latest
++    timeout-minutes: 5
++    outputs:
++      customer: ${{ steps.decide.outputs.customer }}
++      agent: ${{ steps.decide.outputs.agent }}
++      publish: ${{ steps.decide.outputs.publish }}
++    steps:
++      # No checkout on purpose. Cloning the repo just to diff it was the bulk of
++      # this job's runtime; the compare API gives us the same file list in one
++      # request. On a manual run we do not even call the API.
++      - name: Decide what to build
++        id: decide
++        env:
++          GH_TOKEN: ${{ github.token }}
++          REPO: ${{ github.repository }}
++          EVENT: ${{ github.event_name }}
++          TARGET: ${{ inputs.build_target }}
++          DISPATCH_PUBLISH: ${{ inputs.publish }}
++          PUSH_BEFORE: ${{ github.event.before }}
++          PUSH_AFTER: ${{ github.sha }}
++          PR_BASE: ${{ github.event.pull_request.base.sha }}
++          PR_HEAD: ${{ github.event.pull_request.head.sha }}
++          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
++        run: |
++          set -euo pipefail
++
++          customer=false
++          agent=false
++
++          emit() {
++            echo "customer=$customer" >> "$GITHUB_OUTPUT"
++            echo "agent=$agent"       >> "$GITHUB_OUTPUT"
++            echo "::notice::build customer=$customer agent=$agent publish=$publish"
++          }
++
++          # ---- publish gate -------------------------------------------------
++          publish=false
++          if [ "$EVENT" = "push" ] && [ "$IS_MAIN" = "true" ]; then
++            publish=true
++          elif [ "$EVENT" = "workflow_dispatch" ] && [ "$DISPATCH_PUBLISH" = "true" ]; then
++            publish=true
++          fi
++          echo "publish=$publish" >> "$GITHUB_OUTPUT"
++
++          # ---- manual run: the operator already told us what they want ------
++          if [ "$EVENT" = "workflow_dispatch" ]; then
++            case "$TARGET" in
++              both)         customer=true;  agent=true  ;;
++              customer-app) customer=true;  agent=false ;;
++              agent-app)    customer=false; agent=true  ;;
++            esac
++            emit
++            exit 0
++          fi
++
++          # ---- work out the diff range --------------------------------------
++          if [ "$EVENT" = "pull_request" ]; then
++            base="$PR_BASE"; head="$PR_HEAD"
++          else
++            base="$PUSH_BEFORE"; head="$PUSH_AFTER"
++          fi
++
++          # A brand new branch (or a force push) has no usable base — build both
++          # rather than silently skipping. Publishing is already gated above.
++          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
++            echo "No comparable base ($base) — building both apps."
++            customer=true; agent=true
++            emit
++            exit 0
++          fi
++
++          files="$(gh api "repos/$REPO/compare/$base...$head" \
++                     --jq '.files[]?.filename' 2>/dev/null || true)"
++
++          if [ -z "$files" ]; then
++            echo "Compare API returned nothing — building both apps to be safe."
++            customer=true; agent=true
++            emit
++            exit 0
++          fi
++
++          # The compare endpoint caps out at 300 files; on a truncated diff we
++          # cannot trust the list, so build everything.
++          if [ "$(printf '%s\n' "$files" | wc -l)" -ge 300 ]; then
++            echo "Diff is large/truncated — building both apps."
++            customer=true; agent=true
++            emit
++            exit 0
++          fi
++
++          printf '%s\n' "$files" | grep -q '^customer-app/'                  && customer=true || true
++          printf '%s\n' "$files" | grep -q '^agent-app/'                     && agent=true    || true
++          # A change to the build pipeline itself must be proven against both.
++          if printf '%s\n' "$files" | grep -q '^\.github/workflows/build-\(apks\|single-apk\)\.yml$'; then
++            customer=true; agent=true
++          fi
++
++          emit
++
++  build-customer:
++    name: Build customer-app
++    needs: detect-changes
++    if: needs.detect-changes.outputs.customer == 'true'
++    uses: ./.github/workflows/build-single-apk.yml
++    with:
++      module: customer-app
++      artifact: SecurePay-CustomerApp
++      publish: ${{ needs.detect-changes.outputs.publish == 'true' }}
++    secrets:
++      HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
++      SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
++      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
++      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
++      KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
++      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
++      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
++      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
++      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
++      R2_BUCKET: ${{ secrets.R2_BUCKET }}
++      R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
++      FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
++      FCM_API_KEY: ${{ secrets.FCM_API_KEY }}
++      FCM_SENDER_ID: ${{ secrets.FCM_SENDER_ID }}
++      FCM_APPLICATION_ID: ${{ secrets.FCM_APPLICATION_ID }}
++      SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
++      SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
++      SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
++
++  build-agent:
++    name: Build agent-app
++    needs: detect-changes
++    if: needs.detect-changes.outputs.agent == 'true'
++    uses: ./.github/workflows/build-single-apk.yml
++    with:
++      module: agent-app
++      artifact: SecurePay-AgentApp
++      publish: ${{ needs.detect-changes.outputs.publish == 'true' }}
++    secrets:
++      HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
++      SIGNING_CERT_HASH: ${{ secrets.SIGNING_CERT_HASH }}
++      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
++      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
++      KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
++      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
++      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
++      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
++      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
++      R2_BUCKET: ${{ secrets.R2_BUCKET }}
++      R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
++      SUPPORT_PHONE: ${{ secrets.SUPPORT_PHONE }}
++      SUPPORT_WHATSAPP: ${{ secrets.SUPPORT_WHATSAPP }}
++      SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
+diff --git a/.github/workflows/build-single-apk.yml b/.github/workflows/build-single-apk.yml
+index 8d9bed3..41d3d8b 100644
+--- a/.github/workflows/build-single-apk.yml
++++ b/.github/workflows/build-single-apk.yml
+@@ -9,6 +9,11 @@ on:
+       artifact:
+         required: true
+         type: string
++      publish:
++        description: 'Upload the APK + manifest to R2. Off for branch/PR builds.'
++        required: false
++        default: false
++        type: boolean
+     secrets:
+       HMAC_SECRET:
+         required: true
+@@ -245,8 +250,23 @@ jobs:
+           if-no-files-found: error
+           retention-days: 30
+ 
++      - name: Summarise build
++        run: |
++          {
++            echo "### ${{ inputs.module }} \`${{ steps.apk.outputs.version_name }}\` (${{ steps.apk.outputs.version_code }})"
++            echo ""
++            echo "- Commit: \`${{ steps.apk.outputs.short_sha }}\`"
++            echo "- Package: \`${{ steps.apk.outputs.package }}\`"
++            echo "- Artifact: **${{ inputs.artifact }}-${{ steps.apk.outputs.short_sha }}** (APK + AAB)"
++            if [ "${{ inputs.publish }}" = "true" ]; then
++              echo "- R2: **published** — live devices will be offered this update."
++            else
++              echo "- R2: _not published_ (branch/PR build). Download the artifact above to test."
++            fi
++          } >> "$GITHUB_STEP_SUMMARY"
++
+       - name: Install AWS CLI for R2 publish
+-        if: ${{ inputs.module == 'customer-app' || inputs.module == 'agent-app' }}
++        if: ${{ inputs.publish }}
+         run: |
+           which aws && exit 0
+           curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+@@ -254,7 +274,7 @@ jobs:
+           sudo /tmp/awscliv2/aws/install --update
+ 
+       - name: Publish immutable APK and manifest to R2
+-        if: ${{ inputs.module == 'customer-app' || inputs.module == 'agent-app' }}
++        if: ${{ inputs.publish }}
+         env:
+           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+-- 
+2.39.5
+
