@@ -379,7 +379,7 @@
               </div>
             </div>
 
-            <div class="mt-5 pt-3.5 border-t border-edge/50 flex items-center justify-between text-xs">
+            <div class="mt-5 flex items-center justify-between text-xs">
               <span class="text-ink-muted">Assigned Agents</span>
               <span class="font-semibold text-ink-primary flex items-center gap-1">
                 <svg class="h-3.5 w-3.5 text-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

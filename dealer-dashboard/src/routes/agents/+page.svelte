@@ -152,7 +152,7 @@
               {/if}
             </div>
           </div>
-          <div class="mt-3 grid grid-cols-2 gap-3 border-t border-edge pt-3">
+          <div class="mt-3 grid grid-cols-2 gap-3 pt-3">
             <div>
               <p class="text-[11px] uppercase tracking-wider text-ink-muted">Sales</p>
               <p class="text-lg font-semibold tabular-nums text-ink-primary">{agent.salesCount}</p>

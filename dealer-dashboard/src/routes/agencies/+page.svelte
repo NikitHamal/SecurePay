@@ -261,7 +261,7 @@
               {/if}
             </div>
 
-            <div class="mt-5 pt-3.5 border-t border-edge/50 flex items-center justify-between text-xs">
+            <div class="mt-5 flex items-center justify-between text-xs">
               <div class="flex items-center gap-1.5">
                 <span class="text-ink-muted">Branches:</span>
                 <span class="font-semibold text-ink-primary">{agency.branchCount}</span>
