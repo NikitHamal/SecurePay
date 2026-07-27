@@ -63,6 +63,7 @@ fun KycStep(
     state: EnrollmentUiState,
     onNameChange: (String) -> Unit,
     onNationalIdChange: (String) -> Unit,
+    onIdTypeChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     onPhotoSelected: (String?) -> Unit,
     onIdFrontSelected: (String?) -> Unit,
@@ -102,6 +103,14 @@ fun KycStep(
                 shape = RoundedCornerShape(360.dp)
             )
         }
+
+        com.touchbase.agent.ui.components.SelectionChips(
+            label = "ID type — tap to select",
+            options = EnrollmentUiState.ID_TYPES,
+            selected = state.draft.idType,
+            onSelect = onIdTypeChange,
+            error = "Pick the document the customer brought"
+        )
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.label_national_id), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -370,6 +379,7 @@ fun KycStepPreview() {
             state = EnrollmentUiState(draft = EnrollmentDraft(customerName = "John Doe", nationalId = "12345678", phoneNumber = "0712345678")),
             onNameChange = {},
             onNationalIdChange = {},
+            onIdTypeChange = {},
             onPhoneChange = {},
             onPhotoSelected = {},
             onIdFrontSelected = {},

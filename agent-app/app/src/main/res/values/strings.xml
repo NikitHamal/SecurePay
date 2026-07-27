@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Touch Base Agent</string>
-    <string name="wizard_title">New Enrollment</string>
+    <string name="wizard_title">Start Application</string>
 
     <string name="step_kyc">Customer</string>
+    <string name="step_references">References</string>
+    <string name="step_signer">Signer</string>
     <string name="step_device">Device</string>
     <string name="step_plan">Plan</string>
+    <string name="step_consent">Consent</string>
+    <string name="step_review">Review</string>
 
     <string name="action_back">Back</string>
     <string name="action_next">Next</string>

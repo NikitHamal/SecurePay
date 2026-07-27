@@ -13,7 +13,6 @@ import com.touchbase.user.BuildConfig
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.data.remote.DeviceAuthRecovery
-import com.touchbase.user.ui.lock.LockTaskActivity
 import com.touchbase.user.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,28 +47,35 @@ class FcmService : FirebaseMessagingService() {
             "stolen" -> {
                 val tokenManager = DeviceTokenManager(this)
                 val id = accountId ?: tokenManager.accountId
+                // Persist first so the lock still triggers offline / after reboot.
+                tokenManager.updateCachedFlags(lockedByDealer = true, isStolen = true)
                 if (!id.isNullOrBlank()) TrackingService.start(this, id)
-                val intent = Intent(this, LockTaskActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-                startActivity(intent)
+                LockEnforcer.evaluateAndEnforce(this, "fcm_stolen")
             }
             "lock" -> {
-                if (data["isStolen"] == "true") {
-                    val tokenManager = DeviceTokenManager(this)
+                val tokenManager = DeviceTokenManager(this)
+                val isStolen = data["isStolen"] == "true"
+                tokenManager.updateCachedFlags(
+                    lockedByDealer = true,
+                    isStolen = if (isStolen) true else null
+                )
+                if (isStolen) {
                     val id = accountId ?: tokenManager.accountId
                     if (!id.isNullOrBlank()) TrackingService.start(this, id)
                 }
-                val intent = Intent(this, LockTaskActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-                startActivity(intent)
+                LockEnforcer.evaluateAndEnforce(this, "fcm_lock")
             }
             "update" -> {
                 AppUpdateWorker.runNow(this)
             }
             "unlock" -> {
                 TrackingService.stop(this)
+                runCatching {
+                    val tokenManager = DeviceTokenManager(this)
+                    tokenManager.updateCachedFlags(lockedByDealer = false, isStolen = false)
+                    LockEnforcer.cancelLockAlert(this)
+                    LockDeadlineScheduler.sync(this)
+                }
                 CoroutineScope(Dispatchers.IO).launch {
                     runCatching {
                         val tokenManager = DeviceTokenManager(this@FcmService)

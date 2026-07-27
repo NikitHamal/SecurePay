@@ -6,6 +6,26 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 import { getAccountScopeFilter, canReleaseOrDeleteAccount } from '$lib/auth';
 
+/** M-KOPA application extras (references, guarantor, consent, signature). */
+function applicationFields(row: Record<string, unknown>) {
+  return {
+    idType: (row.id_type ?? null) as string | null,
+    nextOfKinName: (row.next_of_kin_name ?? null) as string | null,
+    nextOfKinPhone: (row.next_of_kin_phone ?? null) as string | null,
+    nextOfKinRelation: (row.next_of_kin_relation ?? null) as string | null,
+    refereeName: (row.referee_name ?? null) as string | null,
+    refereePhone: (row.referee_phone ?? null) as string | null,
+    guarantorName: (row.guarantor_name ?? null) as string | null,
+    guarantorPhone: (row.guarantor_phone ?? null) as string | null,
+    guarantorIdNumber: (row.guarantor_id_number ?? null) as string | null,
+    guarantorRelation: (row.guarantor_relation ?? null) as string | null,
+    consentTerms: row.consent_terms === 1,
+    consentData: row.consent_data === 1,
+    consentAt: (row.consent_at ?? null) as number | null,
+    customerSignaturePath: (row.customer_signature_path ?? null) as string | null
+  };
+}
+
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
@@ -53,6 +73,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     nationalIdBackPath: row.national_id_back_path as string | null,
     termDays: Number(row.term_days),
     downPayment: Number(row.down_payment),
+    ...applicationFields(row as Record<string, unknown>),
     ...releaseFields(row as Record<string, unknown>)
   };
 
@@ -259,6 +280,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
     nationalIdBackPath: row!.national_id_back_path as string | null,
     termDays: Number(row!.term_days),
     downPayment: Number(row!.down_payment),
+    ...applicationFields(row as Record<string, unknown>),
     ...releaseFields(row as Record<string, unknown>)
   };
 

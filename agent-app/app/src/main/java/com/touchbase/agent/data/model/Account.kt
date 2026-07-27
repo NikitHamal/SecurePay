@@ -43,7 +43,19 @@ data class Account(
     val nationalIdBackPath: String? = null,
     val isStolen: Boolean = false,
     val ghanaCardVerified: Boolean? = null,
-    val initialCredentials: CustomerCredentials? = null
+    val initialCredentials: CustomerCredentials? = null,
+    val idType: String? = null,
+    val nextOfKinName: String? = null,
+    val nextOfKinPhone: String? = null,
+    val nextOfKinRelation: String? = null,
+    val refereeName: String? = null,
+    val refereePhone: String? = null,
+    val guarantorName: String? = null,
+    val guarantorPhone: String? = null,
+    val guarantorIdNumber: String? = null,
+    val guarantorRelation: String? = null,
+    val consentAt: Long? = null,
+    val customerSignaturePath: String? = null
 )
 
 fun Account.isLocked(): Boolean = status == AccountStatus.LOCKED

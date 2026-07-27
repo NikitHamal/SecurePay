@@ -20,6 +20,8 @@ import com.touchbase.user.ui.lock.LockTaskActivity
 import com.touchbase.user.ui.theme.SecurePayTheme
 import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.AppUpdateWorker
+import com.touchbase.user.worker.LockDeadlineScheduler
+import com.touchbase.user.worker.LockWatchdogWorker
 import com.touchbase.user.worker.TrackingWorker
 import com.touchbase.user.worker.NetworkMonitor
 import kotlinx.coroutines.launch
@@ -153,6 +155,8 @@ class MainActivity : ComponentActivity() {
         runCatching { HeartbeatWorker.schedule(this) }
         runCatching { AppUpdateWorker.schedule(this) }
         runCatching { TrackingWorker.schedule(this) }
+        runCatching { LockWatchdogWorker.schedule(this) }
+        runCatching { LockDeadlineScheduler.sync(this) }
         networkMonitor?.let { runCatching { it.startMonitoring() } }
         
         // CRITICAL FIX: Allow users to uninstall other apps (like WhatsApp)

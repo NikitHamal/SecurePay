@@ -15,7 +15,20 @@ data class CreateAccountRequest(
     val downPayment: Int? = null,
     val customerPhoto: String? = null,
     val nationalIdFront: String? = null,
-    val nationalIdBack: String? = null
+    val nationalIdBack: String? = null,
+    val idType: String? = null,
+    val nextOfKinName: String? = null,
+    val nextOfKinPhone: String? = null,
+    val nextOfKinRelation: String? = null,
+    val refereeName: String? = null,
+    val refereePhone: String? = null,
+    val guarantorName: String? = null,
+    val guarantorPhone: String? = null,
+    val guarantorIdNumber: String? = null,
+    val guarantorRelation: String? = null,
+    val consentTerms: Boolean = false,
+    val consentData: Boolean = false,
+    val customerSignature: String? = null
 )
 
 @Serializable

@@ -5,13 +5,17 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,14 +24,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,11 +55,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,12 +70,15 @@ import com.touchbase.agent.R
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import com.touchbase.agent.data.remote.SecurePayRepository
-import com.touchbase.agent.ui.components.StepIndicator
 import com.touchbase.agent.ui.components.ButtonText
 
+import com.touchbase.agent.ui.enrollment.steps.ConsentStep
+import com.touchbase.agent.ui.enrollment.steps.ContactsStep
 import com.touchbase.agent.ui.enrollment.steps.KycStep
 import com.touchbase.agent.ui.enrollment.steps.PlanStep
+import com.touchbase.agent.ui.enrollment.steps.ReviewStep
 import com.touchbase.agent.ui.enrollment.steps.ScannerStep
+import com.touchbase.agent.ui.enrollment.steps.SignerStep
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,8 +95,12 @@ fun EnrollmentWizardScreen(
 
     val stepLabels = listOf(
         stringResource(R.string.step_kyc),
+        stringResource(R.string.step_references),
+        stringResource(R.string.step_signer),
         stringResource(R.string.step_device),
-        stringResource(R.string.step_plan)
+        stringResource(R.string.step_plan),
+        stringResource(R.string.step_consent),
+        stringResource(R.string.step_review)
     )
 
     LaunchedEffect(state.submission) {
@@ -128,15 +148,23 @@ fun EnrollmentWizardScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StepIndicator(
-                currentIndex = state.stepIndex,
-                labels = stepLabels,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
             val submission = state.submission
+            if (submission !is SubmissionState.Success) {
+                WizardProgressDots(
+                    totalSteps = stepLabels.size,
+                    currentIndex = state.stepIndex,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Text(
+                    text = sectionTitle(state.currentStep),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
             if (submission is SubmissionState.Success) {
                 EnrollmentSuccess(
                     enrollmentId = submission.enrollmentId,
@@ -174,15 +202,33 @@ fun EnrollmentWizardScreen(
                                 state = state,
                                 onNameChange = viewModel::updateKycName,
                                 onNationalIdChange = viewModel::updateKycNationalId,
+                                onIdTypeChange = viewModel::updateKycIdType,
                                 onPhoneChange = viewModel::updateKycPhone,
                                 onPhotoSelected = viewModel::updateKycPhoto,
                                 onIdFrontSelected = viewModel::updateKycIdFront,
                                 onIdBackSelected = viewModel::updateKycIdBack
                             )
+                            EnrollmentStep.REFERENCES -> ContactsStep(
+                                state = state,
+                                onKinNameChange = viewModel::updateNextOfKinName,
+                                onKinRelationChange = viewModel::updateNextOfKinRelation,
+                                onKinPhoneChange = viewModel::updateNextOfKinPhone,
+                                onRefereeNameChange = viewModel::updateRefereeName,
+                                onRefereePhoneChange = viewModel::updateRefereePhone
+                            )
+                            EnrollmentStep.SIGNER -> SignerStep(
+                                state = state,
+                                onNameChange = viewModel::updateGuarantorName,
+                                onRelationChange = viewModel::updateGuarantorRelation,
+                                onPhoneChange = viewModel::updateGuarantorPhone,
+                                onIdNumberChange = viewModel::updateGuarantorIdNumber
+                            )
                             EnrollmentStep.DEVICE -> ScannerStep(
                                 state = state,
                                 onImeiChange = viewModel::updateImei,
-                                onDeviceModelChange = viewModel::updateDeviceModel
+                                onDeviceModelChange = viewModel::updateDeviceModel,
+                                onSelectDevice = viewModel::selectDevice,
+                                onRefreshDevices = viewModel::refreshDevices
                             )
                             EnrollmentStep.PLAN -> PlanStep(
                                 state = state,
@@ -191,6 +237,16 @@ fun EnrollmentWizardScreen(
                                 onTotalAmountChange = viewModel::updateTotalAmount,
                                 onTermDaysChange = viewModel::updateTermDays,
                                 onDownPaymentChange = viewModel::updateDownPayment
+                            )
+                            EnrollmentStep.CONSENT -> ConsentStep(
+                                state = state,
+                                onConsentTermsChange = viewModel::updateConsentTerms,
+                                onConsentDataChange = viewModel::updateConsentData,
+                                onSignatureChange = viewModel::updateSignature
+                            )
+                            EnrollmentStep.REVIEW -> ReviewStep(
+                                state = state,
+                                onEditStep = viewModel::goToStep
                             )
                         }
                     }
@@ -203,6 +259,62 @@ fun EnrollmentWizardScreen(
                     onNext = viewModel::nextStep,
                     onSubmit = viewModel::submit,
                     modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun sectionTitle(step: EnrollmentStep): String = when (step) {
+    EnrollmentStep.KYC -> "Identity verification"
+    EnrollmentStep.REFERENCES -> "Next of kin & referee"
+    EnrollmentStep.SIGNER -> "Guarantor (co-signer)"
+    EnrollmentStep.DEVICE -> "Device selection"
+    EnrollmentStep.PLAN -> "Financing plan"
+    EnrollmentStep.CONSENT -> "Customer consent & signature"
+    EnrollmentStep.REVIEW -> "Application review"
+}
+
+/** M-KOPA style stepper: filled dots joined by a progress line. */
+@Composable
+private fun WizardProgressDots(
+    totalSteps: Int,
+    currentIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        for (index in 0 until totalSteps) {
+            val reached = index <= currentIndex
+            val dotColor by animateColorAsState(
+                targetValue = if (reached) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outlineVariant,
+                label = "wizardDotColor$index"
+            )
+            val dotSize by animateDpAsState(
+                targetValue = if (index == currentIndex) 12.dp else 10.dp,
+                label = "wizardDotSize$index"
+            )
+            Box(
+                modifier = Modifier
+                    .size(dotSize)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
+            if (index < totalSteps - 1) {
+                val lineColor by animateColorAsState(
+                    targetValue = if (index < currentIndex) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outlineVariant,
+                    label = "wizardLineColor$index"
+                )
+                Box(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .height(2.dp)
+                        .background(lineColor)
                 )
             }
         }
@@ -233,7 +345,7 @@ private fun WizardControls(
         if (state.isLastStep) {
             Button(
                 onClick = onSubmit,
-                enabled = state.isPlanStepValid && !state.isSubmitting,
+                enabled = state.isSubmitReady && !state.isSubmitting,
                 modifier = Modifier.weight(1f).height(52.dp)
             ) {
                 if (state.isSubmitting) {
@@ -268,48 +380,120 @@ private fun EnrollmentSuccess(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Icon(
-            imageVector = Icons.Filled.CheckCircle,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp)
-        )
-        Text(
-            text = "Enrollment submitted!",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = "Reference: $enrollmentId",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Big "Approved" banner — mirrors the verification-result card the client likes.
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF22C55E))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Approved",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        "The application has been submitted",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SuccessRow(label = "Reference", value = enrollmentId)
+                if (accountNumber.isNotBlank()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    SuccessRow(label = "Customer account", value = accountNumber, mono = true)
+                }
+                if (temporaryPin.isNotBlank()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    SuccessRow(label = "Temporary PIN", value = temporaryPin, mono = true)
+                }
+            }
+        }
+
         if (accountNumber.isNotBlank() && temporaryPin.isNotBlank()) {
             Text(
-                text = "Customer login\nAccount: $accountNumber\nTemporary PIN: $temporaryPin",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Give these details only to the verified customer. The PIN cannot be viewed again unless it is reset.",
-                style = MaterialTheme.typography.bodyMedium,
+                "Give these details only to the verified customer. The PIN cannot be viewed again unless it is reset.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
         Button(
             onClick = onProvision,
             enabled = imei.length == 15,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
         ) {
-            ButtonText("Provision this device")
+            ButtonText(stringResource(R.string.action_next) + " — Provision this device")
         }
-        OutlinedButton(onClick = onDone) {
-            ButtonText("Done")
+        OutlinedButton(
+            onClick = onDone,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            ButtonText("Done", color = MaterialTheme.colorScheme.onBackground)
         }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SuccessRow(label: String, value: String, mono: Boolean = false) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = if (mono) MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+            else MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

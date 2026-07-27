@@ -126,6 +126,7 @@ fun CustomerDetailScreen(
     var customerPhotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idFrontBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var idBackBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var signatureBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var viewerBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var verifyInProgress by remember { mutableStateOf(false) }
     var verifyMessage by remember { mutableStateOf<String?>(null) }
@@ -257,6 +258,16 @@ fun CustomerDetailScreen(
             }
         } else {
             idBackBitmap = null
+        }
+        if (!acc.customerSignaturePath.isNullOrEmpty()) {
+            scope.launch {
+                repository?.getPhoto(acc.id, "signature")?.fold(
+                    onSuccess = { signatureBitmap = it },
+                    onFailure = { /* ignore */ }
+                )
+            }
+        } else {
+            signatureBitmap = null
         }
     }
 
@@ -518,7 +529,69 @@ fun CustomerDetailScreen(
             InfoCard(title = "Customer Information") {
                 InfoRow(icon = Icons.Filled.Person, label = "Name", value = acc.customerName)
                 InfoRow(icon = Icons.Filled.Phone, label = "Phone", value = acc.phoneNumber)
-                InfoRow(icon = Icons.Filled.Lock, label = "National ID", value = acc.nationalId)
+                InfoRow(
+                    icon = Icons.Filled.Lock,
+                    label = "National ID",
+                    value = if (acc.idType.isNullOrBlank()) acc.nationalId
+                    else "${acc.idType} — ${acc.nationalId}"
+                )
+            }
+
+            val hasApplicationContacts = !acc.nextOfKinName.isNullOrBlank() ||
+                !acc.refereeName.isNullOrBlank() || !acc.guarantorName.isNullOrBlank() ||
+                acc.customerSignaturePath != null
+            if (hasApplicationContacts) {
+                InfoCard(title = "Application Contacts & Consent") {
+                    acc.nextOfKinName?.takeIf { it.isNotBlank() }?.let { kinName ->
+                        InfoRow(
+                            icon = null, label = "Next of kin",
+                            value = kinName + (acc.nextOfKinRelation?.takeIf { r -> r.isNotBlank() }?.let { " ($it)" } ?: "")
+                        )
+                        acc.nextOfKinPhone?.takeIf { it.isNotBlank() }?.let {
+                            InfoRow(icon = null, label = "Kin phone", value = it)
+                        }
+                    }
+                    acc.refereeName?.takeIf { it.isNotBlank() }?.let { refName ->
+                        InfoRow(
+                            icon = null, label = "Referee",
+                            value = refName + (acc.refereePhone?.takeIf { p -> p.isNotBlank() }?.let { " — $it" } ?: "")
+                        )
+                    }
+                    acc.guarantorName?.takeIf { it.isNotBlank() }?.let { gName ->
+                        InfoRow(
+                            icon = null, label = "Guarantor",
+                            value = gName + (acc.guarantorRelation?.takeIf { r -> r.isNotBlank() }?.let { " ($it)" } ?: "")
+                        )
+                        acc.guarantorPhone?.takeIf { it.isNotBlank() }?.let {
+                            InfoRow(icon = null, label = "Guarantor phone", value = it)
+                        }
+                        acc.guarantorIdNumber?.takeIf { it.isNotBlank() }?.let {
+                            InfoRow(icon = null, label = "Guarantor ID", value = it)
+                        }
+                    }
+                    if (acc.consentAt != null) {
+                        InfoRow(icon = null, label = "Consent", value = "Given (terms + data)")
+                    }
+                    if (signatureBitmap != null) {
+                        Column {
+                            Text(
+                                "Customer signature",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Image(
+                                bitmap = signatureBitmap!!.asImageBitmap(),
+                                contentDescription = "Customer signature",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { viewerBitmap = signatureBitmap },
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                        }
+                    }
+                }
             }
 
             InfoCard(title = "Device & Plan") {

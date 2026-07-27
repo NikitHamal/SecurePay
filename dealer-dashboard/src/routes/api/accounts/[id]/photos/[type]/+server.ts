@@ -9,25 +9,29 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
   }
 
   const { id, type } = params;
-  if (type !== 'photo' && type !== 'id_front' && type !== 'id_back') {
+  if (type !== 'photo' && type !== 'id_front' && type !== 'id_back' && type !== 'signature') {
     return errorResponse('Invalid photo type', 400);
   }
 
   const db = getDb({ platform });
   const scope = getAccountScopeFilter(locals.dealer, 'a');
-  const account = await db.prepare(`SELECT a.customer_photo_path, a.national_id_front_path, a.national_id_back_path FROM accounts a WHERE a.id = ? AND ${scope.where}`)
+  // SELECT * keeps this route working even before the application-extras
+  // migration runs on an existing database (columns read with ?? null).
+  const account = await db.prepare(`SELECT a.* FROM accounts a WHERE a.id = ? AND ${scope.where}`)
     .bind(id, ...scope.params)
-    .first<{ customer_photo_path?: string | null; national_id_front_path?: string | null; national_id_back_path?: string | null }>();
+    .first<Record<string, unknown>>();
 
   if (!account) {
     return errorResponse('Account not found', 404);
   }
 
-  const path = type === 'photo' 
-    ? account.customer_photo_path 
-    : type === 'id_front' 
-      ? account.national_id_front_path 
-      : account.national_id_back_path;
+  const path = (type === 'photo'
+    ? account.customer_photo_path
+    : type === 'id_front'
+      ? account.national_id_front_path
+      : type === 'id_back'
+        ? account.national_id_back_path
+        : account.customer_signature_path) as string | null | undefined;
 
   if (!path) {
     return errorResponse('Photo not uploaded', 404);

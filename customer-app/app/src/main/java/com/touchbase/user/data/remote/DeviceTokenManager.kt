@@ -48,6 +48,22 @@ class DeviceTokenManager private constructor(
             .apply()
     }
 
+    /**
+     * Partial flag update for push-driven events (FCM lock/unlock/stolen) where
+     * the full server account snapshot isn't available. Nulls leave the flag as-is.
+     */
+    fun updateCachedFlags(
+        lockedByDealer: Boolean? = null,
+        isStolen: Boolean? = null,
+        releaseApproved: Boolean? = null
+    ) {
+        val editor = prefs.edit()
+        lockedByDealer?.let { editor.putBoolean(KEY_CACHED_LOCKED_BY_DEALER, it) }
+        isStolen?.let { editor.putBoolean(KEY_CACHED_IS_STOLEN, it) }
+        releaseApproved?.let { editor.putBoolean(KEY_CACHED_RELEASE_APPROVED, it) }
+        editor.apply()
+    }
+
     fun saveSecurityPolicy(policy: DeviceSecurityPolicy) {
         prefs.edit()
             .putLong(KEY_SECURITY_POLICY_VERSION, policy.version)

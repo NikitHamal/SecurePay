@@ -1,12 +1,13 @@
 package com.touchbase.user.worker
 
 import android.content.Context
-import android.content.Intent
 import com.touchbase.user.util.SecureLog
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.NetworkType
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -65,19 +66,16 @@ class HeartbeatWorker(
             }
         }
 
-        // Step 2: Always evaluate lock status locally (works offline)
+        // Step 2: Evaluate + enforce lock state from the freshest cached data.
+        // LockEnforcer is offline-safe and BAL-compliant (it raises a
+        // full-screen intent instead of relying on background activity starts),
+        // so the phone locks even when this worker runs with the app closed.
         val account = repository?.account?.value
-        val cachedDue = if (account != null) account.nextPaymentDueEpochMillis else tokenManager.cachedNextPaymentDue
-        val lockedByDealer = account?.lockedByDealer ?: tokenManager.cachedLockedByDealer
-        val trustedNow = tokenManager.getTrustedTimeMillis()
-        val status = com.touchbase.user.data.model.DeviceStatus.evaluate(cachedDue, lockedByDealer, trustedNow)
-        if (status == com.touchbase.user.data.model.DeviceStatus.LOCKED) {
-            SecureLog.w(TAG, "Local evaluation: LOCKED — enforcing lock")
-            val intent = Intent(applicationContext, com.touchbase.user.ui.lock.LockTaskActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            runCatching { applicationContext.startActivity(intent) }
-        }
+        val status = LockEnforcer.evaluateAndEnforce(applicationContext, "heartbeat")
+            ?: com.touchbase.user.data.model.DeviceStatus.ACTIVE
+
+        // Step 2b: Keep the doze-proof deadline alarm aligned with fresh state.
+        runCatching { LockDeadlineScheduler.sync(applicationContext) }
 
         val stolenNow = account?.isStolen ?: tokenManager.cachedIsStolen
         if (stolenNow) {
@@ -135,6 +133,23 @@ class HeartbeatWorker(
     companion object {
         private const val TAG = "HeartbeatWorker"
         private const val WORK_NAME = "securepay_heartbeat"
+        private const val WORK_NAME_NOW = "securepay_heartbeat_now"
+
+        /** Fires one immediate best-effort sync (used after the deadline alarm). */
+        fun runNow(context: Context) {
+            val request = OneTimeWorkRequestBuilder<HeartbeatWorker>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME_NOW,
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
+        }
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<HeartbeatWorker>(

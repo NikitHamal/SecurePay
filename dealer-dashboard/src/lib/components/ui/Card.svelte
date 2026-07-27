@@ -1,7 +1,7 @@
 <script lang="ts">
-  export let hover: boolean = false;
+  export let hover: boolean = true;
 </script>
 
-<div class="card {hover ? 'card-hover' : ''} p-5 {$$props.class ?? ''}">
+<div class="card {hover ? 'card-hover' : ''} {$$props.class ?? ''}">
   <slot />
 </div>

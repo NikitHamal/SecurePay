@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
@@ -31,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -38,15 +40,19 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,6 +60,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.touchbase.agent.R
+import com.touchbase.agent.ui.components.DevicePickerDialog
+import com.touchbase.agent.ui.components.DevicePickerFilter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,23 +157,100 @@ private fun QrFormSection(
                 style = MaterialTheme.typography.bodySmall
             )
 
-            OutlinedTextField(
-                value = state.imei,
-                onValueChange = viewModel::updateImei,
-                label = { Text("IMEI (15 digits)") },
-                placeholder = {
-                    Text(
-                        "Enter 15-digit IMEI",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            var showDevicePicker by remember { mutableStateOf(false) }
+            var manualImeiMode by remember { mutableStateOf(false) }
+
+            if (!manualImeiMode) {
+                OutlinedCard(
+                    onClick = { showDevicePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
-                },
-                singleLine = true,
-                isError = state.imei.isNotEmpty() && state.imei.length != 15,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = imeiColors
-            )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_device),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                if (state.imei.isBlank()) "Select enrolled device"
+                                else state.imei,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = if (state.imei.isBlank()) MaterialTheme.typography.titleSmall
+                                else MaterialTheme.typography.titleSmall.copy(fontFamily = FontFamily.Monospace),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                when {
+                                    state.isLoadingDevices -> "Refreshing enrolled devices…"
+                                    state.imei.isBlank() -> "${state.enrolledDevices.size} enrolled device(s) — tap to pick"
+                                    else -> "Tap to change device"
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Icon(
+                            Icons.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                TextButton(onClick = { manualImeiMode = true }) {
+                    Text("Enter IMEI manually")
+                }
+            } else {
+                OutlinedTextField(
+                    value = state.imei,
+                    onValueChange = viewModel::updateImei,
+                    label = { Text("IMEI (15 digits)") },
+                    placeholder = {
+                        Text(
+                            "Enter 15-digit IMEI",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    },
+                    singleLine = true,
+                    isError = state.imei.isNotEmpty() && state.imei.length != 15,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = imeiColors
+                )
+                TextButton(onClick = { manualImeiMode = false }) {
+                    Text("Pick from enrolled devices instead")
+                }
+            }
+
+            if (showDevicePicker) {
+                DevicePickerDialog(
+                    devices = state.devices,
+                    filter = DevicePickerFilter.SOLD,
+                    isLoading = state.isLoadingDevices,
+                    onRefresh = viewModel::refreshDevices,
+                    onSelect = { device ->
+                        viewModel.selectDevice(device)
+                        showDevicePicker = false
+                    },
+                    onDismiss = { showDevicePicker = false },
+                    onManualRequested = {
+                        showDevicePicker = false
+                        manualImeiMode = true
+                    }
+                )
+            }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

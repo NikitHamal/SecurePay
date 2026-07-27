@@ -14,6 +14,12 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Locks the phone at the exact payment deadline even when the app is never
+         opened: exact alarms fire through Doze and OEM process kills; the
+         full-screen intent surfaces the lock screen from background on Android 10+. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <uses-feature
         android:name="android.hardware.nfc"
@@ -126,6 +132,17 @@
         <receiver
             android:name="com.touchbase.user.worker.AppUpdateReceiver"
             android:exported="false" />
+
+        <!-- Exact-alarm lock enforcement: fires when the cached payment deadline
+             passes, with or without network, app process, or user interaction. -->
+        <receiver
+            android:name="com.touchbase.user.worker.LockDeadlineReceiver"
+            android:directBootAware="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.touchbase.user.action.LOCK_DEADLINE" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name="com.touchbase.user.worker.BootReceiver"

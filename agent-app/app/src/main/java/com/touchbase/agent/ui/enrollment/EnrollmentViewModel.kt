@@ -51,14 +51,41 @@ class EnrollmentViewModel(
             devicesLoaded = true
             return
         }
+        refreshDevices()
+    }
+
+    /**
+     * Re-pulls the dealer's inventory so the device picker always shows the
+     * freshest "not yet sold" list. Called when the Device step is entered.
+     */
+    fun refreshDevices() {
+        if (repository == null) return
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingDevices = true) }
             val result = repository.listDevices()
             result.fold(
                 onSuccess = { devices ->
-                    _uiState.update { it.copy(availableDevices = devices) }
                     devicesLoaded = true
+                    _uiState.update { state ->
+                        val refreshedLookup = if (state.draft.imei.length == IMEI_LENGTH) {
+                            lookupDevice(state.draft.imei, devices)
+                        } else {
+                            state.deviceLookupStatus
+                        }
+                        val refreshedModel = (refreshedLookup as? DeviceLookupStatus.Found)?.model
+                            ?: state.draft.deviceModel
+                        state.copy(
+                            availableDevices = devices,
+                            isLoadingDevices = false,
+                            deviceLookupStatus = refreshedLookup,
+                            draft = state.draft.copy(deviceModel = refreshedModel)
+                        )
+                    }
                 },
-                onFailure = { devicesLoaded = true }
+                onFailure = {
+                    devicesLoaded = true
+                    _uiState.update { it.copy(isLoadingDevices = false) }
+                }
             )
         }
     }
@@ -85,6 +112,58 @@ class EnrollmentViewModel(
 
     fun updateKycIdBack(value: String?) = _uiState.update {
         it.copy(draft = it.draft.copy(nationalIdBackBase64 = value))
+    }
+
+    fun updateKycIdType(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(idType = value))
+    }
+
+    fun updateNextOfKinName(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(nextOfKinName = value))
+    }
+
+    fun updateNextOfKinRelation(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(nextOfKinRelation = value))
+    }
+
+    fun updateNextOfKinPhone(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(nextOfKinPhone = value))
+    }
+
+    fun updateRefereeName(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(refereeName = value))
+    }
+
+    fun updateRefereePhone(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(refereePhone = value))
+    }
+
+    fun updateGuarantorName(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(guarantorName = value))
+    }
+
+    fun updateGuarantorRelation(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(guarantorRelation = value))
+    }
+
+    fun updateGuarantorPhone(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(guarantorPhone = value))
+    }
+
+    fun updateGuarantorIdNumber(value: String) = _uiState.update {
+        it.copy(draft = it.draft.copy(guarantorIdNumber = value))
+    }
+
+    fun updateConsentTerms(value: Boolean) = _uiState.update {
+        it.copy(draft = it.draft.copy(consentTerms = value))
+    }
+
+    fun updateConsentData(value: Boolean) = _uiState.update {
+        it.copy(draft = it.draft.copy(consentData = value))
+    }
+
+    fun updateSignature(value: String?) = _uiState.update {
+        it.copy(draft = it.draft.copy(signatureBase64 = value))
     }
 
     fun updateImei(value: String) = _uiState.update {
@@ -210,9 +289,14 @@ class EnrollmentViewModel(
         if (!state.isFirstStep) state.copy(stepIndex = state.stepIndex - 1) else state
     }
 
+    /** Jumps straight to a step — used by the Review screen's "tap to edit" rows. */
+    fun goToStep(index: Int) = _uiState.update { state ->
+        state.copy(stepIndex = index.coerceIn(0, EnrollmentStep.COUNT - 1))
+    }
+
     fun submit() {
         val state = _uiState.value
-        if (!state.isKycStepValid || !state.isDeviceStepValid || !state.isPlanStepValid) return
+        if (!state.isSubmitReady) return
         if (state.submission is SubmissionState.Submitting) return
 
         _uiState.update { it.copy(submission = SubmissionState.Submitting) }
@@ -235,7 +319,20 @@ class EnrollmentViewModel(
                 downPayment = if (state.draft.downPayment > 0) state.draft.downPayment else null,
                 customerPhoto = state.draft.customerPhotoBase64,
                 nationalIdFront = state.draft.nationalIdFrontBase64,
-                nationalIdBack = state.draft.nationalIdBackBase64
+                nationalIdBack = state.draft.nationalIdBackBase64,
+                idType = state.draft.idType.ifBlank { null },
+                nextOfKinName = state.draft.nextOfKinName.ifBlank { null },
+                nextOfKinPhone = state.draft.nextOfKinPhone.ifBlank { null },
+                nextOfKinRelation = state.draft.nextOfKinRelation.ifBlank { null },
+                refereeName = state.draft.refereeName.ifBlank { null },
+                refereePhone = state.draft.refereePhone.ifBlank { null },
+                guarantorName = state.draft.guarantorName.ifBlank { null },
+                guarantorPhone = state.draft.guarantorPhone.ifBlank { null },
+                guarantorIdNumber = state.draft.guarantorIdNumber.ifBlank { null },
+                guarantorRelation = state.draft.guarantorRelation.ifBlank { null },
+                consentTerms = state.draft.consentTerms,
+                consentData = state.draft.consentData,
+                customerSignature = state.draft.signatureBase64
             )
 
             val result = repository.createAccount(request)

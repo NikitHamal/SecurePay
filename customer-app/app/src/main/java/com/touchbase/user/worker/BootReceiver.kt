@@ -18,6 +18,9 @@ class BootReceiver : BroadcastReceiver() {
         HeartbeatWorker.schedule(context)
         AppUpdateWorker.schedule(context)
         TrackingWorker.schedule(context)
+        LockWatchdogWorker.schedule(context)
+        // Re-arm the exact deadline alarm — alarms do not survive a reboot.
+        LockDeadlineScheduler.sync(context)
 
         val policyController = DevicePolicyController(context)
         val tokenManager = DeviceTokenManager(context)

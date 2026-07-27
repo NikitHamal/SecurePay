@@ -14,6 +14,8 @@ import com.touchbase.user.data.repository.DeviceRepository
 import com.touchbase.user.util.SecureLog
 import com.touchbase.user.worker.HeartbeatWorker
 import com.touchbase.user.worker.AppUpdateWorker
+import com.touchbase.user.worker.LockDeadlineScheduler
+import com.touchbase.user.worker.LockWatchdogWorker
 import com.touchbase.user.worker.TrackingWorker
 import com.touchbase.user.worker.TrackingService
 
@@ -124,6 +126,10 @@ class SecurePayApplication : Application() {
                 AppUpdateWorker.schedule(this)
                 TrackingWorker.schedule(this)
             }
+            // Offline lock enforcement runs regardless of registration state so
+            // a registration-recovery race can not leave an overdue phone unlocked.
+            LockWatchdogWorker.schedule(this)
+            LockDeadlineScheduler.sync(this)
         }.onFailure { SecureLog.e(TAG, "Worker scheduling failed", it) }
 
         runCatching {

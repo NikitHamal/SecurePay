@@ -1,31 +1,30 @@
 package com.touchbase.agent.ui.enrollment.steps
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -40,7 +39,6 @@ import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanStep(
     state: EnrollmentUiState,
@@ -51,7 +49,6 @@ fun PlanStep(
     onDownPaymentChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val selectedPlan = state.selectedPlan
 
     Column(
@@ -61,66 +58,30 @@ fun PlanStep(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.label_plan), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it }
-            ) {
-                OutlinedTextField(
-                    value = selectedPlan?.name ?: stringResource(R.string.label_plan_custom),
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                    },
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .menuAnchor(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(360.dp)
+
+            if (state.availablePlans.isEmpty()) {
+                Text(
+                    "No preset plans yet — terms below are entered once per sale (Custom).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(stringResource(R.string.label_plan_custom), fontWeight = if (selectedPlan == null) FontWeight.Bold else FontWeight.Normal)
-                        },
-                        onClick = {
-                            onSelectPlan(null)
-                            expanded = false
-                        }
-                    )
-                    state.availablePlans.forEach { plan ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(plan.name, style = MaterialTheme.typography.titleMedium)
-                                    Text(
-                                        "${formatAmount(plan.totalAmount)} · ${plan.termDays} days",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            onClick = {
-                                onSelectPlan(plan)
-                                expanded = false
-                            }
-                        )
-                    }
-                }
             }
+
+            state.availablePlans.forEach { plan ->
+                PlanOptionCard(
+                    title = plan.name,
+                    subtitle = "${formatAmount(plan.totalAmount)} · ${plan.termDays} days · ${formatAmount(plan.dailyRate)}/day" +
+                        if (plan.minDownPayment > 0) " · min. down ${formatAmount(plan.minDownPayment)}" else "",
+                    selected = selectedPlan?.id == plan.id,
+                    onClick = { onSelectPlan(plan) }
+                )
+            }
+            PlanOptionCard(
+                title = stringResource(R.string.label_plan_custom),
+                subtitle = "Set the loan terms manually for this sale",
+                selected = selectedPlan == null,
+                onClick = { onSelectPlan(null) }
+            )
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -240,6 +201,59 @@ fun PlanStep(
                 termDays = state.termDaysInput.toIntOrNull()
                     ?: selectedPlan?.termDays ?: 0
             )
+        }
+    }
+}
+
+@Composable
+private fun PlanOptionCard(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outlineVariant
+        ),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

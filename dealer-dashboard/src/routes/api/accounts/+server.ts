@@ -37,6 +37,76 @@ function parseSafeInteger(value: unknown, fieldName: string, minimum: number): n
   return parsed;
 }
 
+/**
+ * Runtime idempotent guard so a fresh/unmigrated D1 database can not 500 the
+ * enrollment endpoints. Mirrors migrations/20260727_application_extras.sql.
+ */
+async function ensureApplicationColumns(db: ReturnType<typeof getDb>) {
+  try {
+    const info = await db.prepare('PRAGMA table_info(accounts)').all();
+    const existing = new Set(info.results.map((row) => String((row as { name?: unknown }).name ?? '')));
+    const defs: Array<[string, string]> = [
+      ['id_type', 'TEXT'],
+      ['next_of_kin_name', 'TEXT'],
+      ['next_of_kin_phone', 'TEXT'],
+      ['next_of_kin_relation', 'TEXT'],
+      ['referee_name', 'TEXT'],
+      ['referee_phone', 'TEXT'],
+      ['guarantor_name', 'TEXT'],
+      ['guarantor_phone', 'TEXT'],
+      ['guarantor_id_number', 'TEXT'],
+      ['guarantor_relation', 'TEXT'],
+      ['consent_terms', 'INTEGER NOT NULL DEFAULT 0'],
+      ['consent_data', 'INTEGER NOT NULL DEFAULT 0'],
+      ['consent_at', 'INTEGER'],
+      ['customer_signature_path', 'TEXT']
+    ];
+    for (const [column, ddl] of defs) {
+      if (!existing.has(column)) {
+        await db.prepare(`ALTER TABLE accounts ADD COLUMN ${column} ${ddl}`).run();
+      }
+    }
+  } catch { /* read-only replica — the query below will surface a real problem */ }
+}
+
+function applicationFields(row: Record<string, unknown>) {
+  return {
+    idType: (row.id_type ?? null) as string | null,
+    nextOfKinName: (row.next_of_kin_name ?? null) as string | null,
+    nextOfKinPhone: (row.next_of_kin_phone ?? null) as string | null,
+    nextOfKinRelation: (row.next_of_kin_relation ?? null) as string | null,
+    refereeName: (row.referee_name ?? null) as string | null,
+    refereePhone: (row.referee_phone ?? null) as string | null,
+    guarantorName: (row.guarantor_name ?? null) as string | null,
+    guarantorPhone: (row.guarantor_phone ?? null) as string | null,
+    guarantorIdNumber: (row.guarantor_id_number ?? null) as string | null,
+    guarantorRelation: (row.guarantor_relation ?? null) as string | null,
+    consentTerms: row.consent_terms === 1,
+    consentData: row.consent_data === 1,
+    consentAt: (row.consent_at ?? null) as number | null,
+    customerSignaturePath: (row.customer_signature_path ?? null) as string | null
+  };
+}
+
+function cleanOptText(value: unknown, max: number): string | null {
+  const text = cleanText(value);
+  if (!text) return null;
+  return text.slice(0, max);
+}
+
+function cleanOptPhone(value: unknown): string | null {
+  const text = cleanText(value);
+  if (!text) return null;
+  if (!/^[0-9+\-()\s]{7,24}$/.test(text)) {
+    throw new Error(`Phone numbers must contain 7 to 24 valid phone characters`);
+  }
+  return text;
+}
+
+function boolFlag(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
 function decodeImage(value: unknown, fieldName: string): EncodedImage | null {
   const input = cleanText(value);
   if (!input) return null;
@@ -117,6 +187,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
       enrolledBy: row.enrolled_by as string | null,
       ghanaCardVerified: row.ghana_card_verified === 1,
       ghanaCardStatus: row.ghana_card_status as string | null,
+      ...applicationFields(row as Record<string, unknown>),
       ...releaseFields(row as Record<string, unknown>)
     };
   });
@@ -156,18 +227,51 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('Either planId or custom dailyRate must be provided', 400);
   }
 
+  // M-KOPA style application fields: references, guarantor, consent, signature.
+  // All optional so older app builds keep working.
+  let applicationData: {
+    idType: string | null;
+    nextOfKinName: string | null;
+    nextOfKinPhone: string | null;
+    nextOfKinRelation: string | null;
+    refereeName: string | null;
+    refereePhone: string | null;
+    guarantorName: string | null;
+    guarantorPhone: string | null;
+    guarantorIdNumber: string | null;
+    guarantorRelation: string | null;
+    consentTerms: boolean;
+    consentData: boolean;
+  };
   let customerPhoto: EncodedImage | null;
   let nationalIdFront: EncodedImage | null;
   let nationalIdBack: EncodedImage | null;
+  let customerSignature: EncodedImage | null;
   try {
+    applicationData = {
+      idType: cleanOptText(body.idType, 32),
+      nextOfKinName: cleanOptText(body.nextOfKinName, 120),
+      nextOfKinPhone: cleanOptPhone(body.nextOfKinPhone),
+      nextOfKinRelation: cleanOptText(body.nextOfKinRelation, 40),
+      refereeName: cleanOptText(body.refereeName, 120),
+      refereePhone: cleanOptPhone(body.refereePhone),
+      guarantorName: cleanOptText(body.guarantorName, 120),
+      guarantorPhone: cleanOptPhone(body.guarantorPhone),
+      guarantorIdNumber: cleanOptText(body.guarantorIdNumber, 64),
+      guarantorRelation: cleanOptText(body.guarantorRelation, 40),
+      consentTerms: boolFlag(body.consentTerms),
+      consentData: boolFlag(body.consentData)
+    };
     customerPhoto = decodeImage(body.customerPhoto, 'customerPhoto');
     nationalIdFront = decodeImage(body.nationalIdFront, 'nationalIdFront');
     nationalIdBack = decodeImage(body.nationalIdBack, 'nationalIdBack');
+    customerSignature = decodeImage(body.customerSignature, 'customerSignature');
   } catch (error) {
-    return errorResponse(error instanceof Error ? error.message : 'Invalid KYC image', 400);
+    return errorResponse(error instanceof Error ? error.message : 'Invalid application data', 400);
   }
 
   const db = getDb({ platform });
+  await ensureApplicationColumns(db);
   const device = await db.prepare(
     'SELECT id, imei, model, status FROM devices WHERE imei = ? AND dealer_id = ?'
   ).bind(imei, locals.dealer.id).first<{ id: string; imei: string; model: string; status: string }>();
@@ -232,10 +336,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   let customerPhotoPath: string | null;
   let nationalIdFrontPath: string | null;
   let nationalIdBackPath: string | null;
+  let customerSignaturePath: string | null;
   try {
     customerPhotoPath = await uploadImage(customerPhoto, 'photo');
     nationalIdFrontPath = await uploadImage(nationalIdFront, 'id_front');
     nationalIdBackPath = await uploadImage(nationalIdBack, 'id_back');
+    customerSignaturePath = await uploadImage(customerSignature, 'signature');
   } catch (error) {
     await Promise.allSettled(uploadedKeys.map((key) => r2.delete(key)));
     console.error('KYC upload failed', error);
@@ -249,8 +355,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
         total_loan_amount, amount_paid, daily_rate, next_payment_due, status,
         locked_by_dealer, down_payment, term_days, currency_code, customer_photo_path,
         national_id_front_path, national_id_back_path, enrolled_by, branch_id, agency_id,
-        customer_account_number, customer_pin_hash, customer_pin_updated_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?, ?, 'GHS', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        customer_account_number, customer_pin_hash, customer_pin_updated_at, created_at, updated_at,
+        id_type, next_of_kin_name, next_of_kin_phone, next_of_kin_relation,
+        referee_name, referee_phone, guarantor_name, guarantor_phone,
+        guarantor_id_number, guarantor_relation, consent_terms, consent_data,
+        consent_at, customer_signature_path
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?, ?, 'GHS', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       accountId,
       customerName,
@@ -275,7 +385,21 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       customerPinHash,
       nowSeconds,
       nowSeconds,
-      nowSeconds
+      nowSeconds,
+      applicationData.idType,
+      applicationData.nextOfKinName,
+      applicationData.nextOfKinPhone,
+      applicationData.nextOfKinRelation,
+      applicationData.refereeName,
+      applicationData.refereePhone,
+      applicationData.guarantorName,
+      applicationData.guarantorPhone,
+      applicationData.guarantorIdNumber,
+      applicationData.guarantorRelation,
+      applicationData.consentTerms ? 1 : 0,
+      applicationData.consentData ? 1 : 0,
+      applicationData.consentTerms && applicationData.consentData ? nowSeconds : null,
+      customerSignaturePath
     ),
     db.prepare("UPDATE devices SET status = 'sold' WHERE id = ? AND status = 'in_stock'").bind(device.id)
   ];

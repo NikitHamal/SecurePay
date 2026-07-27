@@ -3,6 +3,7 @@ package com.touchbase.agent.ui.provisioning
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.data.local.WifiSettingsStore
 import kotlinx.coroutines.delay
@@ -27,8 +28,14 @@ data class ProvisioningUiState(
     val statusText: String = "Awaiting device activation",
     val securityText: String = "EFRP policy will be checked when QR is generated",
     val error: String? = null,
-    val isGenerating: Boolean = false
-)
+    val isGenerating: Boolean = false,
+    val devices: List<Device> = emptyList(),
+    val isLoadingDevices: Boolean = false
+) {
+    /** Enrolled devices (already have an account) — eligible for (re)provisioning. */
+    val enrolledDevices: List<Device>
+        get() = devices.filter { it.status == "sold" }
+}
 
 class ProvisioningViewModel(
     private val repository: SecurePayRepository,
@@ -47,8 +54,30 @@ class ProvisioningViewModel(
     )
     val uiState: StateFlow<ProvisioningUiState> = _uiState.asStateFlow()
 
+    init {
+        refreshDevices()
+    }
+
     fun updateImei(value: String) {
         _uiState.value = _uiState.value.copy(imei = value.trim(), error = null)
+    }
+
+    fun selectDevice(device: Device) {
+        _uiState.value = _uiState.value.copy(imei = device.imei, error = null)
+    }
+
+    /** Loads the dealer inventory so the agent can pick an enrolled device instead of typing its IMEI. */
+    fun refreshDevices() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingDevices = true)
+            repository.listDevices()
+                .onSuccess { list ->
+                    _uiState.value = _uiState.value.copy(devices = list, isLoadingDevices = false)
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(isLoadingDevices = false)
+                }
+        }
     }
 
     fun updateWifiSsid(value: String) {

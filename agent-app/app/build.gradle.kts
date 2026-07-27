@@ -32,8 +32,8 @@ android {
         applicationId = "com.touchbase.agent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.3.1"
+        versionCode = 9
+        versionName = "1.4.0"
 
         buildConfigField("String", "SUPPORT_PHONE", buildConfigString(supportPhone))
         buildConfigField("String", "SUPPORT_WHATSAPP", buildConfigString(supportWhatsapp))
