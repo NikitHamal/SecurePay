@@ -86,34 +86,75 @@
   {#if $portfolioMetrics}
     {@const m = $portfolioMetrics}
 
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="card p-4">
-        <p class="text-xs font-medium text-ink-muted">Active devices</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{$kpis.activeNodes}</p>
-        <p class="mt-0.5 text-xs text-ink-muted">In good standing</p>
+    <div class="grid grid-cols-2 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="card p-5 flex flex-col justify-between transition-colors hover:border-edge-strong">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-ink-muted">Active devices</p>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald/10 text-emerald">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M5 2h14a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V4a2 2 0 012-2z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-2xl font-bold tabular-nums text-ink-primary">{$kpis.activeNodes}</p>
+          <p class="mt-0.5 text-xs text-ink-muted">In good standing</p>
+        </div>
       </div>
-      <div class="card p-4">
-        <p class="text-xs font-medium text-ink-muted">Approaching due</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums text-amber">{$kpis.warningCount}</p>
-        <p class="mt-0.5 text-xs text-ink-muted">Within 24 hours</p>
+
+      <div class="card p-5 flex flex-col justify-between transition-colors hover:border-edge-strong">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-ink-muted">Approaching due</p>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber/10 text-amber">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-2xl font-bold tabular-nums text-amber">{$kpis.warningCount}</p>
+          <p class="mt-0.5 text-xs text-ink-muted">Within 24 hours</p>
+        </div>
       </div>
-      <div class="card p-4">
-        <p class="text-xs font-medium text-ink-muted">Locked / Overdue</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums text-crimson">{$kpis.lockedCount}</p>
-        <p class="mt-0.5 text-xs text-ink-muted">Past due date</p>
+
+      <div class="card p-5 flex flex-col justify-between transition-colors hover:border-edge-strong">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-ink-muted">Locked / Overdue</p>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-crimson/10 text-crimson">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-2xl font-bold tabular-nums text-crimson">{$kpis.lockedCount}</p>
+          <p class="mt-0.5 text-xs text-ink-muted">Past due date</p>
+        </div>
       </div>
-      <div class="card p-4">
-        <p class="text-xs font-medium text-ink-muted">Outstanding</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{formatCurrency(m.totalOutstanding)}</p>
-        <p class="mt-0.5 text-xs text-ink-muted">{m.totalAccounts} financed devices</p>
+
+      <div class="card p-5 flex flex-col justify-between transition-colors hover:border-edge-strong">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-ink-muted">Outstanding</p>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-2xl font-bold tabular-nums text-ink-primary">{formatCurrency(m.totalOutstanding)}</p>
+          <p class="mt-0.5 text-xs text-ink-muted">{m.totalAccounts} financed devices</p>
+        </div>
       </div>
     </div>
 
-    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div class="card p-5">
-        <p class="section-title">Portfolio Health</p>
-        <p class="mt-1 text-xs text-ink-muted">Weighted by status mix + paid ratio</p>
-        <div class="mt-4 flex justify-center">
+    <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div class="card p-5 flex flex-col justify-between">
+        <div>
+          <p class="section-title">Portfolio Health</p>
+          <p class="mt-1 text-xs text-ink-muted">Weighted by status mix + paid ratio</p>
+        </div>
+        <div class="my-auto py-3 flex justify-center">
           <Gauge
             percent={m.health}
             label={m.health >= 70 ? 'Strong' : m.health >= 50 ? 'Watch' : 'At risk'}
@@ -123,7 +164,7 @@
         </div>
       </div>
 
-      <div class="card p-5">
+      <div class="card p-5 flex flex-col justify-between">
         <div class="flex items-center justify-between">
           <div>
             <p class="section-title">Status mix</p>
@@ -131,7 +172,7 @@
           </div>
           <span class="chip">{m.totalAccounts} total</span>
         </div>
-        <div class="mt-4">
+        <div class="my-auto py-3">
           <Donut
             segments={[
               { label: 'Active', value: $kpis.activeNodes, color: '#10B981' },
@@ -148,7 +189,7 @@
         </div>
       </div>
 
-      <div class="card p-5">
+      <div class="card p-5 flex flex-col justify-between">
         <div class="flex items-center justify-between">
           <div>
             <p class="section-title">Daily collections</p>
@@ -159,13 +200,13 @@
             {formatCurrency(m.collectionSeries.slice(-7).reduce((s, x) => s + x.value, 0))} / 7d
           </span>
         </div>
-        <div class="mt-4">
+        <div class="my-auto py-3">
           <AreaChart values={m.collectionSeries} color="#10B981" height={180} />
         </div>
       </div>
     </div>
 
-    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
       <div class="card p-5 lg:col-span-2">
         <div class="flex items-center justify-between">
           <div>

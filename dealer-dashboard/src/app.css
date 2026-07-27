@@ -113,7 +113,7 @@
 
 @layer components {
   .card {
-    @apply rounded-xl border border-edge bg-surface-200 shadow-card;
+    @apply w-full rounded-xl border border-edge bg-surface-200 shadow-card;
   }
 
   .card-hover {

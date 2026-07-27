@@ -333,17 +333,24 @@
   {:else}
     <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
       {#each filteredBranches as branch (branch.id)}
-        <Card>
-          <div class="flex flex-col h-full justify-between">
-            <div>
+        <Card class="h-full">
+          <div class="flex h-full flex-col justify-between gap-4">
+            <div class="space-y-4">
               <div class="flex items-start justify-between gap-3">
-                <div>
-                  <h3 class="text-base font-semibold text-ink-primary leading-snug">{branch.name}</h3>
-                  {#if branch.agencyName}
-                    <p class="text-xs text-ink-muted mt-0.5">
-                      Agency: <span class="text-ink-secondary font-medium">{branch.agencyName}</span>
-                    </p>
-                  {/if}
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald font-semibold text-sm">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-ink-primary leading-tight">{branch.name}</h3>
+                    {#if branch.agencyName}
+                      <p class="text-xs text-ink-muted mt-0.5">
+                        Agency: <span class="text-ink-secondary font-medium">{branch.agencyName}</span>
+                      </p>
+                    {/if}
+                  </div>
                 </div>
                 {#if branch.isActive}
                   <Badge variant="active">Active</Badge>
@@ -352,7 +359,7 @@
                 {/if}
               </div>
 
-              <div class="mt-4 space-y-2 text-xs text-ink-secondary">
+              <div class="rounded-lg bg-surface-100/60 p-3 space-y-2 text-xs text-ink-secondary border border-edge/40">
                 <div class="flex items-center gap-2">
                   <svg class="h-4 w-4 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -379,7 +386,7 @@
               </div>
             </div>
 
-            <div class="mt-5 flex items-center justify-between text-xs">
+            <div class="flex items-center justify-between border-t border-edge pt-3.5 text-xs">
               <span class="text-ink-muted">Assigned Agents</span>
               <span class="font-semibold text-ink-primary flex items-center gap-1">
                 <svg class="h-3.5 w-3.5 text-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
