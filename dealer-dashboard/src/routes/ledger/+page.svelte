@@ -4,14 +4,59 @@
   import TopBar from '$lib/components/layout/TopBar.svelte';
   import Donut from '$lib/components/charts/Donut.svelte';
   import BarChart from '$lib/components/charts/BarChart.svelte';
-  import { listLedger } from '$lib/api/client';
-  import type { LedgerEntry, PaymentMethod } from '$lib/types';
+  import { listLedger, listCustomers } from '$lib/api/client';
+  import type { LedgerEntry, PaymentMethod, Customer } from '$lib/types';
   import { formatCurrency, formatDateTime, formatRelative } from '$lib/utils/format';
 
+  // One rolled-up row in the "Collections by customer" table. Grouping is done
+  // client-side from the flat /api/ledger response (same approach as the agent
+  // app) and joined with /api/accounts for the phone number + repayment progress.
+  interface CustomerGroup {
+    customerId: string;
+    customerName: string;
+    phone: string;
+    total: number;
+    count: number;
+    lastEpoch: number;
+    amountPaid: number;
+    totalLoan: number;
+    hasAccount: boolean;
+    percent: number;
+    wa: string;
+    reminderEncoded: string;
+  }
+
+  // wa.me expects the international number without a leading '+'. Stored numbers
+  // may begin with '0' (local) or already carry the 233 country code.
+  function waDigits(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('233')) return digits;
+    if (digits.startsWith('0')) return '233' + digits.slice(1);
+    return digits;
+  }
+
+  // Warm, non-threatening payment reminder (mirrors the agent app's copy).
+  function reminderText(c: Customer): string {
+    const who = c.customerName?.trim() || 'valued customer';
+    let due: string;
+    if (c.remainingBalance <= 0) {
+      due = 'Your loan is fully settled — thank you for being an excellent customer!';
+    } else if (!c.nextPaymentDueEpochMillis) {
+      due = 'your next instalment is due.';
+    } else if (c.nextPaymentDueEpochMillis < Date.now()) {
+      due = `your instalment of ${formatCurrency(c.dailyRate)} is now due. A quick payment today keeps your phone fully unlocked.`;
+    } else {
+      due = `your instalment of ${formatCurrency(c.dailyRate)} is due on ${formatDateTime(c.nextPaymentDueEpochMillis)}. Staying on track keeps your phone fully unlocked.`;
+    }
+    return `Hello ${who}, this is Touch Base. A friendly reminder that ${due} You're doing great — every payment brings you closer to owning your device outright. Reply or call us if you need any help. Thank you for being a valued customer!`;
+  }
+
   let entries: LedgerEntry[] = [];
+  let customers: Customer[] = [];
   let loading = true;
   let loadError: string | null = null;
   let methodFilter: PaymentMethod | 'ALL' = 'ALL';
+  let expanded: string | null = null;
 
   const paymentMethods: PaymentMethod[] = ['MOBILE_MONEY', 'CARD', 'BANK', 'CASH'];
 
@@ -42,9 +87,47 @@
     return [...map.entries()].map(([label, value]) => ({ label, value }));
   })();
 
+  $: customerById = new Map(customers.map((c) => [c.id, c] as const));
+
+  // Group the (method-filtered) ledger by customer, mirroring the agent app.
+  $: customerGroups = (() => {
+    const map = new Map<string, CustomerGroup>();
+    for (const e of filtered) {
+      const existing = map.get(e.customerId);
+      if (existing) {
+        existing.total += e.amount;
+        existing.count += 1;
+        if (e.dateEpochMillis > existing.lastEpoch) existing.lastEpoch = e.dateEpochMillis;
+        continue;
+      }
+      const account = customerById.get(e.customerId);
+      const amountPaid = account?.amountPaid ?? 0;
+      const totalLoan = account?.totalLoanAmount ?? 0;
+      const progress = totalLoan > 0 ? Math.min(1, amountPaid / totalLoan) : 0;
+      const phone = account?.phoneNumber ?? '';
+      map.set(e.customerId, {
+        customerId: e.customerId,
+        customerName: (account?.customerName || e.customerName || 'Unknown customer').trim(),
+        phone,
+        total: e.amount,
+        count: 1,
+        lastEpoch: e.dateEpochMillis,
+        amountPaid,
+        totalLoan,
+        hasAccount: !!account,
+        percent: totalLoan > 0 ? Math.round(progress * 100) : 0,
+        wa: waDigits(phone),
+        reminderEncoded: account ? encodeURIComponent(reminderText(account)) : ''
+      });
+    }
+    return [...map.values()].sort((a, b) => b.lastEpoch - a.lastEpoch);
+  })();
+
   onMount(async () => {
     try {
-      entries = await listLedger();
+      const [ledger, accts] = await Promise.all([listLedger(), listCustomers()]);
+      entries = ledger;
+      customers = accts;
     } catch (err) {
       loadError = err instanceof Error ? err.message : 'Failed to load ledger';
     } finally {
@@ -187,6 +270,91 @@
       <span class="text-ink-secondary">Total collected: </span>
       <span class="font-semibold text-emerald tabular-nums">{formatCurrency(filtered.reduce((s, e) => s + e.amount, 0))}</span>
     </div>
+  </div>
+
+  <div class="card mt-4 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4">
+      <div>
+        <p class="section-title">Collections by customer</p>
+        <p class="mt-1 text-sm text-ink-secondary">Open a customer to see their payments and repayment progress, then call or message them to pay.</p>
+      </div>
+      <span class="rounded-md bg-surface-100 px-2 py-1 text-2xs text-ink-muted tabular-nums">{customerGroups.length} {customerGroups.length === 1 ? 'customer' : 'customers'}</span>
+    </div>
+    {#if !loading && customerGroups.length === 0}
+      <div class="px-5 pb-6 text-sm text-ink-muted">No customer collections match this filter.</div>
+    {:else if !loading}
+      <div class="overflow-x-auto">
+        <table class="data-table min-w-[860px]">
+          <thead>
+            <tr>
+              <th class="px-4 py-3 font-semibold">Customer</th>
+              <th class="px-4 py-3 font-semibold">Payments</th>
+              <th class="px-4 py-3 text-right font-semibold">Collected</th>
+              <th class="px-4 py-3 font-semibold">Repayment progress</th>
+              <th class="px-4 py-3 font-semibold">Last payment</th>
+              <th class="px-4 py-3 text-right font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each customerGroups as group (group.customerId)}
+              {@const isOpen = expanded === group.customerId}
+              {@const account = customerById.get(group.customerId)}
+              <tr class="border-b border-edge/60">
+                <td class="px-4 py-3">
+                  <div class="text-ink-primary">{group.customerName}</div>
+                  {#if account}<div class="font-mono text-2xs text-ink-muted">{account.imei}</div>{/if}
+                </td>
+                <td class="px-4 py-3 tabular-nums text-ink-secondary">{group.count}</td>
+                <td class="px-4 py-3 text-right font-semibold text-emerald tabular-nums">{formatCurrency(group.total)}</td>
+                <td class="px-4 py-3">
+                  {#if group.hasAccount}
+                    <div class="flex items-center gap-2">
+                      <div class="h-1.5 w-24 overflow-hidden rounded-full bg-surface-100">
+                        <div class="h-full rounded-full bg-emerald" style="width: {group.percent}%"></div>
+                      </div>
+                      <span class="text-2xs text-ink-muted tabular-nums">{group.percent}%</span>
+                    </div>
+                    <div class="text-2xs text-ink-muted tabular-nums">{formatCurrency(group.amountPaid)} of {formatCurrency(group.totalLoan)}</div>
+                  {:else}
+                    <span class="text-2xs text-ink-muted">—</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="text-ink-secondary">{formatRelative(group.lastEpoch)}</div>
+                  <div class="text-2xs text-ink-muted">{formatDateTime(group.lastEpoch)}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <button type="button" class="btn-outline" aria-expanded={isOpen} on:click={() => (expanded = isOpen ? null : group.customerId)}>{isOpen ? 'Hide' : 'View'} payments</button>
+                    {#if group.wa}
+                      <a href="tel:{group.phone}" class="btn-outline">Call</a>
+                      <a href="https://wa.me/{group.wa}?text={group.reminderEncoded}" target="_blank" rel="noopener noreferrer" class="btn-outline">Remind</a>
+                    {/if}
+                  </div>
+                </td>
+              </tr>
+              {#if isOpen}
+                <tr class="border-b border-edge/60 bg-surface-100/40">
+                  <td colspan="6" class="px-4 py-3">
+                    <div class="space-y-2">
+                      {#each filtered.filter((e) => e.customerId === group.customerId) as entry (entry.id)}
+                        <div class="flex items-center justify-between rounded-lg border border-edge/60 bg-surface-100/60 px-3 py-2">
+                          <div>
+                            <div class="text-ink-secondary">{formatDateTime(entry.dateEpochMillis)}</div>
+                            <div class="font-mono text-2xs text-ink-muted">{entry.reference || entry.method}</div>
+                          </div>
+                          <div class="font-semibold text-emerald tabular-nums">{formatCurrency(entry.amount)}</div>
+                        </div>
+                      {/each}
+                    </div>
+                  </td>
+                </tr>
+              {/if}
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
   </div>
 
   <div class="card mt-4 overflow-hidden">

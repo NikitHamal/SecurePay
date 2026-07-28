@@ -32,6 +32,7 @@ import com.touchbase.agent.ui.dashboard.DashboardScreen
 import com.touchbase.agent.ui.enrollment.EnrollmentWizardScreen
 import com.touchbase.agent.ui.inventory.InventoryScreen
 import com.touchbase.agent.ui.ledger.LedgerScreen
+import com.touchbase.agent.ui.ledger.CustomerLedgerScreen
 import com.touchbase.agent.ui.customers.CustomerDetailScreen
 import com.touchbase.agent.ui.customers.CustomersScreen
 import com.touchbase.agent.ui.provisioning.ProvisioningScreen
@@ -228,7 +229,25 @@ fun SecurePayNavHost(
                 onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
                 onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
                 onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
-                onNavigateToMore = { navigateToTab(Screen.More.route) }
+                onNavigateToMore = { navigateToTab(Screen.More.route) },
+                onCustomerClick = { accountId ->
+                    navController.navigate(Screen.CustomerLedger.createRoute(accountId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.CustomerLedger.route,
+            arguments = listOf(navArgument("accountId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val accountId = backStackEntry.arguments?.getString("accountId") ?: return@composable
+            CustomerLedgerScreen(
+                accountId = accountId,
+                repository = repository,
+                onBack = { navController.popBackStack() },
+                onOpenAccount = { id ->
+                    navController.navigate(Screen.CustomerDetail.createRoute(id))
+                }
             )
         }
 
