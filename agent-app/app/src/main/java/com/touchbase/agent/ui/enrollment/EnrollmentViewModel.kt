@@ -169,6 +169,34 @@ class EnrollmentViewModel(
         state.copy(stepIndex = index.coerceIn(0, EnrollmentStep.COUNT - 1))
     }
 
+    /** Captures everything needed to restore the wizard exactly as the agent left it. */
+    fun snapshot(): EnrollmentDraftSnapshot {
+        val s = _uiState.value
+        return EnrollmentDraftSnapshot(
+            stepIndex = s.stepIndex,
+            draft = s.draft,
+            dailyRateInput = s.dailyRateInput,
+            totalAmountInput = s.totalAmountInput,
+            termDaysInput = s.termDaysInput,
+            downPaymentInput = s.downPaymentInput,
+            savedAt = System.currentTimeMillis()
+        )
+    }
+
+    /** Restores a previously saved snapshot in a single atomic state update. */
+    fun restore(snapshot: EnrollmentDraftSnapshot) {
+        _uiState.update {
+            it.copy(
+                stepIndex = snapshot.stepIndex.coerceIn(0, EnrollmentStep.COUNT - 1),
+                draft = snapshot.draft,
+                dailyRateInput = snapshot.dailyRateInput,
+                totalAmountInput = snapshot.totalAmountInput,
+                termDaysInput = snapshot.termDaysInput,
+                downPaymentInput = snapshot.downPaymentInput
+            )
+        }
+    }
+
     /** The exact agreement text built from the current draft (shown before signing + sent to the server). */
     fun buildAgreement(): String {
         val s = _uiState.value
