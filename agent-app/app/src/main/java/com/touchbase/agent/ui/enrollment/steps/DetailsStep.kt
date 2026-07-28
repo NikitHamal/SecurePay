@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 import com.touchbase.agent.ui.enrollment.GhanaGeo
@@ -30,14 +29,13 @@ fun DetailsStep(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        WizardTextField(
+        WizardDateField(
             label = "Date of Birth",
             value = draft.dateOfBirth,
             onValueChange = onDateOfBirthChange,
-            placeholder = "DD/MM/YYYY",
-            keyboardType = KeyboardType.Number,
+            placeholder = "Select date",
             isError = draft.dateOfBirth.isNotEmpty() && !state.isDobValid,
-            supportingText = "Format: 08/06/2003"
+            supportingText = "Tap to pick a date"
         )
 
         WizardDropdown(

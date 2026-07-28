@@ -75,7 +75,7 @@ class EnrollmentViewModel(
     fun updateNationalId(v: String) = updateDraft { it.copy(nationalId = v) }
     fun updatePhone(v: String) = updateDraft { it.copy(phoneNumber = v) }
     fun updateOtherPhone(v: String) = updateDraft { it.copy(otherPhone = v) }
-    fun updateDateOfBirth(v: String) = updateDraft { it.copy(dateOfBirth = formatDobInput(v)) }
+    fun updateDateOfBirth(v: String) = updateDraft { it.copy(dateOfBirth = v) }
     fun updateMaritalStatus(v: String) = updateDraft { it.copy(maritalStatus = v) }
     fun updateEmploymentStatus(v: String) = updateDraft { it.copy(employmentStatus = v) }
     fun updateGender(v: String) = updateDraft { it.copy(gender = v) }
@@ -286,16 +286,5 @@ class EnrollmentViewModel(
 
     companion object {
         private const val IMEI_LENGTH = 15
-
-        /** Auto-inserts slashes while the agent types a date: dd/MM/yyyy. */
-        private fun formatDobInput(value: String): String {
-            val digits = value.filter { it.isDigit() }.take(8)
-            val sb = StringBuilder()
-            digits.forEachIndexed { index, c ->
-                if (index == 2 || index == 4) sb.append('/')
-                sb.append(c)
-            }
-            return sb.toString()
-        }
     }
 }

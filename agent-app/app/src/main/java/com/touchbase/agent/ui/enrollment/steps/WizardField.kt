@@ -1,5 +1,6 @@
 package com.touchbase.agent.ui.enrollment.steps
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,11 +14,18 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +39,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * M-KOPA "Start Application" field atoms: notched-outline boxes with the
@@ -252,3 +264,112 @@ fun WizardPhoneField(
         modifier = modifier.fillMaxWidth()
     )
 }
+
+/**
+ * Date-of-birth field backed by the Material 3 date picker so the agent never
+ * types a date by hand. The stored + wire format stays dd/MM/yyyy (the picker
+ * only changes the *input method*); we convert to/from epoch millis with
+ * java.time in the device's default zone (Ghana is UTC+0, so no DST surprises).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WizardDateField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    isError: Boolean = false,
+    supportingText: String? = null,
+    enabled: Boolean = true
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    val initialMillis = dobToMillis(value)
+    val pickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        yearRange = DOB_YEAR_RANGE
+    )
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        label = { Text(label) },
+        placeholder = if (placeholder != null) {
+            { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)) }
+        } else {
+            null
+        },
+        singleLine = true,
+        enabled = enabled,
+        isError = isError,
+        supportingText = {
+            if (supportingText != null) {
+                Text(
+                    supportingText,
+                    color = if (isError) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        trailingIcon = {
+            IconButton(onClick = { if (enabled) showPicker = true }, enabled = enabled) {
+                Icon(
+                    imageVector = Icons.Filled.DateRange,
+                    contentDescription = "Pick $label",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        textStyle = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+        colors = wizardFieldColors(),
+        shape = WizardFieldShape,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { showPicker = true }
+    )
+
+    if (showPicker) {
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { onValueChange(millisToDob(it)) }
+                        showPicker = false
+                    },
+                    enabled = pickerState.selectedDateMillis != null
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
+/** Selectable birth years — mirrors the dashboard's native DOB bounds (1930..2012). */
+private val DOB_YEAR_RANGE = 1930..2012
+
+/** dd/MM/yyyy -> start-of-day epoch millis, or null when blank / unparseable. */
+private fun dobToMillis(value: String): Long? {
+    val trimmed = value.trim()
+    if (trimmed.isEmpty()) return null
+    return runCatching {
+        LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+    }.getOrNull()
+}
+
+/** start-of-day epoch millis -> dd/MM/yyyy. */
+private fun millisToDob(millis: Long): String =
+    Instant.ofEpochMilli(millis)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
