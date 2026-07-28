@@ -31,6 +31,7 @@ import com.touchbase.agent.ui.auth.RegisterScreen
 import com.touchbase.agent.ui.dashboard.DashboardScreen
 import com.touchbase.agent.ui.enrollment.EnrollmentWizardScreen
 import com.touchbase.agent.ui.inventory.InventoryScreen
+import com.touchbase.agent.ui.ledger.CustomerPaymentScreen
 import com.touchbase.agent.ui.ledger.LedgerScreen
 import com.touchbase.agent.ui.customers.CustomerDetailScreen
 import com.touchbase.agent.ui.customers.CustomersScreen
@@ -221,6 +222,18 @@ fun SecurePayNavHost(
             )
         }
 
+        composable(
+            route = Screen.CustomerPayments.route,
+            arguments = listOf(navArgument("accountId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val accountId = backStackEntry.arguments?.getString("accountId") ?: return@composable
+            CustomerPaymentScreen(
+                accountId = accountId,
+                repository = repository,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.Ledger.route) {
             LedgerScreen(
                 repository = repository,
@@ -228,7 +241,8 @@ fun SecurePayNavHost(
                 onNavigateToHome = { navigateToTab(Screen.Dashboard.route) },
                 onNavigateToCustomers = { navigateToTab(Screen.Customers.route) },
                 onNavigateToInventory = { navigateToTab(Screen.Inventory.route) },
-                onNavigateToMore = { navigateToTab(Screen.More.route) }
+                onNavigateToMore = { navigateToTab(Screen.More.route) },
+                onNavigateToCustomerPayments = { accountId -> navController.navigate(Screen.CustomerPayments.createRoute(accountId)) }
             )
         }
 

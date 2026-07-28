@@ -15,6 +15,9 @@ sealed class Screen(val route: String) {
     }
     data object Enrollment : Screen("enrollment")
     data object Inventory : Screen("inventory")
+    data object CustomerPayments : Screen("customer-payments/{accountId}") {
+        fun createRoute(accountId: String) = "customer-payments/${android.net.Uri.encode(accountId)}"
+    }
     data object Ledger : Screen("ledger")
     data object Provisioning : Screen("provisioning?imei={imei}") {
         fun createRoute(imei: String = "") = "provisioning?imei=${Uri.encode(imei)}"

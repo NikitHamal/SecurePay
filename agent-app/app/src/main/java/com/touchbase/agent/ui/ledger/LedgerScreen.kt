@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -67,10 +67,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.R
+import com.touchbase.agent.data.model.Account
 import com.touchbase.agent.data.model.LedgerEntry
 import com.touchbase.agent.data.model.formatAmount
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.SecurePayBottomNavBar
+import com.touchbase.agent.ui.navigation.Screen
 import com.touchbase.agent.ui.theme.SecurePayAgentTheme
 import com.touchbase.agent.ui.theme.isLight
 import kotlinx.coroutines.launch
@@ -87,10 +89,12 @@ fun LedgerScreen(
     onNavigateToCustomers: () -> Unit,
     onNavigateToInventory: () -> Unit,
     onNavigateToMore: () -> Unit,
+    onNavigateToCustomerPayments: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isPreview = LocalInspectionMode.current
     var entries by remember { mutableStateOf<List<LedgerEntry>>(emptyList()) }
+    var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
     var isLoading by remember { mutableStateOf(!isPreview) }
     var error by remember { mutableStateOf<String?>(null) }
     var methodFilter by remember { mutableStateOf<String?>(null) }
@@ -99,18 +103,28 @@ fun LedgerScreen(
     fun load() {
         if (isPreview) {
             entries = listOf(
-                LedgerEntry(id = "1", customerName = "John Doe", amount = 1500, method = "mobile_money", reference = "TRX123", dateEpochMillis = System.currentTimeMillis()),
-                LedgerEntry(id = "2", customerName = "Jane Smith", amount = 500, method = "cash", dateEpochMillis = System.currentTimeMillis() - 86400000)
+                LedgerEntry(id = "1", accountId = "a1", customerName = "John Doe", amount = 1500, method = "mobile_money", reference = "TRX123", dateEpochMillis = System.currentTimeMillis()),
+                LedgerEntry(id = "2", accountId = "a2", customerName = "Jane Smith", amount = 500, method = "cash", dateEpochMillis = System.currentTimeMillis() - 86400000)
             )
+            accounts = listOf(
+                Account(id = "a1", customerName = "John Doe", phoneNumber = "+233501234567", totalLoanAmount = 120000, amountPaid = 1500, remainingBalance = 118500, termDays = 90, dailyRate = 500, nextPaymentDueEpochMillis = System.currentTimeMillis() + 86400000L * 3),
+                Account(id = "a2", customerName = "Jane Smith", phoneNumber = "+233509876543", totalLoanAmount = 80000, amountPaid = 500, remainingBalance = 79500, termDays = 60, dailyRate = 300, nextPaymentDueEpochMillis = System.currentTimeMillis() + 86400000L * 10)
+            )
+            isLoading = false
             return
         }
         isLoading = true
         scope.launch {
-            val result = repository?.listLedger(methodFilter)
+            val ledgerResult = repository?.listLedger(methodFilter)
+            val accountsResult = repository?.listAccounts()
             isLoading = false
-            result?.fold(
+            ledgerResult?.fold(
                 onSuccess = { entries = it },
                 onFailure = { error = it.message }
+            )
+            accountsResult?.fold(
+                onSuccess = { accounts = it },
+                onFailure = { /* ignore */ }
             )
         }
     }
@@ -119,6 +133,22 @@ fun LedgerScreen(
 
     val totalCollected = entries.sumOf { it.amount }
     val mobileMoneyCollected = entries.filter { it.method == "mobile_money" }.sumOf { it.amount }
+
+    // Group entries by accountId and join account info
+    val grouped = entries.groupBy { it.accountId }.mapNotNull { (accountId, list) ->
+        val acc = accounts.find { it.id == accountId }
+        val totalPaid = list.sumOf { it.amount }
+        val progress = if (acc != null && acc.totalLoanAmount > 0) {
+            acc.amountPaid.toFloat() / acc.totalLoanAmount.toFloat()
+        } else 0f
+        CustomerGroup(
+            accountId = accountId,
+            customerName = acc?.customerName ?: list.firstOrNull()?.customerName ?: "Unknown",
+            totalPaid = totalPaid,
+            progress = progress,
+            account = acc
+        )
+    }.sortedByDescending { it.totalPaid }
 
     val view = LocalView.current
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -186,7 +216,7 @@ fun LedgerScreen(
                         trackColor = MaterialTheme.colorScheme.surface
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${entries.size} payment${if (entries.size == 1) "" else "s"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${grouped.size} customer${if (grouped.size == 1) "" else "s"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Mobile money ${formatAmount(mobileMoneyCollected)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -236,7 +266,7 @@ fun LedgerScreen(
                 ) {
                     Text(error ?: "Error", color = MaterialTheme.colorScheme.error)
                 }
-            } else if (entries.isEmpty()) {
+            } else if (grouped.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -247,12 +277,16 @@ fun LedgerScreen(
                     Text("No payments recorded", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(vertical = 8.dp),
+                Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(entries, key = { it.id }) { entry ->
-                        LedgerEntryCard(entry = entry)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    grouped.forEach { group ->
+                        CustomerLedgerCard(
+                            group = group,
+                            onClick = { group.account?.id?.let { onNavigateToCustomerPayments(it) } }
+                        )
                     }
                 }
             }
@@ -260,51 +294,62 @@ fun LedgerScreen(
     }
 }
 
+data class CustomerGroup(
+    val accountId: String,
+    val customerName: String,
+    val totalPaid: Int,
+    val progress: Float,
+    val account: Account?
+)
+
 @Composable
-private fun LedgerEntryCard(entry: LedgerEntry, modifier: Modifier = Modifier) {
+private fun CustomerLedgerCard(group: CustomerGroup, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
+        onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = entry.customerName,
+                    text = group.customerName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = formatAmount(entry.amount),
+                    text = formatAmount(group.totalPaid),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val displayMethod = entry.method.replace("_", " ").uppercase()
-                val displayText = if (entry.reference.isNotBlank()) {
-                    "$displayMethod · ${entry.reference}"
+            LinearProgressIndicator(
+                progress = group.progress.coerceIn(0f, 1f),
+                modifier = Modifier.fillMaxWidth().height(6.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surface
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                val acc = group.account
+                val progressText = if (acc != null && acc.totalLoanAmount > 0) {
+                    "${formatAmount(acc.amountPaid)} / ${formatAmount(acc.totalLoanAmount)}"
                 } else {
-                    displayMethod
+                    formatAmount(group.totalPaid)
                 }
                 Text(
-                    text = displayText,
+                    text = progressText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = formatDate(entry.dateEpochMillis),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (acc != null) {
+                    Text(
+                        text = "${(group.progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

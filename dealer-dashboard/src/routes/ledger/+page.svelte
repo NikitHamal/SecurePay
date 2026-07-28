@@ -31,6 +31,16 @@
   }));
   $: topEntry = entries[0];
   $: averageAmount = entries.length > 0 ? total / entries.length : 0;
+  $: customers = (() => {
+    const map = new Map<string, { name: string; total: number; count: number }>();
+    for (const e of entries) {
+      const existing = map.get(e.customerName) ?? { name: e.customerName, total: 0, count: 0 };
+      existing.total += e.amount;
+      existing.count += 1;
+      map.set(e.customerName, existing);
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total);
+  })();
 
   $: dailyTotals = (() => {
     const map = new Map<string, number>();
@@ -191,58 +201,27 @@
 
   <div class="card mt-4 overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="data-table min-w-[760px]">
+      <table class="data-table min-w-[640px]">
         <thead>
           <tr>
-            <th class="px-4 py-3 font-semibold">Date</th>
             <th class="px-4 py-3 font-semibold">Customer</th>
-            <th class="px-4 py-3 font-semibold">Reference</th>
-            <th class="px-4 py-3 font-semibold">Method</th>
-            <th class="px-4 py-3 text-right font-semibold">Amount</th>
+            <th class="px-4 py-3 text-right font-semibold">Total Paid</th>
+            <th class="px-4 py-3 text-right font-semibold">Payments</th>
           </tr>
         </thead>
         <tbody>
-          {#each filtered as entry (entry.id)}
+          {#each customers as c (c.name)}
             <tr class="border-b border-edge/60 last:border-b-0 transition-colors hover:bg-hover">
               <td class="px-4 py-3">
-                <div class="text-ink-secondary">{formatDateTime(entry.dateEpochMillis)}</div>
-                <div class="text-2xs text-ink-muted">{formatRelative(entry.dateEpochMillis)}</div>
+                <div class="text-ink-primary font-medium">{c.name}</div>
               </td>
-              <td class="px-4 py-3">
-                <div class="text-ink-primary">{entry.customerName}</div>
-                <div class="font-mono text-2xs text-ink-muted">{entry.imei}</div>
-              </td>
-              <td class="px-4 py-3 font-mono text-2xs text-ink-muted">{entry.reference}</td>
-              <td class="px-4 py-3">
-                <span class={methodStyles[entry.method].chip}>
-                  <span class="h-1.5 w-1.5 rounded-full" style="background: {methodStyles[entry.method].color};"></span>
-                  {methodStyles[entry.method].label}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-right">
-                <div class="font-semibold text-emerald tabular-nums">{formatCurrency(entry.amount)}</div>
-              </td>
+              <td class="px-4 py-3 text-right font-semibold text-emerald tabular-nums">{formatCurrency(c.total)}</td>
+              <td class="px-4 py-3 text-right text-sm text-ink-secondary">{c.count}</td>
             </tr>
           {/each}
-
-          {#if !loading && filtered.length === 0}
+          {#if !loading && customers.length === 0}
             <tr>
-              <td colspan="5" class="px-4 py-14 text-center">
-                <div class="mx-auto flex max-w-xs flex-col items-center gap-2">
-                  <span class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-100 text-ink-muted">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                      <path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" />
-                    </svg>
-                  </span>
-                  <p class="text-sm text-ink-secondary">No transactions match this filter.</p>
-                </div>
-              </td>
-            </tr>
-          {/if}
-
-          {#if loading}
-            <tr>
-              <td colspan="5" class="px-4 py-14 text-center text-ink-secondary"> Loading ledger… </td>
+              <td colspan="3" class="px-4 py-14 text-center text-sm text-ink-muted">No payments recorded.</td>
             </tr>
           {/if}
         </tbody>
