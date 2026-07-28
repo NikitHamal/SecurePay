@@ -4,11 +4,12 @@
   import TopBar from '$lib/components/layout/TopBar.svelte';
   import Donut from '$lib/components/charts/Donut.svelte';
   import BarChart from '$lib/components/charts/BarChart.svelte';
-  import { listLedger } from '$lib/api/client';
-  import type { LedgerEntry, PaymentMethod } from '$lib/types';
+  import { listLedger, listCustomers } from '$lib/api/client';
+  import type { LedgerEntry, PaymentMethod, Customer } from '$lib/types';
   import { formatCurrency, formatDateTime, formatRelative } from '$lib/utils/format';
 
   let entries: LedgerEntry[] = [];
+  let customers: Customer[] = [];
   let loading = true;
   let loadError: string | null = null;
   let methodFilter: PaymentMethod | 'ALL' = 'ALL';
@@ -32,6 +33,21 @@
   $: topEntry = entries[0];
   $: averageAmount = entries.length > 0 ? total / entries.length : 0;
 
+  $: groupedCustomers = (() => {
+    const groups = new Map<string, { name: string; totalPaid: number; payments: LedgerEntry[] }>();
+    for (const entry of filtered) {
+      const key = entry.customerId || entry.customerName;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.totalPaid += entry.amount;
+        existing.payments.push(entry);
+      } else {
+        groups.set(key, { name: entry.customerName, totalPaid: entry.amount, payments: [entry] });
+      }
+    }
+    return [...groups.entries()].map(([key, data]) => ({ id: key, ...data }));
+  })();
+
   $: dailyTotals = (() => {
     const map = new Map<string, number>();
     for (const e of entries) {
@@ -44,7 +60,10 @@
 
   onMount(async () => {
     try {
-      entries = await listLedger();
+      [entries, customers] = await Promise.all([
+        listLedger(),
+        listCustomers()
+      ]);
     } catch (err) {
       loadError = err instanceof Error ? err.message : 'Failed to load ledger';
     } finally {
@@ -186,6 +205,29 @@
     <div class="ml-auto text-sm">
       <span class="text-ink-secondary">Total collected: </span>
       <span class="font-semibold text-emerald tabular-nums">{formatCurrency(filtered.reduce((s, e) => s + e.amount, 0))}</span>
+    </div>
+  </div>
+
+  <div class="card mt-6 overflow-hidden">
+    <div class="p-5 border-b border-edge/60">
+      <h3 class="text-lg font-semibold text-ink-primary">Customers</h3>
+      <p class="text-sm text-ink-secondary">Grouped by customer with their total collected payments.</p>
+    </div>
+    <div class="divide-y divide-edge/40">
+      {#each groupedCustomers as group (group.id)}
+        <a href="/customers/{group.id}" class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-hover">
+          <div>
+            <p class="font-semibold text-ink-primary">{group.name}</p>
+            <p class="text-xs text-ink-muted">{group.payments.length} payment{group.payments.length === 1 ? '' : 's'}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-emerald tabular-nums">{formatCurrency(group.totalPaid)}</p>
+          </div>
+        </a>
+      {/each}
+      {#if groupedCustomers.length === 0}
+        <div class="px-5 py-6 text-center text-sm text-ink-muted">No customer payments found.</div>
+      {/if}
     </div>
   </div>
 
