@@ -316,7 +316,12 @@
       <span class="mb-1 block text-xs font-medium text-ink-secondary">Ad image</span>
       {#if imagePreview}
         <div class="mb-2 overflow-hidden rounded-lg border border-edge bg-surface-100/40">
-          <img src={imagePreview} alt="Ad preview" class="max-h-40 w-full object-contain" />
+          <img
+            src={imagePreview}
+            alt="Ad preview"
+            class="max-h-40 w-full object-contain"
+            on:error={() => { existingR2Key = null; }}
+          />
         </div>
       {/if}
       <div class="flex flex-wrap items-center gap-2">

@@ -179,7 +179,9 @@ private fun resolveAdImageUrl(ad: AdModel): String? {
     return if (ref.startsWith("http://", ignoreCase = true) || ref.startsWith("https://", ignoreCase = true)) {
         ref
     } else {
-        BuildConfig.API_BASE_URL.trimEnd('/') + "/ads/" + ad.id + "/image"
+        val base = BuildConfig.API_BASE_URL.trimEnd('/')
+        val path = if (base.endsWith("/api")) "/ads/" else "/api/ads/"
+        base + path + ad.id + "/image"
     }
 }
 
