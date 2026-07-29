@@ -1,6 +1,7 @@
 package com.touchbase.agent.ui.enrollment
 
 import com.touchbase.agent.data.model.Device
+import kotlinx.serialization.Serializable
 
 /**
  * The M-KOPA "Start Application" flow — one small focus per screen, grouped
@@ -51,6 +52,7 @@ sealed interface DeviceLookupStatus {
     data object AlreadySold : DeviceLookupStatus
 }
 
+@Serializable
 data class EnrollmentDraft(
     // Customer information
     val firstName: String = "",
@@ -100,6 +102,23 @@ data class EnrollmentDraft(
     val customerName: String
         get() = "$firstName $surname".replace(Regex("\\s+"), " ").trim()
 }
+
+/**
+ * A point-in-time snapshot of the wizard, persisted by [com.touchbase.agent.data.local.EnrollmentDraftStore]
+ * for "Save & continue later". The four *Input strings are stored alongside the
+ * draft so the Offer/Loan step's text fields restore exactly (they drive the
+ * step's validity, not the draft's pesewa values).
+ */
+@Serializable
+data class EnrollmentDraftSnapshot(
+    val stepIndex: Int = 0,
+    val draft: EnrollmentDraft = EnrollmentDraft(),
+    val dailyRateInput: String = "",
+    val totalAmountInput: String = "",
+    val termDaysInput: String = "",
+    val downPaymentInput: String = "",
+    val savedAt: Long = 0L
+)
 
 data class EnrollmentUiState(
     val stepIndex: Int = 0,

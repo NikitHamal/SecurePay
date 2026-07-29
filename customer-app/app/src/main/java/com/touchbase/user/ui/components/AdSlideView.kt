@@ -47,6 +47,18 @@ import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import com.touchbase.user.BuildConfig
+import java.util.concurrent.TimeUnit
 
 /**
  * A horizontal slide view for displaying advertisements.
@@ -143,6 +155,61 @@ fun AdSlideView(
 }
 
 /**
+ * Plain, interceptor-free HTTP client used only to fetch ad artwork. The public
+ * /api/ads/{id}/image route is auth- and HMAC-free (it is not in the device-HMAC
+ * allow-list and the JWT hook is additive), so unsigned GETs succeed even before
+ * the device is provisioned. No HMAC signing, no bearer token.
+ */
+private val adImageClient: OkHttpClient by lazy {
+    OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
+}
+
+/**
+ * Resolve an ad image reference to a loadable URL. External http(s) links are
+ * used verbatim. Uploaded assets are stored server-side as R2 object keys (i.e.
+ * a non-http string) and are served by the public /api/ads/{id}/image route, so
+ * for those we build the route URL from the ad id rather than the stored key.
+ */
+private fun resolveAdImageUrl(ad: AdModel): String? {
+    val ref = ad.imageUrl?.trim().takeIf { it.isNotEmpty() } ?: return null
+    return if (ref.startsWith("http://", ignoreCase = true) || ref.startsWith("https://", ignoreCase = true)) {
+        ref
+    } else {
+        BuildConfig.API_BASE_URL.trimEnd('/') + "/ads/" + ad.id + "/image"
+    }
+}
+
+/**
+ * Loads the ad artwork off the main thread. Returns null while loading or if the
+ * fetch/decode fails, so the caller can fall back to the branded placeholder.
+ */
+@Composable
+private fun rememberAdImage(ad: AdModel): Bitmap? {
+    var bitmap by remember(ad.id, ad.imageUrl) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(ad.id, ad.imageUrl) {
+        val url = resolveAdImageUrl(ad) ?: return@LaunchedEffect
+        val decoded = withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder().url(url).build()
+                adImageClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    val body = response.body ?: return@withContext null
+                    BitmapFactory.decodeStream(body.byteStream())
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+        bitmap = decoded
+    }
+    return bitmap
+}
+
+/**
  * Individual ad card display.
  */
 @Composable
@@ -151,6 +218,7 @@ private fun AdCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val bitmap = rememberAdImage(ad)
     Card(
         modifier = modifier
             .aspectRatio(16f / 9f)
@@ -158,55 +226,102 @@ private fun AdCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Gold.copy(alpha = 0.12f))
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Ad icon/placeholder
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (bitmap != null) {
+                // Artwork fills the card; a bottom scrim keeps the copy legible.
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = ad.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                            )
+                        )
+                )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = ad.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Start
+                    )
+                    if (ad.description.isNotBlank()) {
+                        Text(
+                            text = ad.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.85f),
+                            textAlign = TextAlign.Start,
+                            maxLines = 2
+                        )
+                    }
+                    if (!ad.linkUrl.isNullOrBlank()) {
+                        Text(
+                            text = "Tap to learn more",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Gold,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            } else {
+                // No artwork (or it failed to load): the original branded card.
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = Gold,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                
-                // Ad title
-                Text(
-                    text = ad.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center
-                )
-                
-                // Ad description
-                Text(
-                    text = ad.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2
-                )
-                
-                // Link indicator if URL is present
-                if (!ad.linkUrl.isNullOrBlank()) {
-                    Text(
-                        text = "Tap to learn more",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Gold,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.Info,
+                                contentDescription = null,
+                                tint = Gold,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Text(
+                            text = ad.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = ad.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2
+                        )
+                        if (!ad.linkUrl.isNullOrBlank()) {
+                            Text(
+                                text = "Tap to learn more",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Gold,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -75,7 +75,7 @@ class EnrollmentViewModel(
     fun updateNationalId(v: String) = updateDraft { it.copy(nationalId = v) }
     fun updatePhone(v: String) = updateDraft { it.copy(phoneNumber = v) }
     fun updateOtherPhone(v: String) = updateDraft { it.copy(otherPhone = v) }
-    fun updateDateOfBirth(v: String) = updateDraft { it.copy(dateOfBirth = formatDobInput(v)) }
+    fun updateDateOfBirth(v: String) = updateDraft { it.copy(dateOfBirth = v) }
     fun updateMaritalStatus(v: String) = updateDraft { it.copy(maritalStatus = v) }
     fun updateEmploymentStatus(v: String) = updateDraft { it.copy(employmentStatus = v) }
     fun updateGender(v: String) = updateDraft { it.copy(gender = v) }
@@ -167,6 +167,34 @@ class EnrollmentViewModel(
 
     fun goToStep(index: Int) = _uiState.update { state ->
         state.copy(stepIndex = index.coerceIn(0, EnrollmentStep.COUNT - 1))
+    }
+
+    /** Captures everything needed to restore the wizard exactly as the agent left it. */
+    fun snapshot(): EnrollmentDraftSnapshot {
+        val s = _uiState.value
+        return EnrollmentDraftSnapshot(
+            stepIndex = s.stepIndex,
+            draft = s.draft,
+            dailyRateInput = s.dailyRateInput,
+            totalAmountInput = s.totalAmountInput,
+            termDaysInput = s.termDaysInput,
+            downPaymentInput = s.downPaymentInput,
+            savedAt = System.currentTimeMillis()
+        )
+    }
+
+    /** Restores a previously saved snapshot in a single atomic state update. */
+    fun restore(snapshot: EnrollmentDraftSnapshot) {
+        _uiState.update {
+            it.copy(
+                stepIndex = snapshot.stepIndex.coerceIn(0, EnrollmentStep.COUNT - 1),
+                draft = snapshot.draft,
+                dailyRateInput = snapshot.dailyRateInput,
+                totalAmountInput = snapshot.totalAmountInput,
+                termDaysInput = snapshot.termDaysInput,
+                downPaymentInput = snapshot.downPaymentInput
+            )
+        }
     }
 
     /** The exact agreement text built from the current draft (shown before signing + sent to the server). */
@@ -286,16 +314,5 @@ class EnrollmentViewModel(
 
     companion object {
         private const val IMEI_LENGTH = 15
-
-        /** Auto-inserts slashes while the agent types a date: dd/MM/yyyy. */
-        private fun formatDobInput(value: String): String {
-            val digits = value.filter { it.isDigit() }.take(8)
-            val sb = StringBuilder()
-            digits.forEachIndexed { index, c ->
-                if (index == 2 || index == 4) sb.append('/')
-                sb.append(c)
-            }
-            return sb.toString()
-        }
     }
 }

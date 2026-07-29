@@ -22,6 +22,9 @@ export async function createAd(data: {
   title: string;
   description?: string;
   imageUrl?: string | null;
+  // Base64 data-URL of a freshly uploaded image. When present the server stores
+  // the bytes in R2 and keeps the served key in image_url (imageUrl is ignored).
+  imageData?: string | null;
   linkUrl?: string | null;
   isActive?: boolean;
   order?: number;
@@ -42,6 +45,9 @@ export async function updateAd(id: string, data: {
   title: string;
   description?: string;
   imageUrl?: string | null;
+  // Base64 data-URL of a freshly uploaded image. When present the server stores
+  // the bytes in R2 and keeps the served key in image_url (imageUrl is ignored).
+  imageData?: string | null;
   linkUrl?: string | null;
   isActive?: boolean;
   order?: number;

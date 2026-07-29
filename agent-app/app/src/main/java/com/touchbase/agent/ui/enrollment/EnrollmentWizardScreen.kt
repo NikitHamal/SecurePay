@@ -80,6 +80,19 @@ import com.touchbase.agent.ui.enrollment.steps.IdentityStep
 import com.touchbase.agent.ui.enrollment.steps.IntroStep
 import com.touchbase.agent.ui.enrollment.steps.LocationStep
 import com.touchbase.agent.ui.enrollment.steps.ProductStep
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.touchbase.agent.data.local.EnrollmentDraftStore
+import kotlinx.coroutines.launch
 
 /**
  * M-KOPA "Start Application" flow, Touch Base edition.
@@ -106,6 +119,50 @@ fun EnrollmentWizardScreen(
         }
     }
 
+    val context = LocalContext.current
+    val draftStore = remember(context) { EnrollmentDraftStore(context.applicationContext) }
+    val scope = rememberCoroutineScope()
+
+    var showOverflowMenu by remember { mutableStateOf(false) }
+    var showExitConfirm by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
+    var showResumeConfirm by remember { mutableStateOf(false) }
+    var pendingSnapshot by remember { mutableStateOf<EnrollmentDraftSnapshot?>(null) }
+
+    // Offer to resume a "Save & continue later" draft the moment the wizard opens.
+    LaunchedEffect(Unit) {
+        val saved = draftStore.load()
+        if (saved != null) {
+            pendingSnapshot = saved
+            showResumeConfirm = true
+        }
+    }
+
+    // A successful submission invalidates any saved draft.
+    LaunchedEffect(state.submission) {
+        if (state.submission is SubmissionState.Success) draftStore.clear()
+    }
+
+    fun saveAndContinueLater() {
+        scope.launch {
+            draftStore.save(viewModel.snapshot())
+            Toast.makeText(context, "Saved. You can resume this application later.", Toast.LENGTH_SHORT).show()
+            onCancel()
+        }
+    }
+
+    fun discardAndExit() {
+        scope.launch {
+            draftStore.clear()
+            onCancel()
+        }
+    }
+
+    // The Android system back gesture/button is intentionally disabled so a
+    // half-finished application can never be lost to an accidental swipe. The
+    // on-screen arrows (and the top-bar menu) are the only way to navigate.
+    BackHandler(enabled = state.submission !is SubmissionState.Success) { /* swallow */ }
+
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -117,6 +174,81 @@ fun EnrollmentWizardScreen(
             window.navigationBarColor = backgroundColor.toArgb()
             WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.isLight()
         }
+    }
+
+    // Resume a previously saved ("continue later") application, or start fresh.
+    if (showResumeConfirm) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Resume application?") },
+            text = { Text("You have an unfinished application saved on this device. Continue where you left off, or start a new one?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingSnapshot?.let { viewModel.restore(it) }
+                        pendingSnapshot = null
+                        showResumeConfirm = false
+                    }
+                ) { Text("Resume") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch { draftStore.clear() }
+                        pendingSnapshot = null
+                        showResumeConfirm = false
+                    }
+                ) { Text("Start new") }
+            }
+        )
+    }
+
+    // First-screen arrow: choose between discarding, saving for later, or staying.
+    if (showExitConfirm) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirm = false },
+            title = { Text("Leave application?") },
+            text = { Text("Your progress is not submitted yet. Save it to finish later, or discard it.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitConfirm = false
+                        saveAndContinueLater()
+                    }
+                ) { Text("Save & continue later") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            showExitConfirm = false
+                            showDiscardConfirm = true
+                        }
+                    ) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = { showExitConfirm = false }) { Text("Cancel") }
+                }
+            }
+        )
+    }
+
+    // Final guard before throwing an in-progress application away.
+    if (showDiscardConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirm = false },
+            title = { Text("Discard application?") },
+            text = { Text("This permanently deletes the in-progress application. This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDiscardConfirm = false
+                        discardAndExit()
+                    }
+                ) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Scaffold(
@@ -133,12 +265,50 @@ fun EnrollmentWizardScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onCancel) {
+                    IconButton(
+                        onClick = {
+                            when {
+                                state.submission is SubmissionState.Success -> onCancel()
+                                state.isFirstStep -> showExitConfirm = true
+                                else -> viewModel.prevStep()
+                            }
+                        }
+                    ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Cancel",
+                            contentDescription = "Back",
                             tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                },
+                actions = {
+                    if (state.submission !is SubmissionState.Success) {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "More options",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Save & continue later") },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    saveAndContinueLater()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Discard", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showDiscardConfirm = true
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

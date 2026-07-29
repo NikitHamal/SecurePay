@@ -17,7 +17,10 @@
   let saving = false;
   let formTitle = '';
   let formDescription = '';
-  let formImageUrl = '';
+  let formUrlInput = '';
+  let formImageData: string | null = null;
+  let existingR2Key: string | null = null;
+  let imagePreview: string | null = null;
   let formLinkUrl = '';
   let formIsActive = true;
   let formOrder = 0;
@@ -43,7 +46,9 @@
     editing = null;
     formTitle = '';
     formDescription = '';
-    formImageUrl = '';
+    formUrlInput = '';
+    formImageData = null;
+    existingR2Key = null;
     formLinkUrl = '';
     formIsActive = true;
     formOrder = ads.length;
@@ -55,7 +60,14 @@
     editing = ad;
     formTitle = ad.title;
     formDescription = ad.description;
-    formImageUrl = ad.imageUrl || '';
+    if (ad.imageUrl && /^https?:\/\//i.test(ad.imageUrl)) {
+      formUrlInput = ad.imageUrl;
+      existingR2Key = null;
+    } else {
+      formUrlInput = '';
+      existingR2Key = ad.imageUrl || null;
+    }
+    formImageData = null;
     formLinkUrl = ad.linkUrl || '';
     formIsActive = ad.isActive;
     formOrder = ad.order;
@@ -68,6 +80,42 @@
     editing = null;
   }
 
+  /** Resolved <img> source for the modal preview, or null when there is no image. */
+  $: imagePreview = formImageData
+    || formUrlInput.trim()
+    || (existingR2Key && editing ? `/api/ads/${editing.id}/image` : '')
+    || null;
+
+  function onImageFileSelected(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      formError = 'Image must be a JPEG, PNG or WebP file';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      formError = 'Image must be 5MB or smaller';
+      return;
+    }
+    formError = '';
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      formImageData = result || null;
+      formUrlInput = '';
+      existingR2Key = null;
+    };
+    reader.readAsDataURL(file);
+    // Allow re-selecting the very same file afterwards.
+    (event.target as HTMLInputElement).value = '';
+  }
+
+  function clearImage() {
+    formUrlInput = '';
+    formImageData = null;
+    existingR2Key = null;
+  }
+
   async function save() {
     if (!formTitle.trim()) {
       formError = 'Title is required';
@@ -76,10 +124,12 @@
     saving = true;
     formError = '';
     try {
+      const uploaded = !!formImageData;
       const payload = {
         title: formTitle.trim(),
         description: formDescription.trim(),
-        imageUrl: formImageUrl.trim() || null,
+        imageUrl: uploaded ? null : (formUrlInput.trim() || existingR2Key || null),
+        imageData: formImageData,
         linkUrl: formLinkUrl.trim() || null,
         isActive: formIsActive,
         order: formOrder
@@ -263,9 +313,36 @@
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-ink-secondary" for="ad-image-url">Image URL</label>
-      <input id="ad-image-url" type="url" class="input" placeholder="https://example.com/ad-image.png" bind:value={formImageUrl} />
-      <p class="mt-1 text-2xs text-ink-muted">Optional. Leave empty to use text-only ad.</p>
+      <span class="mb-1 block text-xs font-medium text-ink-secondary">Ad image</span>
+      {#if imagePreview}
+        <div class="mb-2 overflow-hidden rounded-lg border border-edge bg-surface-100/40">
+          <img src={imagePreview} alt="Ad preview" class="max-h-40 w-full object-contain" />
+        </div>
+      {/if}
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="btn-outline !py-1.5 text-xs cursor-pointer" for="ad-image-file">
+          {formImageData ? 'Change file' : 'Upload image'}
+        </label>
+        <input
+          id="ad-image-file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="hidden"
+          on:change={onImageFileSelected}
+        />
+        <button type="button" class="btn-ghost !py-1.5 text-xs" on:click={clearImage} disabled={!imagePreview}>
+          Remove
+        </button>
+      </div>
+      <input
+        id="ad-image-url"
+        type="url"
+        class="input mt-2"
+        placeholder="…or paste an image URL (https://…)"
+        bind:value={formUrlInput}
+        on:input={() => { formImageData = null; existingR2Key = null; }}
+      />
+      <p class="mt-1 text-2xs text-ink-muted">Optional. Upload a file or paste a URL. Leave both empty for a text-only ad.</p>
     </div>
 
     <div>
