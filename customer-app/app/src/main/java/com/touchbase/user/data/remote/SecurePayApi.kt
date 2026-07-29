@@ -89,6 +89,6 @@ interface SecurePayApi {
         @Query("imei") imei: String
     ): VerifyPaystackResponse
 
-    @GET("api/ads")
+    @GET("ads")
     suspend fun getAds(@Query("active") active: Boolean = true): AdsResponse
 }
