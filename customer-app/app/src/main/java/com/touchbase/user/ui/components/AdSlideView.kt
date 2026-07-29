@@ -175,7 +175,7 @@ private val adImageClient: OkHttpClient by lazy {
  * for those we build the route URL from the ad id rather than the stored key.
  */
 private fun resolveAdImageUrl(ad: AdModel): String? {
-    val ref = ad.imageUrl?.trim().takeIf { it.isNotEmpty() } ?: return null
+    val ref = ad.imageUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     return if (ref.startsWith("http://", ignoreCase = true) || ref.startsWith("https://", ignoreCase = true)) {
         ref
     } else {
