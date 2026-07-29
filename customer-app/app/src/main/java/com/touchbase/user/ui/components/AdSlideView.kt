@@ -260,7 +260,7 @@ private fun AdCard(
                         color = Color.White,
                         textAlign = TextAlign.Start
                     )
-                    if (ad.description.isNotBlank()) {
+                    if (!ad.description.isNullOrBlank()) {
                         Text(
                             text = ad.description,
                             style = MaterialTheme.typography.bodySmall,
@@ -308,13 +308,15 @@ private fun AdCard(
                             color = TextPrimary,
                             textAlign = TextAlign.Center
                         )
-                        Text(
-                            text = ad.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary,
-                            textAlign = TextAlign.Center,
-                            maxLines = 2
-                        )
+                        if (!ad.description.isNullOrBlank()) {
+                            Text(
+                                text = ad.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
                         if (!ad.linkUrl.isNullOrBlank()) {
                             Text(
                                 text = "Tap to learn more",

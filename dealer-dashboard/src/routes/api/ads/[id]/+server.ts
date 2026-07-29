@@ -51,7 +51,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
     ad: {
       id: ad.id,
       title: ad.title,
-      description: ad.description,
+      description: (ad.description as string | null) || '',
       imageUrl: ad.image_url,
       linkUrl: ad.link_url,
       isActive: ad.is_active === 1,
@@ -130,7 +130,7 @@ export const PUT: RequestHandler = async ({ params, locals, request, platform })
     ad: {
       id: updated.id,
       title: updated.title,
-      description: updated.description,
+      description: (updated.description as string | null) || '',
       imageUrl: updated.image_url,
       linkUrl: updated.link_url,
       isActive: updated.is_active === 1,

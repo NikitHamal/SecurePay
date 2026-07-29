@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 data class AdModel(
     val id: String,
     val title: String,
-    val description: String,
+    val description: String? = "",
     val imageUrl: String? = null,
     val linkUrl: String? = null,
     val isActive: Boolean = true,

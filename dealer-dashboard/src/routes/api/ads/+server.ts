@@ -78,7 +78,7 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
       ads: result.results.map(r => ({
         id: r.id,
         title: r.title,
-        description: r.description,
+        description: (r.description as string | null) || '',
         imageUrl: r.image_url,
         linkUrl: r.link_url,
         isActive: r.is_active === 1,
@@ -103,7 +103,7 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
     ads: result.results.map(r => ({
       id: r.id,
       title: r.title,
-      description: r.description,
+      description: (r.description as string | null) || '',
       imageUrl: r.image_url,
       linkUrl: r.link_url,
       isActive: r.is_active === 1,
