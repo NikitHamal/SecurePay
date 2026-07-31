@@ -141,6 +141,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (nationalId !== undefined) {
     const value = String(nationalId).trim().toUpperCase();
     if (value.length < 4 || value.length > 64) return errorResponse('nationalId must be between 4 and 64 characters', 400);
+    const duplicate = await db.prepare('SELECT id FROM accounts WHERE national_id = ? AND id != ?').bind(value, params.id).first();
+    if (duplicate) return errorResponse(`Ghana Card / ID ${value} is already registered to another account`, 409);
     updates.push('national_id = ?'); args.push(value);
   }
   if (phoneNumber !== undefined) {

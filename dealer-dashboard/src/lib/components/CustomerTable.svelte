@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dealer } from '$lib/stores/auth';
   import { onDestroy, onMount } from 'svelte';
   import type { Customer, Status } from '$lib/types';
   import { customers, deleteCustomer, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
@@ -67,6 +68,8 @@
     const haystack = `${c.customerName} ${c.phoneNumber} ${c.imei} ${c.deviceModel} ${c.id}`.toLowerCase();
     return matchesStatus && haystack.includes(q);
   });
+
+  $: canDelete = $dealer && $dealer.role !== 'AGENT';
 </script>
 
 <div class="card overflow-hidden">
@@ -156,6 +159,7 @@
                 >
                   Lock
                 </button>
+                {#if canDelete}
                 <button
                   type="button"
                   class="btn-outline text-crimson hover:bg-crimson/10"
@@ -164,6 +168,7 @@
                 >
                   Delete
                 </button>
+                {/if}
               </div>
             </td>
           </tr>

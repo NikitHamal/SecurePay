@@ -87,6 +87,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.touchbase.agent.data.model.Account
 import com.touchbase.agent.data.model.AccountStatus
 import com.touchbase.agent.data.model.CustomerCredentials
@@ -140,6 +141,8 @@ fun CustomerDetailScreen(
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
+    val role by (repository?.dealerRole ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
+    val canDelete = role != null && role != "AGENT"
 
     val isDark = isSystemInDarkTheme()
     val dynamicBgColor = MaterialTheme.colorScheme.background
@@ -990,6 +993,7 @@ fun CustomerDetailScreen(
                     ButtonText(if (acc.isStolen) "Recover + Unlock" else "Flag as Stolen")
                 }
 
+if (canDelete) {
                 OutlinedButton(
                     onClick = {
                         actionInProgress = true
@@ -1009,6 +1013,7 @@ fun CustomerDetailScreen(
                 ) {
                     ButtonText("Delete")
                 }
+}
             }
 
             if (acc.isStolen || acc.status == AccountStatus.STOLEN) {

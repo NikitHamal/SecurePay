@@ -8,6 +8,7 @@
   import { formatCurrency } from '$lib/utils/format';
   import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy } from '$lib/api/client';
   import { openAddDevice, openNewLoan, openProvision } from '$lib/stores/ui';
+  import { dealer } from '$lib/stores/auth';
   import { onMount } from 'svelte';
 
   interface DeviceRow {
@@ -30,6 +31,7 @@
 
   $: m = $portfolioMetrics;
   $: inStockCount = devices.filter(d => d.status === 'in_stock').length;
+  $: canDelete = $dealer && $dealer.role !== 'AGENT';
 
   function initials(name: string) {
     return (name || '?').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
@@ -218,7 +220,9 @@
                     {#if device.status === 'in_stock'}
                       <button class="btn-primary !py-1 !px-2.5 text-xs" on:click={() => openNewLoan({ imei: device.imei, deviceModel: device.model })}>Enroll</button>
                       <button class="btn-outline !py-1 !px-2.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
+                      {#if canDelete}
                       <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={devicesLoading} on:click={() => removeDevice(device)}>Delete</button>
+                      {/if}
                     {:else}
                       <span class="text-xs text-ink-muted">Assigned to {device.customerName || 'customer'}</span>
                     {/if}

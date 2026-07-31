@@ -91,6 +91,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.touchbase.agent.R
 import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.remote.SecurePayRepository
@@ -139,6 +140,8 @@ fun InventoryScreen(
     val isPreview = LocalInspectionMode.current
     val view = LocalView.current
     val backgroundColor = MaterialTheme.colorScheme.background
+    val role by (repository?.dealerRole ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
+    val canDelete = role != null && role != "AGENT"
 
     if (!isPreview) {
         SideEffect {
@@ -227,20 +230,22 @@ fun InventoryScreen(
             items(devices, key = { it.id }) { device ->
                 DeviceCard(
                     device = device,
-                    onDelete = {
-                        if (repository != null) {
-                            scope.launch {
-                                val result = repository.deleteDevice(device.id)
-                                result.fold(
-                                    onSuccess = { load() },
-                                    onFailure = {
-                                        error = it.message
-                                        load()
-                                    }
-                                )
+                    onDelete = if (canDelete) {
+                        {
+                            if (repository != null) {
+                                scope.launch {
+                                    val result = repository.deleteDevice(device.id)
+                                    result.fold(
+                                        onSuccess = { load() },
+                                        onFailure = {
+                                            error = it.message
+                                            load()
+                                        }
+                                    )
+                                }
                             }
                         }
-                    }
+                    } else null
                 )
             }
         }

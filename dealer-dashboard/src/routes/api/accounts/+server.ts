@@ -336,6 +336,11 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!device) return errorResponse('Device not found in your inventory', 404);
   if (device.status !== 'in_stock') return errorResponse('Device is not available for sale', 409);
 
+  const duplicateId = await db.prepare('SELECT id FROM accounts WHERE national_id = ?').bind(nationalId).first();
+  if (duplicateId) {
+    return errorResponse(`Ghana Card / ID ${nationalId} is already registered to another account`, 409);
+  }
+
   const plan = planId
     ? await db.prepare('SELECT id, total_amount, daily_rate, term_days, min_down_payment FROM plans WHERE id = ?')
       .bind(planId)
