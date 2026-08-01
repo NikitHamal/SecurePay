@@ -76,7 +76,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       amount,
       method: channel === 'CARD' ? 'CARD' : 'MOBILE_MONEY',
       reference: `paystack:${reference}`,
-      recordedBy: 'paystack'
+      recordedBy: 'paystack',
+      env: platform?.env
     });
 
     await db.prepare(`

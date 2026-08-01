@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
+import com.touchbase.agent.ui.enrollment.NationalIdCheck
 
 /**
  * M-KOPA "Customer information" form A: First Name, Surname, ID Type
@@ -54,13 +55,22 @@ fun CustomerStep(
             onSelect = onIdTypeChange
         )
 
+        val idCheck = state.nationalIdCheck
         WizardTextField(
             label = "ID Number",
             value = draft.nationalId,
             onValueChange = onNationalIdChange,
             placeholder = "GHA-XXXXXXXXX-X",
-            isError = draft.nationalId.isNotEmpty() && !state.isNationalIdValid,
-            supportingText = "Enter 6–20 characters"
+            isError = draft.nationalId.isNotEmpty() && (!state.isNationalIdValid || idCheck is NationalIdCheck.Duplicate),
+            supportingText = when (idCheck) {
+                is NationalIdCheck.Duplicate -> idCheck.message
+                NationalIdCheck.Checking -> "Checking this ID for duplicates…"
+                NationalIdCheck.Available -> "ID is clear — no existing customer uses it"
+                NationalIdCheck.Unverified -> "Could not verify duplicates right now — the server will check again on submit"
+                NationalIdCheck.Idle -> null
+            },
+            alwaysShowSupporting = idCheck !is NationalIdCheck.Idle && draft.nationalId.isNotEmpty(),
+            supportingInfoColor = idCheck is NationalIdCheck.Available
         )
 
         WizardPhoneField(

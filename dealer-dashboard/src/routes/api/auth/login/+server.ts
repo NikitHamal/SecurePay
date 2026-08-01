@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, getJwtSecret, errorResponse } from '$lib/api/server';
 import { verifyPassword, createToken } from '$lib/auth';
+import { logActivity } from '$lib/audit';
 
 export const POST: RequestHandler = async ({ request, platform, cookies, url }) => {
   const body = await request.json();
@@ -45,6 +46,14 @@ export const POST: RequestHandler = async ({ request, platform, cookies, url }) 
   };
 
   const token = createToken(dealerData, getJwtSecret({ platform }));
+
+  // Accountability: "Agent logged in" (and any other staff role).
+  void logActivity(db, {
+    actor: dealerData,
+    action: 'LOGIN',
+    details: `${dealerData.name} (${dealerData.role.replace(/_/g, ' ')}) signed in via ${isWebClient ? 'the dashboard' : 'the agent app'}`
+  });
+
   cookies.set('tb_session', token, {
     httpOnly: true,
     secure: url.protocol === 'https:',

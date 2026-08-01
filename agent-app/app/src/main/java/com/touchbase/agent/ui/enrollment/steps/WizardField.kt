@@ -79,6 +79,9 @@ fun WizardTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     isError: Boolean = false,
     supportingText: String? = null,
+    /** When true, informational supporting text renders even without an error. */
+    alwaysShowSupporting: Boolean = false,
+    supportingInfoColor: Boolean = false,
     enabled: Boolean = true,
     trailing: (@Composable () -> Unit)? = null
 ) {
@@ -92,8 +95,13 @@ fun WizardTextField(
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         isError = isError,
         supportingText = {
-            if (isError && supportingText != null) {
-                Text(supportingText, color = MaterialTheme.colorScheme.error)
+            if (supportingText != null && (isError || alwaysShowSupporting)) {
+                Text(
+                    supportingText,
+                    color = if (isError) MaterialTheme.colorScheme.error
+                    else if (supportingInfoColor) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         trailingIcon = trailing,

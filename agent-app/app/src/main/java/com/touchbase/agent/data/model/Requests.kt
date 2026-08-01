@@ -42,13 +42,39 @@ data class CreateAccountRequest(
     val physicalAddress: String? = null,
     val preferredLanguage: String? = null,
     /** The exact agreement text the customer signed (for the record). */
-    val agreementText: String? = null
+    val agreementText: String? = null,
+    /** Anti-fraud GPS fix captured on the agent's phone when the application was submitted. */
+    val enrollmentLat: Double? = null,
+    val enrollmentLng: Double? = null,
+    val enrollmentAccuracy: Float? = null
 )
 
 @Serializable
 data class AddDeviceRequest(
     val imei: String,
-    val model: String
+    val model: String,
+    /** Where the phone physically was when it was registered (anti-fraud). */
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val accuracy: Float? = null
+)
+
+/** Company-wide duplicate check result for a national ID (Ghana Card etc.). */
+@Serializable
+data class CheckNationalIdResponse(
+    val duplicate: Boolean = false,
+    val matches: List<NationalIdMatch> = emptyList()
+)
+
+@Serializable
+data class NationalIdMatch(
+    val accountId: String = "",
+    val customerName: String = "",
+    val deviceModel: String = "",
+    val enrolledByName: String? = null,
+    val createdAt: Long = 0L,
+    val outstandingBalance: Int = 0,
+    val fullyPaid: Boolean = false
 )
 
 @Serializable

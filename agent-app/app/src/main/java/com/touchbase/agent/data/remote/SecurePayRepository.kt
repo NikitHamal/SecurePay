@@ -17,6 +17,7 @@ class SecurePayRepository(
     val token: StateFlow<String?> get() = tokenManager.token
     val dealerId: StateFlow<String?> get() = tokenManager.dealerId
     val dealerName: StateFlow<String?> get() = tokenManager.dealerName
+    val dealerRole: StateFlow<String?> get() = tokenManager.dealerRole
     val isLoggedIn: Boolean get() = tokenManager.isLoggedIn
 
     private fun Throwable.friendlyMessage(): String {
@@ -142,8 +143,21 @@ class SecurePayRepository(
         try { Result.success(api.listDevices()) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
-    suspend fun addDevice(imei: String, model: String): Result<Device> = withContext(Dispatchers.IO) {
-        try { Result.success(api.addDevice(AddDeviceRequest(imei, model))) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    suspend fun addDevice(
+        imei: String,
+        model: String,
+        latitude: Double? = null,
+        longitude: Double? = null,
+        accuracy: Float? = null
+    ): Result<Device> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.addDevice(AddDeviceRequest(imei, model, latitude, longitude, accuracy)))
+        } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
+    }
+
+    /** Live duplicate check so the wizard can stop a re-used Ghana Card before submission. */
+    suspend fun checkNationalId(nationalId: String): Result<CheckNationalIdResponse> = withContext(Dispatchers.IO) {
+        try { Result.success(api.checkNationalId(nationalId)) } catch (e: Exception) { Result.failure(Exception(e.friendlyMessage())) }
     }
 
     suspend fun deleteDevice(id: String): Result<Unit> = withContext(Dispatchers.IO) {

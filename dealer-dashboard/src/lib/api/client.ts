@@ -257,7 +257,21 @@ export async function getKpis(): Promise<KpiSummary> {
   return request<KpiSummary>('/kpis');
 }
 
-export async function listDevices(): Promise<{ id: string; imei: string; model: string; status: string; createdAt: number; customerName: string | null; soldAt: number | null }[]> {
+export interface InventoryDevice {
+  id: string;
+  imei: string;
+  model: string;
+  status: string;
+  createdAt: number;
+  customerName: string | null;
+  soldAt: number | null;
+  registeredByName?: string | null;
+  registrationLat?: number | null;
+  registrationLng?: number | null;
+  registrationAccuracy?: number | null;
+}
+
+export async function listDevices(): Promise<InventoryDevice[]> {
   return request('/devices');
 }
 
@@ -337,6 +351,31 @@ export interface DeviceLog {
   imei: string | null;
   device_model: string | null;
   customer_name: string | null;
+}
+
+export interface ActivityRow {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  details: string;
+  customerName: string | null;
+  accountId: string | null;
+  imei: string | null;
+  branchName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: number;
+}
+
+export async function listActivity(opts: { limit?: number; action?: string; q?: string } = {}): Promise<ActivityRow[]> {
+  const params = new URLSearchParams();
+  if (opts.limit) params.set('limit', String(opts.limit));
+  if (opts.action) params.set('action', opts.action);
+  if (opts.q) params.set('q', opts.q);
+  const qs = params.toString();
+  return request<ActivityRow[]>(`/activity${qs ? `?${qs}` : ''}`);
 }
 
 export async function listDeviceLogs(): Promise<DeviceLog[]> {

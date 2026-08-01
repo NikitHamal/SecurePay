@@ -1,6 +1,52 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy } from '$lib/api/server';
+import { pushCustomerDevice, cedisLabel } from '$lib/notify';
+
+/**
+ * Customer trigger: "payment reminder". The managed app calls this endpoint
+ * regularly — when the account is due within 24h (or already past due) we
+ * push one reminder per account per day (UTC) via FCM.
+ */
+async function maybeSendPaymentReminder(db: ReturnType<typeof getDb>, platform: App.Platform | null | undefined, account: Record<string, unknown>, accountId: string, now: number): Promise<void> {
+  const totalLoan = Number(account.total_loan_amount);
+  const amountPaid = Number(account.amount_paid);
+  const remaining = Math.max(0, totalLoan - amountPaid);
+  const dueAt = Number(account.next_payment_due);
+  if (remaining <= 0 || dueAt - now > 24 * 60 * 60 * 1000) return;
+
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_reminders (
+        account_id TEXT NOT NULL,
+        reminder_day TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (account_id, reminder_day)
+      )
+    `).run();
+
+    const day = new Date(now).toISOString().slice(0, 10);
+    const inserted = await db.prepare(
+      'INSERT OR IGNORE INTO payment_reminders (account_id, reminder_day, created_at) VALUES (?, ?, ?)'
+    ).bind(accountId, day, Math.floor(now / 1000)).run();
+    if (Number(inserted.meta.changes ?? 0) !== 1) return; // already reminded today
+
+    // Reclaim storage for reminders older than 30 days, amortized on sends.
+    void db.prepare('DELETE FROM payment_reminders WHERE created_at < ?')
+      .bind(Math.floor(now / 1000) - 30 * 86400).run().catch(() => {});
+
+    const fcmToken = String(account.fcm_token ?? '').trim();
+    if (!fcmToken) return;
+    const dailyRate = Number(account.daily_rate);
+    const dueLabel = new Date(dueAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    const body = now >= dueAt
+      ? `Your payment of ${cedisLabel(dailyRate)} was due on ${dueLabel}. Pay now to keep your phone active. Remaining balance: ${cedisLabel(remaining)}.`
+      : `Your payment of ${cedisLabel(dailyRate)} is due by ${dueLabel}. Remaining balance: ${cedisLabel(remaining)}.`;
+    await pushCustomerDevice(platform?.env, fcmToken, 'Payment reminder', body, accountId);
+  } catch (error) {
+    console.error('payment reminder failed', error);
+  }
+}
 
 export const POST: RequestHandler = async ({ request, platform, locals }) => {
   if (!locals.hmacVerified) {
@@ -43,6 +89,11 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const release = releaseFields(account as Record<string, unknown>);
   const isStolen = Number(account.is_stolen ?? 0) === 1;
+
+  if (!release.releaseApproved && !isStolen) {
+    void maybeSendPaymentReminder(db, platform, account as Record<string, unknown>, accountId, now);
+  }
+
   const status = releaseApproved(account as Record<string, unknown>)
     ? 'ACTIVE'
     : (isStolen ? 'STOLEN' : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due))));

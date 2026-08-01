@@ -377,5 +377,8 @@ fun AccountResponse.toLoanAccount(): LoanAccount = LoanAccount(
     isStolen = isStolen,
     releaseApprovedAt = releaseApprovedAt,
     releasedAt = releasedAt,
+    createdAtEpochMillis = createdAt,
+    agreementText = agreementText,
+    consentAt = consentAt,
     securityPolicy = securityPolicy
 )

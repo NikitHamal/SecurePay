@@ -1,11 +1,16 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
+import { generateDefaulterAlerts } from '$lib/notify';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
 
   const db = getDb({ platform });
+
+  // Admin trigger: "default alerts" — surface overdue accounts once a day.
+  await generateDefaulterAlerts(db, locals.dealer);
+
   const result = await db.prepare(`
     SELECT id, recipient_id, type, title, message, is_read, related_entity_type, related_entity_id, created_at
     FROM notifications

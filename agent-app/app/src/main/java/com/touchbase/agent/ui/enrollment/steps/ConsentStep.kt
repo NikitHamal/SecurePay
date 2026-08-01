@@ -1,5 +1,9 @@
 package com.touchbase.agent.ui.enrollment.steps
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -36,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +59,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -63,6 +69,13 @@ import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 import java.io.ByteArrayOutputStream
 
 private val SignatureInk = Color(0xFF111827)
+
+/** Walk the context chain down to the hosting Activity (Compose previews return null). */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 /**
  * M-KOPA consent screen (Touch Base edition):
@@ -269,6 +282,12 @@ fun ConsentStep(
 /**
  * Full-screen signature pad (the M-KOPA landscape sheet): big white canvas,
  * gold CLEAR / DONE actions bottom-right.
+ *
+ * Per the client's directive the pad forces LANDSCAPE while it is open —
+ * customers signing with a finger need width far more than height. The
+ * activity's configChanges declaration (orientation|screenSize) keeps this
+ * from recreating the activity, so strokes survive the rotation, and the
+ * previous orientation is restored when the sheet closes.
  */
 @Composable
 private fun SignatureSheet(
@@ -278,6 +297,17 @@ private fun SignatureSheet(
     val strokes = remember { mutableStateListOf<Path>() }
     var activeStroke by remember { mutableStateOf<Path?>(null) }
     var padSize by remember { mutableStateOf(IntSize.Zero) }
+    val context = LocalContext.current
+
+    // Lock the phone sideways for the duration of the signature capture.
+    DisposableEffect(Unit) {
+        val activity = context.findActivity()
+        val previousOrientation = activity?.requestedOrientation
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose {
+            activity?.requestedOrientation = previousOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     Dialog(
         onDismissRequest = onCancel,

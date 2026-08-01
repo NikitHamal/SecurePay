@@ -52,6 +52,19 @@ sealed interface DeviceLookupStatus {
     data object AlreadySold : DeviceLookupStatus
 }
 
+/**
+ * Company-wide duplicate check for the ID number (Ghana Card etc.) — runs
+ * live while the agent types so a re-used ID is caught long before submit.
+ */
+sealed interface NationalIdCheck {
+    data object Idle : NationalIdCheck
+    data object Checking : NationalIdCheck
+    data object Available : NationalIdCheck
+    data class Duplicate(val message: String) : NationalIdCheck
+    /** The check could not run (offline / server error) — never blocks the agent; the server re-checks on submit. */
+    data object Unverified : NationalIdCheck
+}
+
 @Serializable
 data class EnrollmentDraft(
     // Customer information
@@ -126,6 +139,7 @@ data class EnrollmentUiState(
     val availableDevices: List<Device> = emptyList(),
     val isLoadingDevices: Boolean = false,
     val deviceLookupStatus: DeviceLookupStatus = DeviceLookupStatus.Idle,
+    val nationalIdCheck: NationalIdCheck = NationalIdCheck.Idle,
     val dailyRateInput: String = "",
     val totalAmountInput: String = "",
     val termDaysInput: String = "",
@@ -162,9 +176,16 @@ data class EnrollmentUiState(
         get() = draft.otherPhone.isBlank() ||
             (draft.otherPhone.isValidPhone() && draft.otherPhone.digits() != draft.phoneNumber.digits())
 
+    /**
+     * The ID number must additionally clear the company-wide duplicate rule:
+     * while a check is in flight, or once a duplicate was found, the wizard
+     * cannot advance. An unverifiable check (offline) never blocks — the
+     * server enforces the same rule at submission.
+     */
     val isCustomerStepValid: Boolean
         get() = isFirstNameValid && isSurnameValid && isIdTypeValid && isNationalIdValid &&
-            isPhoneValid && isOtherPhoneValid
+            isPhoneValid && isOtherPhoneValid &&
+            nationalIdCheck !is NationalIdCheck.Duplicate && nationalIdCheck !is NationalIdCheck.Checking
 
     // ---- Personal details ----
     val isDobValid: Boolean

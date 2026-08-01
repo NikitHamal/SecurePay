@@ -11,7 +11,12 @@ data class Device(
     val status: String = "in_stock",
     val createdAt: Long = 0L,
     val customerName: String? = null,
-    val soldAt: Long? = null
+    val soldAt: Long? = null,
+    /** Who/where this phone was registered (anti-fraud context, when captured). */
+    val registeredByName: String? = null,
+    val registrationLat: Double? = null,
+    val registrationLng: Double? = null,
+    val registrationAccuracy: Float? = null
 )
 
 @Serializable

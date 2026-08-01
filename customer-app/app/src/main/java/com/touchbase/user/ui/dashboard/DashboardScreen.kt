@@ -25,7 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -33,8 +33,10 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -49,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -87,6 +90,9 @@ import com.touchbase.user.ui.theme.Crimson
 import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val CUSTOMER_APP_PERMISSION_REQUEST = 8801
 
@@ -168,7 +174,8 @@ fun DashboardScreen(
             HeroStatusCard(state)
 
             state.account?.let { account ->
-                LoanSummaryCard(account)
+                MyDeviceCard(account)
+                LoanAgreementCard(account)
                 if (account.isStolen) StolenTrackingCard()
             }
 
@@ -245,32 +252,153 @@ private fun HeroStatusCard(state: DeviceUiState) {
     }
 }
 
+/**
+ * "My Device" — the self-service card the client specified:
+ * device name, paid, remaining, next-payment date and repayment progress.
+ */
 @Composable
-private fun LoanSummaryCard(account: LoanAccount) {
+private fun MyDeviceCard(account: LoanAccount) {
     val progress = account.repaymentProgress
-    InfoCard(title = "Loan Summary", icon = Icons.Filled.CreditCard, accent = Gold) {
-        Text(
-            text = formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-        Text("Remaining balance", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.height(16.dp))
+    InfoCard(title = "My Device", icon = Icons.Filled.Smartphone, accent = Gold) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Device",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
+                Text(
+                    text = account.deviceModel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    maxLines = 2
+                )
+            }
+            LoanStatusChip(account)
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Metric("Paid", formatCentsAsCurrency(account.amountPaidCents, account.currencyCode), Modifier.weight(1f))
+            Metric("Remaining", formatCentsAsCurrency(account.remainingBalanceCents, account.currencyCode), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(12.dp))
         LinearProgressIndicator(
             progress = progress,
             modifier = Modifier.fillMaxWidth().height(8.dp),
             color = Gold,
             trackColor = CharcoalSurfaceVariant
         )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "${(progress * 100).toInt()}% of ${formatCentsAsCurrency(account.totalLoanAmountCents, account.currencyCode)} repaid",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextSecondary
+        )
+
         Spacer(Modifier.height(14.dp))
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Metric("Plan", account.planName, Modifier.weight(1f))
-            Metric("Paid", formatCentsAsCurrency(account.amountPaidCents, account.currencyCode), Modifier.weight(1f))
-            Metric("Daily", formatCentsAsCurrency(account.dailyRateCents, account.currencyCode), Modifier.weight(1f))
+            Metric("Next payment", formatLoanDate(account.nextPaymentDueEpochMillis), Modifier.weight(1f))
+            Metric("Daily rate", formatCentsAsCurrency(account.dailyRateCents, account.currencyCode), Modifier.weight(1f))
         }
     }
 }
+
+@Composable
+private fun LoanStatusChip(account: LoanAccount) {
+    val (label, tone) = when {
+        account.releaseApproved -> "Fully paid" to Gold
+        account.isStolen || account.lockedByDealer -> "Locked" to Crimson
+        account.remainingBalanceCents <= 0 -> "Fully paid" to Gold
+        else -> "Active" to Gold
+    }
+    Card(
+        shape = RoundedCornerShape(360.dp),
+        colors = CardDefaults.cardColors(containerColor = tone.copy(alpha = 0.16f))
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = tone,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+/** Signed loan agreement on demand ("loan agreement details" self-service). */
+@Composable
+private fun LoanAgreementCard(account: LoanAccount) {
+    var showAgreement by remember { mutableStateOf(false) }
+
+    InfoCard(title = "Loan Agreement", icon = Icons.Filled.Description, accent = Gold) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Metric("Plan", account.planName, Modifier.weight(1f))
+            Metric("Term", "${account.termDays} days", Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Metric("Total", formatCentsAsCurrency(account.totalLoanAmountCents, account.currencyCode), Modifier.weight(1f))
+            Metric(
+                "Started",
+                if (account.createdAtEpochMillis > 0) formatLoanDate(account.createdAtEpochMillis) else "—",
+                Modifier.weight(1f)
+            )
+        }
+        if (!account.agreementText.isNullOrBlank()) {
+            Spacer(Modifier.height(14.dp))
+            OutlinedButton(
+                onClick = { showAgreement = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+            ) {
+                Icon(Icons.Filled.Description, contentDescription = null, tint = Gold)
+                Spacer(Modifier.width(8.dp))
+                Text("View signed agreement", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+
+    if (showAgreement && !account.agreementText.isNullOrBlank()) {
+        AlertDialog(
+            onDismissRequest = { showAgreement = false },
+            confirmButton = {
+                TextButton(onClick = { showAgreement = false }) {
+                    Text("Close", color = Gold, fontWeight = FontWeight.Bold)
+                }
+            },
+            title = {
+                Text("Device Financing Agreement", fontWeight = FontWeight.Bold, color = TextPrimary)
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    account.consentAt?.takeIf { it > 0 }?.let { consentAt ->
+                        Text(
+                            text = "Signed on ${formatLoanDate(consentAt)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                        Spacer(Modifier.height(10.dp))
+                    }
+                    Text(
+                        text = account.agreementText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextPrimary
+                    )
+                }
+            },
+            containerColor = CharcoalElevated
+        )
+    }
+}
+
+private fun formatLoanDate(epochMillis: Long): String = runCatching {
+    SimpleDateFormat("dd MMMM yyyy", Locale.ENGLISH).format(Date(epochMillis))
+}.getOrDefault("—")
 
 @Composable
 private fun ActionGrid(
