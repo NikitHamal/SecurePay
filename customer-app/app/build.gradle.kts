@@ -20,9 +20,12 @@ val fcmProjectId = configured("TB_FCM_PROJECT_ID")
 val fcmApiKey = configured("TB_FCM_API_KEY")
 val fcmSenderId = configured("TB_FCM_SENDER_ID")
 val fcmApplicationId = configured("TB_FCM_APPLICATION_ID")
-val supportPhone = configured("TB_SUPPORT_PHONE")
-val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP")
-val supportEmail = configured("TB_SUPPORT_EMAIL")
+// Public support contacts shipped as build defaults so the apps work out of the
+// box. Override per-build via TB_SUPPORT_* gradle properties / env if needed.
+// +233595012237 is the international form of the local 0595012237.
+val supportPhone = configured("TB_SUPPORT_PHONE", "+233595012237")
+val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP", "+233595012237")
+val supportEmail = configured("TB_SUPPORT_EMAIL", "adamutouchbase@gmail.com")
 val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
 if (releaseRequested && (hmacSecret.isBlank() || signingCertHash.isBlank())) {
     throw GradleException("Release build requires TB_HMAC_SECRET and TB_SIGNING_CERT_HASH via environment or Gradle properties")

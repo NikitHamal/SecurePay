@@ -38,9 +38,9 @@ TB_DEBUG_API_BASE_URL=http://10.0.2.2:5173/api/
 TB_API_BASE_URL=https://your-dashboard.example/api/
 TB_HMAC_SECRET=replace-with-rotated-bootstrap-secret
 TB_SIGNING_CERT_HASH=sha256-cert-digest-hex-or-base64url
-TB_SUPPORT_PHONE=+233XXXXXXXXX
-TB_SUPPORT_WHATSAPP=233XXXXXXXXX
-TB_SUPPORT_EMAIL=support@example.com
+TB_SUPPORT_PHONE=+233595012237
+TB_SUPPORT_WHATSAPP=233595012237
+TB_SUPPORT_EMAIL=adamutouchbase@gmail.com
 ```
 
 ### Customer app
@@ -52,9 +52,9 @@ TB_FCM_PROJECT_ID=your-firebase-project
 TB_FCM_API_KEY=your-firebase-web-api-key
 TB_FCM_SENDER_ID=your-sender-id
 TB_FCM_APPLICATION_ID=your-android-app-id
-TB_SUPPORT_PHONE=+233XXXXXXXXX
-TB_SUPPORT_WHATSAPP=233XXXXXXXXX
-TB_SUPPORT_EMAIL=support@example.com
+TB_SUPPORT_PHONE=+233595012237
+TB_SUPPORT_WHATSAPP=233595012237
+TB_SUPPORT_EMAIL=adamutouchbase@gmail.com
 ```
 
 `TB_HMAC_SECRET` is only the bootstrap secret. Successful activation requires the original provisioning token, six-digit code and exact 15-digit IMEI, then returns a distinct per-device secret used for registered device traffic.

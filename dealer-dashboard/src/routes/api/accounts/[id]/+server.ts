@@ -141,6 +141,14 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (nationalId !== undefined) {
     const value = String(nationalId).trim().toUpperCase();
     if (value.length < 4 || value.length > 64) return errorResponse('nationalId must be between 4 and 64 characters', 400);
+    // Keep the duplicate-ID invariant on edit too: never point this account at a
+    // national ID that another still-owing account already holds.
+    const clash = await db.prepare(
+      'SELECT id, amount_paid, total_loan_amount FROM accounts WHERE national_id = ? AND id != ? LIMIT 1'
+    ).bind(value, params.id).first<{ id: string; amount_paid: number; total_loan_amount: number }>();
+    if (clash && Number(clash.amount_paid) < Number(clash.total_loan_amount)) {
+      return errorResponse(`This ID number is already registered to another active account (${clash.id}).`, 409);
+    }
     updates.push('national_id = ?'); args.push(value);
   }
   if (phoneNumber !== undefined) {

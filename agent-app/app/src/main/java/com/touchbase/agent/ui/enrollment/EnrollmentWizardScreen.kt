@@ -1,6 +1,7 @@
 package com.touchbase.agent.ui.enrollment
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.core.view.WindowInsetsControllerCompat
 
 import androidx.compose.animation.AnimatedContent
@@ -169,10 +170,22 @@ fun EnrollmentWizardScreen(
 
     if (!isPreview) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val activity = view.context as Activity
+            val window = activity.window
             window.statusBarColor = backgroundColor.toArgb()
             window.navigationBarColor = backgroundColor.toArgb()
             WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = backgroundColor.isLight()
+            // The customer-consent / signature screen is laid out for landscape
+            // (the signature pad is far easier to use wide, mirroring M-KOPA).
+            // Force landscape only on that step and restore portrait everywhere
+            // else — including the success screen and every other wizard step.
+            val consentLandscape = state.submission !is SubmissionState.Success &&
+                state.currentStep == EnrollmentStep.CONSENT
+            activity.requestedOrientation = if (consentLandscape) {
+                ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
         }
     }
 

@@ -9,6 +9,7 @@
   import { onDestroy } from 'svelte';
   import { getAccountLocations } from '$lib/api/client';
   import { openProvision } from '$lib/stores/ui';
+  import { dealer } from '$lib/stores/auth';
   import PayWithMoMoModal from '$lib/components/PayWithMoMoModal.svelte';
   import AgreementModal from '$lib/components/AgreementModal.svelte';
 
@@ -91,6 +92,10 @@
     : 0;
   $: ringColor = ratio > 80 ? '#10B981' : ratio > 50 ? '#F59E0B' : '#EF4444';
   $: isPending = customer ? $pending.has(customer.id) : false;
+  // Only admins (branch admin and above) may delete accounts; agents never see
+  // the Delete control in the footer — mirrors the backend canReleaseOrDeleteAccount guard.
+  $: userRole = $dealer?.role || 'SUPER_ADMIN';
+  $: canDelete = userRole === 'SUPER_ADMIN' || userRole === 'AGENCY_OWNER' || userRole === 'BRANCH_ADMIN';
 
   function startEditing() {
     if (!customer) return;
@@ -735,14 +740,16 @@
           </svg>
           Release customer app
         </button>
-        <button
-          type="button"
-          class="btn-outline flex-1 text-crimson hover:bg-crimson/10"
-          disabled={isPending || editing}
-          on:click={removeCustomer}
-        >
-          Delete
-        </button>
+        {#if canDelete}
+          <button
+            type="button"
+            class="btn-outline flex-1 text-crimson hover:bg-crimson/10"
+            disabled={isPending || editing}
+            on:click={removeCustomer}
+          >
+            Delete
+          </button>
+        {/if}
       </footer>
     </div>
   </div>

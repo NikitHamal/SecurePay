@@ -329,6 +329,26 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const db = getDb({ platform });
   await ensureApplicationColumns(db);
+
+  // Duplicate-ID guard. The same national ID — the Ghana Card by far the most
+  // common — must not carry more than one outstanding loan; two active/owing
+  // accounts on one ID is the classic fraud pattern. A fully-repaid customer may
+  // enroll again, so we only block when the existing account still owes. This is
+  // enforced server-side (race-free); the agent app surfaces the 409 message
+  // through its normal submission-error snackbar, so no app change is needed.
+  const existingById = await db.prepare(
+    'SELECT id, amount_paid, total_loan_amount FROM accounts WHERE national_id = ? LIMIT 1'
+  ).bind(nationalId).first<{ id: string; amount_paid: number; total_loan_amount: number }>();
+  if (existingById && Number(existingById.amount_paid) < Number(existingById.total_loan_amount)) {
+    const idLabel = !applicationData.idType || applicationData.idType === 'Ghana Card'
+      ? 'Ghana Card / ID number'
+      : `${applicationData.idType} number`;
+    return errorResponse(
+      `This ${idLabel} is already registered to an active account (${existingById.id}). Each ID can only hold one outstanding loan.`,
+      409
+    );
+  }
+
   const device = await db.prepare(
     'SELECT id, imei, model, status FROM devices WHERE imei = ? AND dealer_id = ?'
   ).bind(imei, locals.dealer.id).first<{ id: string; imei: string; model: string; status: string }>();
