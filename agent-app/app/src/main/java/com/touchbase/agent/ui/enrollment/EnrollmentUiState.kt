@@ -220,10 +220,22 @@ data class EnrollmentUiState(
         get() = draft.guarantorPhone.isValidPhone() && draft.guarantorPhone.digits() != customerPhoneDigits
     val isGuarantorIdValid: Boolean get() = draft.guarantorIdNumber.trim().length in 4..24
 
+    // Per the client: next of kin, referee and guarantor are all OPTIONAL.
+    // Each block is validated as a unit — leave every field of a block empty
+    // and it is skipped entirely; start filling a block and it must be
+    // completed correctly before continuing (no half-captured references).
+    private val isNextOfKinBlockEmpty: Boolean
+        get() = draft.nextOfKinName.isBlank() && draft.nextOfKinRelation.isBlank() && draft.nextOfKinPhone.isBlank()
+    private val isRefereeBlockEmpty: Boolean
+        get() = draft.refereeName.isBlank() && draft.refereePhone.isBlank()
+    private val isGuarantorBlockEmpty: Boolean
+        get() = draft.guarantorName.isBlank() && draft.guarantorPhone.isBlank() &&
+            draft.guarantorIdNumber.isBlank() && draft.guarantorRelation.isBlank()
+
     val isContactsStepValid: Boolean
-        get() = isNextOfKinNameValid && isNextOfKinRelationValid && isNextOfKinPhoneValid &&
-            isRefereeNameValid && isRefereePhoneValid &&
-            isGuarantorNameValid && isGuarantorRelationValid && isGuarantorPhoneValid && isGuarantorIdValid
+        get() = (isNextOfKinBlockEmpty || (isNextOfKinNameValid && isNextOfKinRelationValid && isNextOfKinPhoneValid)) &&
+            (isRefereeBlockEmpty || (isRefereeNameValid && isRefereePhoneValid)) &&
+            (isGuarantorBlockEmpty || (isGuarantorNameValid && isGuarantorRelationValid && isGuarantorPhoneValid && isGuarantorIdValid))
 
     // ---- Identity verification ----
     val isIdentityStepValid: Boolean
