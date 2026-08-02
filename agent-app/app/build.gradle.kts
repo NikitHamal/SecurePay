@@ -21,8 +21,9 @@ val apiBaseUrl = configured("TB_API_BASE_URL", "https://securepay-dashboard.page
 val hmacSecret = configured("TB_HMAC_SECRET")
 val signingCertHash = configured("TB_SIGNING_CERT_HASH")
 // Official Touch Base support contacts (client provided, Aug 2026).
-// +233595012237 and 0595012237 dial the same line in Ghana.
-val supportPhone = configured("TB_SUPPORT_PHONE", "+233595012237")
+// The "Call" row on Contact us dials this exact line; +233537995936 and
+// 0537995936 dial the same line in Ghana.
+val supportPhone = configured("TB_SUPPORT_PHONE", "+233537995936")
 val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP", "233595012237")
 val supportEmail = configured("TB_SUPPORT_EMAIL", "adamutouchbase@gmail.com")
 val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
@@ -38,8 +39,8 @@ android {
         applicationId = "com.touchbase.agent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.8.1"
+        versionCode = 17
+        versionName = "1.8.2"
 
         buildConfigField("String", "SUPPORT_PHONE", buildConfigString(supportPhone))
         buildConfigField("String", "SUPPORT_WHATSAPP", buildConfigString(supportWhatsapp))
