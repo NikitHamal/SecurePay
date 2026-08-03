@@ -52,6 +52,19 @@ sealed interface DeviceLookupStatus {
     data object AlreadySold : DeviceLookupStatus
 }
 
+/**
+ * Company-wide duplicate check for the ID number (Ghana Card etc.) — runs
+ * live while the agent types so a re-used ID is caught long before submit.
+ */
+sealed interface NationalIdCheck {
+    data object Idle : NationalIdCheck
+    data object Checking : NationalIdCheck
+    data object Available : NationalIdCheck
+    data class Duplicate(val message: String) : NationalIdCheck
+    /** The check could not run (offline / server error) — never blocks the agent; the server re-checks on submit. */
+    data object Unverified : NationalIdCheck
+}
+
 @Serializable
 data class EnrollmentDraft(
     // Customer information
@@ -126,6 +139,7 @@ data class EnrollmentUiState(
     val availableDevices: List<Device> = emptyList(),
     val isLoadingDevices: Boolean = false,
     val deviceLookupStatus: DeviceLookupStatus = DeviceLookupStatus.Idle,
+    val nationalIdCheck: NationalIdCheck = NationalIdCheck.Idle,
     val dailyRateInput: String = "",
     val totalAmountInput: String = "",
     val termDaysInput: String = "",
@@ -162,9 +176,16 @@ data class EnrollmentUiState(
         get() = draft.otherPhone.isBlank() ||
             (draft.otherPhone.isValidPhone() && draft.otherPhone.digits() != draft.phoneNumber.digits())
 
+    /**
+     * The ID number must additionally clear the company-wide duplicate rule:
+     * while a check is in flight, or once a duplicate was found, the wizard
+     * cannot advance. An unverifiable check (offline) never blocks — the
+     * server enforces the same rule at submission.
+     */
     val isCustomerStepValid: Boolean
         get() = isFirstNameValid && isSurnameValid && isIdTypeValid && isNationalIdValid &&
-            isPhoneValid && isOtherPhoneValid
+            isPhoneValid && isOtherPhoneValid &&
+            nationalIdCheck !is NationalIdCheck.Duplicate && nationalIdCheck !is NationalIdCheck.Checking
 
     // ---- Personal details ----
     val isDobValid: Boolean
@@ -199,10 +220,22 @@ data class EnrollmentUiState(
         get() = draft.guarantorPhone.isValidPhone() && draft.guarantorPhone.digits() != customerPhoneDigits
     val isGuarantorIdValid: Boolean get() = draft.guarantorIdNumber.trim().length in 4..24
 
+    // Per the client: next of kin, referee and guarantor are all OPTIONAL.
+    // Each block is validated as a unit — leave every field of a block empty
+    // and it is skipped entirely; start filling a block and it must be
+    // completed correctly before continuing (no half-captured references).
+    private val isNextOfKinBlockEmpty: Boolean
+        get() = draft.nextOfKinName.isBlank() && draft.nextOfKinRelation.isBlank() && draft.nextOfKinPhone.isBlank()
+    private val isRefereeBlockEmpty: Boolean
+        get() = draft.refereeName.isBlank() && draft.refereePhone.isBlank()
+    private val isGuarantorBlockEmpty: Boolean
+        get() = draft.guarantorName.isBlank() && draft.guarantorPhone.isBlank() &&
+            draft.guarantorIdNumber.isBlank() && draft.guarantorRelation.isBlank()
+
     val isContactsStepValid: Boolean
-        get() = isNextOfKinNameValid && isNextOfKinRelationValid && isNextOfKinPhoneValid &&
-            isRefereeNameValid && isRefereePhoneValid &&
-            isGuarantorNameValid && isGuarantorRelationValid && isGuarantorPhoneValid && isGuarantorIdValid
+        get() = (isNextOfKinBlockEmpty || (isNextOfKinNameValid && isNextOfKinRelationValid && isNextOfKinPhoneValid)) &&
+            (isRefereeBlockEmpty || (isRefereeNameValid && isRefereePhoneValid)) &&
+            (isGuarantorBlockEmpty || (isGuarantorNameValid && isGuarantorRelationValid && isGuarantorPhoneValid && isGuarantorIdValid))
 
     // ---- Identity verification ----
     val isIdentityStepValid: Boolean

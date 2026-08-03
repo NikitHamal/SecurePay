@@ -1,8 +1,13 @@
 package com.touchbase.agent.ui.enrollment.steps
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
+import android.view.WindowManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,11 +24,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Button
@@ -36,6 +43,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,15 +63,27 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 import java.io.ByteArrayOutputStream
 
 private val SignatureInk = Color(0xFF111827)
+
+/** Walk the context chain down to the hosting Activity (Compose previews return null). */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 /**
  * M-KOPA consent screen (Touch Base edition):
@@ -267,8 +288,22 @@ fun ConsentStep(
 }
 
 /**
- * Full-screen signature pad (the M-KOPA landscape sheet): big white canvas,
- * gold CLEAR / DONE actions bottom-right.
+ * Full-screen signature pad (the M-KOPA landscape sheet): one slim action bar
+ * across the TOP (close · title · CLEAR · DONE) and the whole rest of the
+ * screen is the white signing canvas.
+ *
+ * Per the client's directive the pad forces LANDSCAPE while it is open —
+ * customers signing with a finger need width far more than height. The
+ * activity's configChanges declaration (orientation|screenSize) keeps this
+ * from recreating the activity, so strokes survive the rotation, and the
+ * previous orientation is restored when the sheet closes.
+ *
+ * Why the window is taken over explicitly: a stock Compose Dialog wraps its
+ * content inside the decor insets and, on several devices, never re-measures
+ * after the orientation flip — which is exactly what made the pad render small
+ * in landscape with the bottom buttons pushed off-screen. Setting the dialog
+ * window to MATCH_PARENT x MATCH_PARENT (re-applied on every configuration
+ * change) makes the pad genuinely full-screen in landscape.
  */
 @Composable
 private fun SignatureSheet(
@@ -278,33 +313,111 @@ private fun SignatureSheet(
     val strokes = remember { mutableStateListOf<Path>() }
     var activeStroke by remember { mutableStateOf<Path?>(null) }
     var padSize by remember { mutableStateOf(IntSize.Zero) }
+    val context = LocalContext.current
+
+    // Lock the phone sideways for the duration of the signature capture.
+    DisposableEffect(Unit) {
+        val activity = context.findActivity()
+        val previousOrientation = activity?.requestedOrientation
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose {
+            activity?.requestedOrientation = previousOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     Dialog(
         onDismissRequest = onCancel,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
+        // Re-apply full-bleed sizing whenever the rotation settles — keyed on
+        // the configuration so the window can never be left at portrait size.
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        val configuration = LocalConfiguration.current
+        LaunchedEffect(dialogWindow, configuration) {
+            dialogWindow?.let { window ->
+                window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                )
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                window.setLayout(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT
+                )
+            }
+        }
+
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text(
-                    "Customer signature",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    "Ask the customer to sign with a finger on the pad below.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                // Top action bar: cancel · title · CLEAR · DONE.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onCancel) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Cancel signing",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Text(
+                        "Customer signature",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(
+                        onClick = { strokes.clear() },
+                        enabled = strokes.isNotEmpty() || activeStroke != null
+                    ) {
+                        Text(
+                            "CLEAR",
+                            color = if (strokes.isNotEmpty() || activeStroke != null) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            },
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Button(
+                        onClick = { onDone(exportSignature(strokes, padSize)) },
+                        enabled = strokes.isNotEmpty() || activeStroke != null,
+                        shape = RoundedCornerShape(360.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("DONE", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // The pad itself: every remaining pixel in landscape.
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(Color.White)
                         .onSizeChanged { padSize = it }
                 ) {
@@ -336,30 +449,25 @@ private fun SignatureSheet(
                         activeStroke?.let { drawPath(it, color = SignatureInk, style = style) }
                     }
                     if (strokes.isEmpty() && activeStroke == null) {
-                        Text(
-                            "Sign here",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color(0xFF9CA3AF),
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "Sign here",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = Color(0xFF9CA3AF)
+                            )
+                            Text(
+                                "Ask the customer to sign with a finger",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF9CA3AF)
+                            )
+                        }
                     }
                 }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = { strokes.clear() }) {
-                        Text("CLEAR", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = { onDone(exportSignature(strokes, padSize)) }) {
-                        Text("DONE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    }
-                }
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
     }

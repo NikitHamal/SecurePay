@@ -92,6 +92,10 @@ data class AccountResponse(
     val isStolen: Boolean = false,
     val releaseApprovedAt: Long? = null,
     val releasedAt: Long? = null,
+    /** The exact agreement text signed at enrollment (for "loan agreement details"). */
+    val agreementText: String? = null,
+    /** When the customer signed the consent (epoch millis). */
+    val consentAt: Long? = null,
     val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy(),
     val serverTime: Long = 0L
 )
@@ -114,6 +118,9 @@ data class LoanAccount(
     val isStolen: Boolean = false,
     val releaseApprovedAt: Long? = null,
     val releasedAt: Long? = null,
+    val createdAtEpochMillis: Long = 0L,
+    val agreementText: String? = null,
+    val consentAt: Long? = null,
     val securityPolicy: DeviceSecurityPolicy = DeviceSecurityPolicy()
 ) {
     val remainingBalanceCents: Int

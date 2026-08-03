@@ -5,6 +5,7 @@ import { sendFcm } from '$lib/api/fcm';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 import { getAccountScopeFilter, canReleaseOrDeleteAccount } from '$lib/auth';
+import { logActivity, normalizeNationalId, NATIONAL_ID_NORM_SQL } from '$lib/audit';
 
 /** M-KOPA application extras (references, guarantor, consent, signature). */
 function applicationFields(row: Record<string, unknown>) {
@@ -141,6 +142,18 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
   if (nationalId !== undefined) {
     const value = String(nationalId).trim().toUpperCase();
     if (value.length < 4 || value.length > 64) return errorResponse('nationalId must be between 4 and 64 characters', 400);
+    // The same Ghana Card / ID number must never appear on two accounts.
+    const normalized = normalizeNationalId(value);
+    if (normalized) {
+      const duplicate = await db.prepare(`
+        SELECT a.customer_name FROM accounts a
+         WHERE ${NATIONAL_ID_NORM_SQL} = ? AND a.id != ?
+         LIMIT 1
+      `).bind(normalized, params.id).first<{ customer_name: string }>();
+      if (duplicate) {
+        return errorResponse(`Duplicate ID: ${value} is already registered to ${duplicate.customer_name}.`, 409);
+      }
+    }
     updates.push('national_id = ?'); args.push(value);
   }
   if (phoneNumber !== undefined) {
@@ -233,6 +246,30 @@ export const PATCH: RequestHandler = async ({ locals, params, request, platform 
 
   await db.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ?`).bind(...args).run();
 
+  // Accountability: customer information edited.
+  const editedFields: string[] = [];
+  if (customerName !== undefined) editedFields.push('name');
+  if (nationalId !== undefined) editedFields.push('ID number');
+  if (phoneNumber !== undefined) editedFields.push('phone');
+  if (dailyRate !== undefined) editedFields.push('daily rate');
+  if (totalLoanAmount !== undefined) editedFields.push('total loan');
+  if (termDays !== undefined) editedFields.push('term');
+  if (nextPaymentDue !== undefined) editedFields.push('due date');
+  if (isStolen !== undefined) editedFields.push(isStolen ? 'flagged stolen' : 'recovered');
+  if (customerPhoto !== undefined || nationalIdFront !== undefined || nationalIdBack !== undefined) editedFields.push('KYC photos');
+  if (editedFields.length > 0) {
+    const targetRow = await db.prepare('SELECT customer_name, imei FROM accounts a JOIN devices d ON d.id = a.device_id WHERE a.id = ?')
+      .bind(params.id).first<{ customer_name: string; imei: string }>();
+    await logActivity(db, {
+      actor: locals.dealer,
+      action: 'CUSTOMER_EDITED',
+      details: `Edited ${targetRow?.customer_name ?? params.id}: ${editedFields.join(', ')}`,
+      customerName: targetRow?.customer_name ?? null,
+      accountId: params.id,
+      imei: targetRow?.imei ?? null
+    });
+  }
+
   const row = await db.prepare(`
     SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
     FROM accounts a
@@ -307,12 +344,17 @@ export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
   const db = getDb({ platform });
   const scope = getAccountScopeFilter(locals.dealer, 'a');
   const row = await db.prepare(`
-    SELECT a.id, a.device_id
+    SELECT a.id, a.device_id, a.customer_name, d.imei
     FROM accounts a
+    JOIN devices d ON d.id = a.device_id
     WHERE a.id = ? AND ${scope.where}
-  `).bind(params.id, ...scope.params).first<{ id: string; device_id: string }>();
+  `).bind(params.id, ...scope.params).first<{ id: string; device_id: string; customer_name: string; imei: string }>();
 
   if (!row) return errorResponse('Account not found', 404);
+
+  // payment_reminders is created by the Aug-2026 migration; tolerate its
+  // absence on partially migrated databases instead of failing the delete.
+  await db.prepare('DELETE FROM payment_reminders WHERE account_id = ?').bind(params.id).run().catch(() => {});
 
   await db.batch([
     db.prepare('DELETE FROM location_logs WHERE account_id = ?').bind(params.id),
@@ -322,6 +364,16 @@ export const DELETE: RequestHandler = async ({ locals, params, platform }) => {
     db.prepare('DELETE FROM accounts WHERE id = ?').bind(params.id),
     db.prepare("UPDATE devices SET status = 'in_stock' WHERE id = ?").bind(row.device_id)
   ]);
+
+  // Accountability: also records who removed the customer (admin-only action).
+  await logActivity(db, {
+    actor: locals.dealer,
+    action: 'CUSTOMER_DELETED',
+    details: `Deleted customer ${row.customer_name} (${row.imei}); device returned to stock`,
+    customerName: row.customer_name,
+    accountId: params.id,
+    imei: row.imei
+  });
 
   return json({ success: true, id: params.id, deviceId: row.device_id });
 };

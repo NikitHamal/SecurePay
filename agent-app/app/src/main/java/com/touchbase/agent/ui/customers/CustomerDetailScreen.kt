@@ -87,6 +87,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.touchbase.agent.data.model.Account
 import com.touchbase.agent.data.model.AccountStatus
 import com.touchbase.agent.data.model.CustomerCredentials
@@ -118,6 +119,12 @@ fun CustomerDetailScreen(
     var customerCredentials by remember { mutableStateOf<CustomerCredentials?>(null) }
     var showPaymentSheet by remember { mutableStateOf(false) }
     var showMoMoDialog by remember { mutableStateOf(false) }
+
+    // Deleting a customer is an admin-only privilege (branch admin and above);
+    // the server returns 403 for agents, so hide the control up-front.
+    val dealerRole by repository?.dealerRole?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf<String?>(null) }
+    val canDeleteCustomer = dealerRole?.uppercase()?.let { it != "AGENT" } ?: true
     var isEditing by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf("") }
@@ -990,25 +997,36 @@ fun CustomerDetailScreen(
                     ButtonText(if (acc.isStolen) "Recover + Unlock" else "Flag as Stolen")
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        actionInProgress = true
-                        scope.launch {
-                            val result = repository?.deleteAccount(acc.id)
-                            actionInProgress = false
-                            result?.fold(
-                                onSuccess = { onBack() },
-                                onFailure = { error = it.message }
-                            ) ?: onBack()
-                        }
-                    },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    enabled = !actionInProgress && !isEditing,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    shape = RoundedCornerShape(360.dp)
-                ) {
-                    ButtonText("Delete")
+                if (canDeleteCustomer) {
+                    OutlinedButton(
+                        onClick = {
+                            actionInProgress = true
+                            scope.launch {
+                                val result = repository?.deleteAccount(acc.id)
+                                actionInProgress = false
+                                result?.fold(
+                                    onSuccess = { onBack() },
+                                    onFailure = { error = it.message }
+                                ) ?: onBack()
+                            }
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = !actionInProgress && !isEditing,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(360.dp)
+                    ) {
+                        ButtonText("Delete")
+                    }
                 }
+            }
+
+            if (!canDeleteCustomer) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Only a branch admin can delete a customer. Contact your administrator if this account must be removed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             if (acc.isStolen || acc.status == AccountStatus.STOLEN) {

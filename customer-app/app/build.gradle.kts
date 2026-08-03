@@ -4,11 +4,15 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-fun configured(name: String, fallback: String = ""): String =
-    providers.gradleProperty(name)
+fun configured(name: String, fallback: String = ""): String {
+    // An explicitly exported-but-empty value (e.g. a CI secret that was never
+    // populated) must not wipe out the baked-in default.
+    val raw = providers.gradleProperty(name)
         .orElse(providers.environmentVariable(name))
-        .orElse(fallback)
+        .orElse("")
         .get()
+    return raw.ifBlank { fallback }
+}
 
 fun buildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -20,9 +24,11 @@ val fcmProjectId = configured("TB_FCM_PROJECT_ID")
 val fcmApiKey = configured("TB_FCM_API_KEY")
 val fcmSenderId = configured("TB_FCM_SENDER_ID")
 val fcmApplicationId = configured("TB_FCM_APPLICATION_ID")
-val supportPhone = configured("TB_SUPPORT_PHONE")
-val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP")
-val supportEmail = configured("TB_SUPPORT_EMAIL")
+// Official Touch Base support contacts (client provided, Aug 2026).
+// +233595012237 and 0595012237 dial the same line in Ghana.
+val supportPhone = configured("TB_SUPPORT_PHONE", "+233595012237")
+val supportWhatsapp = configured("TB_SUPPORT_WHATSAPP", "233595012237")
+val supportEmail = configured("TB_SUPPORT_EMAIL", "adamutouchbase@gmail.com")
 val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
 if (releaseRequested && (hmacSecret.isBlank() || signingCertHash.isBlank())) {
     throw GradleException("Release build requires TB_HMAC_SECRET and TB_SIGNING_CERT_HASH via environment or Gradle properties")
@@ -36,8 +42,8 @@ android {
         applicationId = "com.touchbase.securepay.client"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.7.2"
+        versionCode = 31
+        versionName = "1.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

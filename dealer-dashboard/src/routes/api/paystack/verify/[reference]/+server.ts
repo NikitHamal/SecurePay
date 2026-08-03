@@ -39,7 +39,8 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
         amount: Number(data.amount || row.amount),
         method: 'MOBILE_MONEY',
         reference: `paystack:${reference}`,
-        recordedBy: 'paystack'
+        recordedBy: 'paystack',
+        env: platform?.env
       });
 
       const paidAt = data.paid_at ? Math.floor(new Date(data.paid_at).getTime() / 1000) : Math.floor(Date.now() / 1000);

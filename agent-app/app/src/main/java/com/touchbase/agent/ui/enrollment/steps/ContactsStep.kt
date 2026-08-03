@@ -2,12 +2,16 @@ package com.touchbase.agent.ui.enrollment.steps
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -17,6 +21,11 @@ import com.touchbase.agent.ui.enrollment.EnrollmentUiState
 /**
  * Personal references screen (our context on top of the M-KOPA flow):
  * next of kin, referee and the guarantor who co-signs the agreement.
+ *
+ * Per the client every block is OPTIONAL: the agent may enrol a customer
+ * without any references at all. A block only has to be completed once the
+ * agent starts typing into it — the wizard's Next-button validation treats a
+ * completely empty block as skipped.
  */
 @Composable
 fun ContactsStep(
@@ -38,7 +47,7 @@ fun ContactsStep(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        ReferenceHeader("Next of kin")
+        ReferenceHeader("Next of kin", optional = true)
 
         WizardTextField(
             label = "Full name",
@@ -68,7 +77,7 @@ fun ContactsStep(
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 4.dp))
 
-        ReferenceHeader("Referee")
+        ReferenceHeader("Referee", optional = true)
 
         WizardTextField(
             label = "Full name",
@@ -91,9 +100,9 @@ fun ContactsStep(
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 4.dp))
 
-        ReferenceHeader("Guarantor (co-signer)")
+        ReferenceHeader("Guarantor (co-signer)", optional = true)
         Text(
-            "The guarantor co-signs the financing agreement and can be contacted if the customer defaults.",
+            "Optional: only fill in when the customer has a co-signer. The guarantor co-signs the financing agreement and can be contacted if the customer defaults.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -136,11 +145,21 @@ fun ContactsStep(
 }
 
 @Composable
-private fun ReferenceHeader(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground
-    )
+private fun ReferenceHeader(title: String, optional: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        if (optional) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "(optional)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }

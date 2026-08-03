@@ -45,7 +45,8 @@ export const GET: RequestHandler = async ({ locals, params, url, platform }) => 
         amount: Number(data.amount || row.amount),
         method: 'MOBILE_MONEY',
         reference: `paystack:${reference}`,
-        recordedBy: 'customer-app'
+        recordedBy: 'customer-app',
+        env: platform?.env
       });
 
       const paidAt = data.paid_at

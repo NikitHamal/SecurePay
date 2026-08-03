@@ -57,6 +57,10 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     currencyCode: String(row.currency_code || 'GHS'),
     createdAt: Number(row.created_at) * 1000,
     updatedAt: Number(row.updated_at) * 1000,
+    // The exact agreement text the customer signed at enrollment, so the
+    // customer app can present it on demand ("loan agreement details").
+    agreementText: (row.agreement_text as string | null) ?? null,
+    consentAt: row.consent_at == null ? null : Number(row.consent_at) * 1000,
     ...releaseFields(row as Record<string, unknown>),
     securityPolicy,
     serverTime: Date.now()

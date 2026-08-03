@@ -6,20 +6,23 @@
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
-  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy } from '$lib/api/client';
+  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy, type InventoryDevice } from '$lib/api/client';
   import { openAddDevice, openNewLoan, openProvision } from '$lib/stores/ui';
+  import { dealer } from '$lib/stores/auth';
   import { onMount } from 'svelte';
 
-  interface DeviceRow {
-    id: string;
-    imei: string;
-    model: string;
-    status: string;
-    createdAt: number;
-    customerName: string | null;
-  }
+  type DeviceRow = InventoryDevice;
 
   let view: 'cards' | 'table' = 'table';
+
+  // Agents can register devices but can never delete them (admin-only).
+  $: canDeleteDevices = $dealer ? $dealer.role !== 'AGENT' : false;
+
+  function regLocationUrl(device: DeviceRow): string | null {
+    return device.registrationLat != null && device.registrationLng != null
+      ? `https://www.google.com/maps?q=${device.registrationLat},${device.registrationLng}`
+      : null;
+  }
   let devices: DeviceRow[] = [];
   let devicesLoading = false;
   let inventoryError: string | null = null;
@@ -212,13 +215,26 @@
                 <td class="font-mono text-xs text-ink-secondary">{device.imei}</td>
                 <td class="text-sm text-ink-primary">{device.model}</td>
                 <td><span class={device.status === 'in_stock' ? 'chip-emerald' : 'chip-amber'}>{device.status.replace('_', ' ')}</span></td>
-                <td class="text-xs text-ink-muted">{new Date(device.createdAt).toLocaleDateString()}</td>
+                <td class="text-xs text-ink-muted">
+                  {new Date(device.createdAt).toLocaleDateString()}
+                  {#if device.registeredByName}
+                    <p class="mt-0.5 text-[11px] text-ink-muted">by {device.registeredByName}</p>
+                  {/if}
+                  {#if regLocationUrl(device)}
+                    <a href={regLocationUrl(device)} target="_blank" rel="noreferrer" class="mt-0.5 inline-flex items-center gap-0.5 text-[11px] text-sky hover:underline">
+                      <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-5.1-7-11a7 7 0 1114 0c0 5.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+                      GPS
+                    </a>
+                  {/if}
+                </td>
                 <td class="text-right">
                   <div class="flex justify-end gap-2">
                     {#if device.status === 'in_stock'}
                       <button class="btn-primary !py-1 !px-2.5 text-xs" on:click={() => openNewLoan({ imei: device.imei, deviceModel: device.model })}>Enroll</button>
                       <button class="btn-outline !py-1 !px-2.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
-                      <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={devicesLoading} on:click={() => removeDevice(device)}>Delete</button>
+                      {#if canDeleteDevices}
+                        <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={devicesLoading} on:click={() => removeDevice(device)}>Delete</button>
+                      {/if}
                     {:else}
                       <span class="text-xs text-ink-muted">Assigned to {device.customerName || 'customer'}</span>
                     {/if}
@@ -243,7 +259,12 @@
             </div>
             <span class={device.status === 'in_stock' ? 'chip-emerald' : 'chip-amber'}>{device.status.replace('_', ' ')}</span>
           </header>
-          <p class="mt-3 text-xs text-ink-muted">Added {new Date(device.createdAt).toLocaleDateString()}</p>
+          <p class="mt-3 text-xs text-ink-muted">
+            Added {new Date(device.createdAt).toLocaleDateString()}{#if device.registeredByName} by {device.registeredByName}{/if}
+            {#if regLocationUrl(device)}
+              · <a href={regLocationUrl(device)} target="_blank" rel="noreferrer" class="text-sky hover:underline">GPS</a>
+            {/if}
+          </p>
           {#if device.status === 'in_stock'}
             <div class="mt-3 flex gap-2">
               <button class="btn-primary flex-1 !py-1.5 text-xs" on:click={() => openNewLoan({ imei: device.imei, deviceModel: device.model })}>Enroll</button>

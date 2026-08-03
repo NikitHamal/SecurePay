@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, generateToken, errorResponse } from '$lib/api/server';
+import { logActivity } from '$lib/audit';
+import { insertNotification } from '$lib/notify';
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
@@ -93,6 +95,22 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       now
     ).run();
   }
+
+  // Agent trigger: "Application approved" — lands in the new agent's own feed.
+  await insertNotification(db, {
+    recipientId: dealerId,
+    type: 'APPLICATION_APPROVED',
+    title: 'Your application was approved',
+    message: `Welcome aboard, ${String(req.full_name)}! Your agent account is active. You can now register customers and record payments.`,
+    relatedEntityType: 'dealer',
+    relatedEntityId: dealerId
+  });
+
+  await logActivity(db, {
+    actor: locals.dealer,
+    action: 'AGENT_APPROVED',
+    details: `Approved agent ${String(req.full_name)} (${String(req.email)})`
+  });
 
   return json({ message: 'Agent approved successfully', dealerId });
 };

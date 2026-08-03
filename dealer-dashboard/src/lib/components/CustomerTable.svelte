@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import type { Customer, Status } from '$lib/types';
   import { customers, deleteCustomer, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
+  import { dealer } from '$lib/stores/auth';
   import { formatCountdown, formatCurrency, formatPhone } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
 
@@ -59,6 +60,9 @@
     const seed = Number.parseInt(digits || '17', 10);
     return (seed * 37) % 360;
   }
+
+  // Agents can never delete customers — branch admins and above only.
+  $: canDeleteCustomers = $dealer ? $dealer.role !== 'AGENT' : false;
 
   $: visible = $customers.filter((c) => {
     const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
@@ -156,14 +160,16 @@
                 >
                   Lock
                 </button>
-                <button
-                  type="button"
-                  class="btn-outline text-crimson hover:bg-crimson/10"
-                  disabled={isPending($pending, customer.id)}
-                  on:click|stopPropagation={() => onDelete(customer)}
-                >
-                  Delete
-                </button>
+                {#if canDeleteCustomers}
+                  <button
+                    type="button"
+                    class="btn-outline text-crimson hover:bg-crimson/10"
+                    disabled={isPending($pending, customer.id)}
+                    on:click|stopPropagation={() => onDelete(customer)}
+                  >
+                    Delete
+                  </button>
+                {/if}
               </div>
             </td>
           </tr>

@@ -23,6 +23,10 @@ interface SecurePayApi {
     @POST("accounts")
     suspend fun createAccount(@Body request: CreateAccountRequest): Account
 
+    /** Company-wide duplicate check for a Ghana Card / national ID number. */
+    @GET("accounts/check-id")
+    suspend fun checkNationalId(@Query("nationalId") nationalId: String): CheckNationalIdResponse
+
     @PATCH("accounts/{id}")
     suspend fun updateAccount(@Path("id") id: String, @Body request: UpdateAccountRequest): Account
 

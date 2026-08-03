@@ -122,8 +122,14 @@ object AgreementText {
             appendLine(row("Next of Kin", p.kinName) + (if (p.kinRelation.isNotBlank()) " (${p.kinRelation})" else "") + (if (p.kinPhone.isNotBlank()) " — ${p.kinPhone}" else ""))
             appendLine(row("Referee", p.refereeName) + (if (p.refereePhone.isNotBlank()) " — ${p.refereePhone}" else ""))
             appendLine(row("Guarantor (co-signer)", p.guarantorName) + (if (p.guarantorRelation.isNotBlank()) " (${p.guarantorRelation})" else "") + (if (p.guarantorPhone.isNotBlank()) " — ${p.guarantorPhone}" else "") + (if (p.guarantorId.isNotBlank()) ", ID ${p.guarantorId}" else ""))
-            appendLine("1. The Guarantor co-signs this Agreement and guarantees the Customer's obligations. If the Customer defaults or cannot be reached, the Guarantor accepts responsibility for helping the Company contact the Customer and for settling outstanding amounts.")
-            appendLine("2. The Customer confirms that the next of kin, referee and guarantor named above have agreed to be contacted by the Company in relation to this Agreement.")
+            // References are optional: only assert a guarantor's obligations when
+            // one was actually named on the application.
+            if (p.guarantorName.isNotBlank()) {
+                appendLine("1. The Guarantor co-signs this Agreement and guarantees the Customer's obligations. If the Customer defaults or cannot be reached, the Guarantor accepts responsibility for helping the Company contact the Customer and for settling outstanding amounts.")
+                appendLine("2. The Customer confirms that the next of kin, referee and guarantor named above have agreed to be contacted by the Company in relation to this Agreement.")
+            } else {
+                appendLine("1. The Customer confirms that the persons named above, where provided, have agreed to be contacted by the Company in relation to this Agreement.")
+            }
             appendLine()
             appendLine("VIII. CONSENT FOR COLLECTION AND PROCESSING OF PERSONAL DATA AND PRODUCT INFORMATION")
             appendLine("1. Privacy Policy. The Customer acknowledges receiving (or being able to access) the Company's Customer Privacy Policy, which explains how the Company collects, uses, stores, processes, transfers and shares personal and Product information in furtherance of this Agreement and under applicable law, including the Data Protection Act, 2012 (Act 843) of the Republic of Ghana.")
@@ -145,7 +151,9 @@ object AgreementText {
             appendLine("XII. SIGNATURES")
             appendLine("Customer: $customer    Date: $date")
             appendLine("Signature: (signed digitally in the Touch Base agent app)")
-            appendLine("Guarantor: ${p.guarantorName.ifBlank { "—" }}    Date: $date")
+            if (p.guarantorName.isNotBlank()) {
+                appendLine("Guarantor: ${p.guarantorName}    Date: $date")
+            }
             appendLine("For the Company: Touch Base authorised agent    Date: $date")
         }.trimEnd()
     }

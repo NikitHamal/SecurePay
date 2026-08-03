@@ -2,9 +2,12 @@ package com.touchbase.agent.ui.enrollment
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.touchbase.agent.data.local.LocationCapture
 import com.touchbase.agent.data.model.CreateAccountRequest
 import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.remote.SecurePayRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,7 +75,78 @@ class EnrollmentViewModel(
     fun updateFirstName(v: String) = updateDraft { it.copy(firstName = v) }
     fun updateSurname(v: String) = updateDraft { it.copy(surname = v) }
     fun updateIdType(v: String) = updateDraft { it.copy(idType = v) }
-    fun updateNationalId(v: String) = updateDraft { it.copy(nationalId = v) }
+    fun updateNationalId(v: String) {
+        updateDraft { it.copy(nationalId = v) }
+        scheduleNationalIdCheck()
+    }
+
+    // ---- Live Ghana Card / ID duplicate check (company-wide) ----
+    private var idCheckJob: Job? = null
+    private var idCheckToken = 0
+
+    /**
+     * Debounced server check that guards the "Customer information" screen.
+     * The gate engages synchronously (state = Checking) so the wizard cannot
+     * slip a duplicate through between the last keystroke and the round-trip.
+     */
+    private fun scheduleNationalIdCheck() {
+        idCheckJob?.cancel()
+        val id = _uiState.value.draft.nationalId.trim()
+        if (id.length < 6) {
+            _uiState.update { it.copy(nationalIdCheck = NationalIdCheck.Idle) }
+            return
+        }
+        _uiState.update { it.copy(nationalIdCheck = NationalIdCheck.Checking) }
+        val token = ++idCheckToken
+        idCheckJob = viewModelScope.launch {
+            delay(650)
+            val repo = repository
+            if (repo == null || token != idCheckToken) {
+                _uiState.update {
+                    if (it.nationalIdCheck is NationalIdCheck.Checking) it.copy(nationalIdCheck = NationalIdCheck.Unverified) else it
+                }
+                return@launch
+            }
+            val checkedId = _uiState.value.draft.nationalId.trim()
+            if (checkedId != id) return@launch // moved on; a newer schedule handles it
+            repo.checkNationalId(checkedId).fold(
+                onSuccess = { response ->
+                    if (token != idCheckToken || _uiState.value.draft.nationalId.trim() != checkedId) return@fold
+                    val duplicate = response.matches.firstOrNull()
+                    _uiState.update { state ->
+                        state.copy(
+                            nationalIdCheck = if (duplicate != null) {
+                                NationalIdCheck.Duplicate(
+                                    "This ID is already registered to ${duplicate.customerName}" +
+                                        (if (duplicate.deviceModel.isNotBlank()) " (${duplicate.deviceModel})" else "") +
+                                        ". The same Ghana Card / ID cannot be enrolled twice."
+                                )
+                            } else {
+                                NationalIdCheck.Available
+                            }
+                        )
+                    }
+                },
+                onFailure = {
+                    if (token == idCheckToken) {
+                        _uiState.update { it.copy(nationalIdCheck = NationalIdCheck.Unverified) }
+                    }
+                }
+            )
+        }
+    }
+
+    /** Re-verify after restoring a saved draft (an in-flight duplicate must surface immediately). */
+    private fun recheckRestoredId() {
+        if (_uiState.value.draft.nationalId.trim().length >= 6) scheduleNationalIdCheck()
+    }
+
+    // ---- Anti-fraud GPS attached to the submission ----
+    private var enrollmentLocation: LocationCapture.GeoFix? = null
+
+    fun setEnrollmentLocation(location: LocationCapture.GeoFix?) {
+        enrollmentLocation = location
+    }
     fun updatePhone(v: String) = updateDraft { it.copy(phoneNumber = v) }
     fun updateOtherPhone(v: String) = updateDraft { it.copy(otherPhone = v) }
     fun updateDateOfBirth(v: String) = updateDraft { it.copy(dateOfBirth = v) }
@@ -192,9 +266,11 @@ class EnrollmentViewModel(
                 dailyRateInput = snapshot.dailyRateInput,
                 totalAmountInput = snapshot.totalAmountInput,
                 termDaysInput = snapshot.termDaysInput,
-                downPaymentInput = snapshot.downPaymentInput
+                downPaymentInput = snapshot.downPaymentInput,
+                nationalIdCheck = NationalIdCheck.Idle
             )
         }
+        recheckRestoredId()
     }
 
     /** The exact agreement text built from the current draft (shown before signing + sent to the server). */
@@ -287,7 +363,10 @@ class EnrollmentViewModel(
                 district = d.district.ifBlank { null },
                 physicalAddress = d.physicalAddress.ifBlank { null },
                 preferredLanguage = d.preferredLanguage.ifBlank { null },
-                agreementText = buildAgreement()
+                agreementText = buildAgreement(),
+                enrollmentLat = enrollmentLocation?.latitude,
+                enrollmentLng = enrollmentLocation?.longitude,
+                enrollmentAccuracy = enrollmentLocation?.accuracyMeters
             )
 
             val result = repository.createAccount(request)

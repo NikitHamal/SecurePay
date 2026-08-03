@@ -1,5 +1,9 @@
 package com.touchbase.agent.ui.inventory
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,6 +71,7 @@ import androidx.core.view.WindowCompat
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
@@ -88,10 +94,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.touchbase.agent.R
+import com.touchbase.agent.data.local.LocationCapture
 import com.touchbase.agent.data.model.Device
 import com.touchbase.agent.data.remote.SecurePayRepository
 import com.touchbase.agent.ui.components.BarcodeScannerSheet
@@ -117,6 +125,17 @@ fun InventoryScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Agents can register phones but can never delete them — branch admins and above only.
+    val dealerRole by repository?.dealerRole?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf<String?>(null) }
+    val canDeleteDevices = dealerRole?.uppercase()?.let { it != "AGENT" } ?: true
+
+    // Anti-fraud: the registration GPS fix is requested when the dialog opens.
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* result ignored: capture is best-effort */ }
 
     fun load() {
         isLoading = true
@@ -157,7 +176,12 @@ fun InventoryScreen(
                 title = { Text("Inventory", color = MaterialTheme.colorScheme.onBackground) },
                 actions = {
                     IconButton(
-                        onClick = { showAddDialog = true },
+                        onClick = {
+                            if (!LocationCapture.hasPermission(context)) {
+                                locationPermission.launch(LocationCapture.REQUIRED_PERMISSIONS)
+                            }
+                            showAddDialog = true
+                        },
                         modifier = Modifier.padding(end = 6.dp)
                     ) {
                         Icon(
@@ -227,17 +251,19 @@ fun InventoryScreen(
             items(devices, key = { it.id }) { device ->
                 DeviceCard(
                     device = device,
-                    onDelete = {
-                        if (repository != null) {
-                            scope.launch {
-                                val result = repository.deleteDevice(device.id)
-                                result.fold(
-                                    onSuccess = { load() },
-                                    onFailure = {
-                                        error = it.message
-                                        load()
-                                    }
-                                )
+                    onDelete = if (!canDeleteDevices) null else {
+                        {
+                            if (repository != null) {
+                                scope.launch {
+                                    val result = repository.deleteDevice(device.id)
+                                    result.fold(
+                                        onSuccess = { load() },
+                                        onFailure = {
+                                            error = it.message
+                                            load()
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -252,7 +278,15 @@ fun InventoryScreen(
             onAdd = { imei, model ->
                 if (repository != null) {
                     scope.launch {
-                        repository.addDevice(imei, model)
+                        // Attach where this phone physically was at registration (anti-fraud).
+                        val fix = runCatching { LocationCapture.capture(context.applicationContext) }.getOrNull()
+                        repository.addDevice(
+                            imei = imei,
+                            model = model,
+                            latitude = fix?.latitude,
+                            longitude = fix?.longitude,
+                            accuracy = fix?.accuracyMeters
+                        )
                         showAddDialog = false
                         load()
                     }
@@ -266,6 +300,7 @@ fun InventoryScreen(
 
 @Composable
 private fun DeviceCard(device: Device, modifier: Modifier = Modifier, onDelete: (() -> Unit)? = null) {
+    val context = LocalContext.current
     val dateStr = remember(device.soldAt, device.createdAt) {
         val epoch = if (device.soldAt != null && device.soldAt > 0L) device.soldAt else device.createdAt
         runCatching {
@@ -373,6 +408,49 @@ private fun DeviceCard(device: Device, modifier: Modifier = Modifier, onDelete: 
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            // Registration provenance (who / where — anti-fraud context).
+            val regLat = device.registrationLat
+            val regLng = device.registrationLng
+            if (device.registeredByName != null || (regLat != null && regLng != null)) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = buildString {
+                            append("Registered")
+                            device.registeredByName?.takeIf { it.isNotBlank() }?.let { append(" by $it") }
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (regLat != null && regLng != null) {
+                        Text(
+                            text = "View map",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps?q=$regLat,$regLng"))
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }

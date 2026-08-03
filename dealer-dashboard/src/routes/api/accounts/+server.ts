@@ -13,6 +13,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 import { getScopeFilter, hashPassword } from '$lib/auth';
+import { logActivity, normalizeNationalId, NATIONAL_ID_NORM_SQL } from '$lib/audit';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -80,7 +81,11 @@ async function ensureApplicationColumns(db: ReturnType<typeof getDb>) {
       ['district', 'TEXT'],
       ['physical_address', 'TEXT'],
       ['preferred_language', 'TEXT'],
-      ['agreement_text', 'TEXT']
+      ['agreement_text', 'TEXT'],
+      // 20260801_accountability.sql — GPS captured at enrollment time
+      ['enrollment_lat', 'REAL'],
+      ['enrollment_lng', 'REAL'],
+      ['enrollment_accuracy', 'REAL']
     ];
     for (const [column, ddl] of defs) {
       if (!existing.has(column)) {
@@ -88,6 +93,43 @@ async function ensureApplicationColumns(db: ReturnType<typeof getDb>) {
       }
     }
   } catch { /* read-only replica — the query below will surface a real problem */ }
+}
+
+/**
+ * Find accounts (any owner — an ID belongs to a person, not to one dealer)
+ * already holding this national ID after normalization. Ghana Cards are the
+ * primary target but the check intentionally covers every ID type: the same
+ * number must never be enrolled twice.
+ */
+async function findNationalIdDuplicates(
+  db: ReturnType<typeof getDb>,
+  nationalId: string,
+  excludeAccountId?: string
+) {
+  const normalized = normalizeNationalId(nationalId);
+  if (!normalized) return [];
+  const result = await db.prepare(`
+    SELECT a.id, a.customer_name, a.amount_paid, a.total_loan_amount, a.created_at,
+           COALESCE(a.release_approved, 0) AS release_approved,
+           d.model AS device_model, dl.name AS enrolled_by_name
+      FROM accounts a
+      JOIN devices d ON d.id = a.device_id
+      LEFT JOIN dealers dl ON dl.id = a.enrolled_by
+     WHERE ${NATIONAL_ID_NORM_SQL} = ?
+       ${excludeAccountId ? 'AND a.id != ?' : ''}
+     ORDER BY a.created_at DESC
+     LIMIT 3
+  `).bind(...(excludeAccountId ? [normalized, excludeAccountId] : [normalized])).all<{
+    id: string;
+    customer_name: string;
+    amount_paid: number;
+    total_loan_amount: number;
+    created_at: number;
+    release_approved: number;
+    device_model: string;
+    enrolled_by_name: string | null;
+  }>();
+  return result.results;
 }
 
 function applicationFields(row: Record<string, unknown>) {
@@ -134,6 +176,14 @@ function cleanOptPhone(value: unknown): string | null {
     throw new Error(`Phone numbers must contain 7 to 24 valid phone characters`);
   }
   return text;
+}
+
+/** Optional finite coordinate inside [min, max]; anything else is ignored. */
+function parseOptionalCoordinate(value: unknown, min: number, max: number): number | null {
+  if (value == null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) return null;
+  return parsed;
 }
 
 function boolFlag(value: unknown): boolean {
@@ -327,8 +377,25 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse(error instanceof Error ? error.message : 'Invalid application data', 400);
   }
 
+  // GPS fix captured by the agent app when the application was submitted
+  // (anti-fraud context — optional so older app builds keep working).
+  const enrollmentLat = parseOptionalCoordinate(body.enrollmentLat, -90, 90);
+  const enrollmentLng = parseOptionalCoordinate(body.enrollmentLng, -180, 180);
+  const enrollmentAccuracy = parseOptionalCoordinate(body.enrollmentAccuracy, 0, 100000);
+
   const db = getDb({ platform });
   await ensureApplicationColumns(db);
+
+  // Hard guard: the same Ghana Card / ID number can never be enrolled twice.
+  const duplicates = await findNationalIdDuplicates(db, nationalId);
+  if (duplicates.length > 0) {
+    const first = duplicates[0];
+    const idLabel = applicationData.idType || 'ID';
+    return errorResponse(
+      `Duplicate ${idLabel}: ${nationalId} is already registered to ${first.customer_name} (${first.device_model}). The same ID cannot be enrolled twice.`,
+      409
+    );
+  }
   const device = await db.prepare(
     'SELECT id, imei, model, status FROM devices WHERE imei = ? AND dealer_id = ?'
   ).bind(imei, locals.dealer.id).first<{ id: string; imei: string; model: string; status: string }>();
@@ -481,6 +548,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     db.prepare("UPDATE devices SET status = 'sold' WHERE id = ? AND status = 'in_stock'").bind(device.id)
   ];
 
+  if (enrollmentLat != null && enrollmentLng != null) {
+    statements.push(db.prepare(
+      'UPDATE accounts SET enrollment_lat = ?, enrollment_lng = ?, enrollment_accuracy = ? WHERE id = ?'
+    ).bind(enrollmentLat, enrollmentLng, enrollmentAccuracy, accountId));
+  }
+
   if (downPayment > 0) {
     statements.push(db.prepare(`
       INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
@@ -521,6 +594,17 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       nowSeconds
     ));
   if (notificationStatements.length > 0) await db.batch(notificationStatements);
+
+  await logActivity(db, {
+    actor: locals.dealer,
+    action: 'CUSTOMER_CREATED',
+    details: `Enrolled ${customerName} for a ${device.model} (${imei}) with ${cedis(downPayment)} initial payment`,
+    customerName,
+    accountId,
+    imei,
+    latitude: enrollmentLat,
+    longitude: enrollmentLng
+  });
 
   const row = await db.prepare(`
     SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name

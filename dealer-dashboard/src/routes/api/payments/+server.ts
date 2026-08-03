@@ -5,6 +5,8 @@ import { parsePaymentMethod, paymentMethodStorageValue } from '$lib/payment-meth
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
 import { getAccountScopeFilter } from '$lib/auth';
+import { logActivity } from '$lib/audit';
+import { notifyPaymentSuccess } from '$lib/notify';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -94,6 +96,18 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!row) {
     return errorResponse('Payment recorded but the account could not be reloaded', 500);
   }
+
+  await logActivity(db, {
+    actor: locals.dealer,
+    action: 'PAYMENT_RECORDED',
+    details: `Recorded GH₵ ${(amount / 100).toLocaleString('en-GH', { minimumFractionDigits: 2 })} via ${method}`,
+    customerName: String(row.customer_name),
+    accountId,
+    imei: String(row.imei)
+  });
+
+  // Customer trigger: "successful payment" push onto the enrolled device.
+  void notifyPaymentSuccess(db, platform?.env, { accountId, paymentId, amount, recordedBy: locals.dealer.id });
 
   const nextDue = Number(row.next_payment_due);
   const amtPaid = Number(row.amount_paid);

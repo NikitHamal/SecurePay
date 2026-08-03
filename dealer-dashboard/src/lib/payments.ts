@@ -6,6 +6,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types';
 import { v4 as uuidv4 } from 'uuid';
+import { notifyPaymentSuccess, type PushEnv } from '$lib/notify';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -18,6 +19,8 @@ export interface ApplyPaymentInput {
   method: string;          // e.g. 'MOBILE_MONEY', 'CARD', 'CASH', 'BANK'
   reference?: string;
   recordedBy: string;      // dealer id or 'paystack'
+  /** Platform env (FCM credentials) — when present, fires the customer/agent triggers. */
+  env?: PushEnv;
 }
 
 export interface ApplyPaymentResult {
@@ -92,6 +95,9 @@ export async function applyPayment(input: ApplyPaymentInput): Promise<ApplyPayme
       accountId
     )
   ]);
+
+  // Automated triggers: customer payment confirmation push + agent alert.
+  await notifyPaymentSuccess(db, input.env, { accountId, paymentId, amount, recordedBy });
 
   return { paymentId, newAmountPaid, newDue, paidOff };
 }

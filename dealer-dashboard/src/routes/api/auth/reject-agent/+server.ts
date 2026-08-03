@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
+import { logActivity } from '$lib/audit';
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
@@ -14,7 +15,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const db = getDb({ platform });
   const req = await db.prepare(`
-    SELECT ar.id, ar.requested_branch_id, b.agency_id
+    SELECT ar.id, ar.full_name, ar.email, ar.requested_branch_id, b.agency_id
       FROM agent_requests ar
       LEFT JOIN branches b ON b.id = ar.requested_branch_id
      WHERE ar.id = ? AND ar.status = 'PENDING'
@@ -37,6 +38,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   await db.prepare(
     "UPDATE agent_requests SET status = 'REJECTED', reviewed_by = ?, reviewed_at = ? WHERE id = ? AND status = 'PENDING'"
   ).bind(locals.dealer.id, now, requestId).run();
+
+  await logActivity(db, {
+    actor: locals.dealer,
+    action: 'AGENT_REJECTED',
+    details: `Rejected agent application from ${String(req.full_name ?? '')}${req.email ? ` (${String(req.email)})` : ''}`
+  });
 
   return json({ message: 'Agent request rejected' });
 };

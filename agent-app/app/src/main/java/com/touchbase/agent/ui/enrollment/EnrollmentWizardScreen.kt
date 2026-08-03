@@ -82,6 +82,8 @@ import com.touchbase.agent.ui.enrollment.steps.LocationStep
 import com.touchbase.agent.ui.enrollment.steps.ProductStep
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -92,6 +94,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.touchbase.agent.data.local.EnrollmentDraftStore
+import com.touchbase.agent.data.local.LocationCapture
 import kotlinx.coroutines.launch
 
 /**
@@ -122,6 +125,26 @@ fun EnrollmentWizardScreen(
     val context = LocalContext.current
     val draftStore = remember(context) { EnrollmentDraftStore(context.applicationContext) }
     val scope = rememberCoroutineScope()
+
+    // Anti-fraud GPS: ask for location access early (best-effort — the
+    // application still submits without a fix if permission is refused).
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* result ignored: LocationCapture is best-effort */ }
+    LaunchedEffect(Unit) {
+        if (!LocationCapture.hasPermission(context)) {
+            locationPermission.launch(LocationCapture.REQUIRED_PERMISSIONS)
+        }
+    }
+
+    fun submitWithLocation() {
+        if (state.isSubmitting) return
+        scope.launch {
+            val fix = runCatching { LocationCapture.capture(context) }.getOrNull()
+            viewModel.setEnrollmentLocation(fix)
+            viewModel.submit()
+        }
+    }
 
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
@@ -456,7 +479,7 @@ fun EnrollmentWizardScreen(
                     onBack = viewModel::prevStep,
                     onCancel = onCancel,
                     onNext = viewModel::nextStep,
-                    onSubmit = viewModel::submit,
+                    onSubmit = ::submitWithLocation,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
