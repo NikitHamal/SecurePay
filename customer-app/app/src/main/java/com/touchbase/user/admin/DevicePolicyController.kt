@@ -280,14 +280,13 @@ class DevicePolicyController(context: Context) {
         runCatching {
             // Do not block APK updates. Dealer technicians update Touch Base using
             // the signed APK over USB/Downloads when Play Protect or QR provisioning
-            // is unavailable. Uninstall, factory reset, debugging and app-control
-            // restrictions below still protect the financed device.
+            // is unavailable. Uninstall, factory reset and debugging restrictions
+            // below still protect the financed device.
             dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
             dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY)
-            // COMMENTED OUT TO ALLOW USER TO UNINSTALL OTHER APPS LIKE WHATSAPP
-            // dpm.addUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
-            dpm.addUserRestriction(admin, UserManager.DISALLOW_APPS_CONTROL)
-            dpm.addUserRestriction(admin, UserManager.DISALLOW_MODIFY_ACCOUNTS)
+            // Allow customers to add Google accounts and uninstall/update apps
+            // (WhatsApp, TikTok, etc.) — required for the Ghana market per client.
+            // DISALLOW_APPS_CONTROL and DISALLOW_MODIFY_ACCOUNTS intentionally NOT set.
             dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_CREDENTIALS)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)
             // Keep the package installer available for signed dealer APK updates.
