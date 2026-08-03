@@ -158,13 +158,6 @@ class MainActivity : ComponentActivity() {
         runCatching { LockWatchdogWorker.schedule(this) }
         runCatching { LockDeadlineScheduler.sync(this) }
         networkMonitor?.let { runCatching { it.startMonitoring() } }
-        
-        // CRITICAL FIX: Allow users to uninstall other apps (like WhatsApp)
-        // This clears the DISALLOW_UNINSTALL_APPS restriction that was blocking all app uninstalls
-        pc?.let { controller ->
-            runCatching { controller.allowAppUninstall() }
-                .onFailure { SecureLog.e(TAG, "Failed to allow app uninstall", it) }
-        }
 
         val repository = runCatching {
             (application as SecurePayApplication).deviceRepository

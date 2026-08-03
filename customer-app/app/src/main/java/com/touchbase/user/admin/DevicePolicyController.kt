@@ -212,18 +212,6 @@ class DevicePolicyController(context: Context) {
             .onFailure { SecureLog.w(TAG, "enableSystemApp($packageName) denied: ${it.message}") }
     }
 
-    /**
-     * Ensure users can uninstall other apps (like WhatsApp).
-     * This clears the DISALLOW_UNINSTALL_APPS restriction which was blocking all app uninstalls.
-     */
-    fun allowAppUninstall() {
-        if (!isAdminActive) return
-        runCatching {
-            dpm.clearUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
-            SecureLog.i(TAG, "Cleared DISALLOW_UNINSTALL_APPS restriction - users can now uninstall apps")
-        }.onFailure { SecureLog.w(TAG, "Clearing DISALLOW_UNINSTALL_APPS denied: ${it.message}") }
-    }
-
     fun setStayOnWhilePluggedIn() {
         if (!isDeviceOwner) return
         runCatching {
