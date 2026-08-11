@@ -23,7 +23,9 @@
     ready = true;
   });
 
-  $: if (ready && !$isAuthenticated && $page.url.pathname !== '/login') {
+  const PUBLIC_PATHS = ['/login', '/register'];
+
+  $: if (ready && !$isAuthenticated && !PUBLIC_PATHS.includes($page.url.pathname)) {
     goto('/login');
   }
   $: if (ready && $isAuthenticated && $page.url.pathname === '/login') {
