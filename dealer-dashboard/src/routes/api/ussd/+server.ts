@@ -227,7 +227,7 @@ async function runUssd(
   const account = await findAccount(db, msisdn);
 
   if (!account) {
-    return ussdReply(userId, msisdn, `No SecurePay account found for this number. Support: ${supportLine(platform)}`, false);
+    return ussdReply(userId, msisdn, `No TouchBase account found for this number. Support: ${supportLine(platform)}`, false);
   }
 
   let session = await loadSession(db, sessionId);
@@ -284,10 +284,10 @@ async function handleStep(
       return ussdReply(userId, msisdn, `Support: call or WhatsApp ${support}\nThank you.`, false);
     }
     if (userData === '0') {
-      return ussdReply(userId, msisdn, 'Thank you for using SecurePay\nGoodbye!', false);
+      return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
     }
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'SecurePay\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
+    return ussdReply(userId, msisdn, 'TouchBase\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
   }
 
   if (step === 'amount') {
@@ -307,7 +307,7 @@ async function handleStep(
   const reference = session.paystack_ref;
   if (!reference) {
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'SecurePay\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
+    return ussdReply(userId, msisdn, 'TouchBase\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
   }
   if (userData === '1') {
     const secret = getPaystackSecret({ platform });
