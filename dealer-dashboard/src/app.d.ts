@@ -34,6 +34,8 @@ declare global {
         DIDIT_CALLBACK_URL?: string;
         APP_BUILD_VERSION?: string;
         PAYSTACK_SECRET_KEY?: string;
+        JEST_USSD_USER_ID?: string;
+        SUPPORT_PHONE?: string;
       };
     }
   }
