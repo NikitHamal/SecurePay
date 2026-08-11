@@ -86,8 +86,8 @@ function providerLabel(provider: string): string {
   return 'AirtelTigo MoMo';
 }
 
-function formatDate(sec: number): string {
-  return new Date(sec * 1000).toLocaleDateString('en-GB', {
+function formatDate(ms: number): string {
+  return new Date(ms).toLocaleDateString('en-GB', {
     timeZone: 'UTC',
     day: '2-digit',
     month: 'short'
@@ -107,7 +107,7 @@ function evaluateStatus(account: Record<string, any>): StatusInfo {
   const due = Number(account.next_payment_due) || 0;
   if (Number(account.release_approved) === 1) return { label: 'PAID OFF', due };
   if (Number(account.locked_by_dealer) === 1) return { label: 'LOCKED', due };
-  if (due > 0 && due * 1000 <= Date.now()) return { label: 'OVERDUE', due };
+  if (due > 0 && due <= Date.now()) return { label: 'OVERDUE', due };
   return { label: 'ACTIVE', due };
 }
 
