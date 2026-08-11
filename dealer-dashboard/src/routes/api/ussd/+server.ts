@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { D1Database } from '@cloudflare/workers-types';
-import { errorResponse, getDb, getPaystackSecret } from '$lib/api/server';
+import { getDb, getPaystackSecret } from '$lib/api/server';
 import {
   generateReference,
   hasPaystackConfigured,
@@ -163,7 +163,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     body = await request.json();
   } catch {
-    return errorResponse('Invalid JSON body', 400);
+    return ussdReply('', '', 'Service error. Please try again.', false);
   }
 
   const userId = String(body.USERID ?? '').trim();
@@ -172,8 +172,49 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   const network = String(body.NETWORK ?? '').trim();
   const sessionId = String(body.SESSIONID ?? '').trim();
 
+  let db: D1Database | null = null;
+  try {
+    db = getDb({ platform });
+  } catch {
+    return ussdReply(userId, msisdnRaw, 'Service error. Please try again.', false);
+  }
+
+  const reply = await runUssd(db, platform, {
+    userId, msisdnRaw, userData, network, sessionId,
+    msgTypeFirst: body.MSGTYPE === true || body.MSGTYPE === 1 || body.MSGTYPE === '1' || body.MSGTYPE === 'true' || body.MSGTYPE === 'TRUE'
+  }).catch(() => ussdReply(userId, msisdnRaw, 'Service error. Please try again.', false));
+
+  // Record the exchange for diagnostics (JEST gateway errors like 506).
+  // Must be awaited — in Workers, un-awaited work is killed when the request returns.
+  const respBody = await (reply as Response).clone().json().catch(() => null) as {
+    MSG?: unknown; MSGTYPE?: unknown;
+  } | null;
+  await db.prepare(`
+    INSERT INTO ussd_logs (session_id, msisdn, user_data, network, msg_type, response_msg, response_msg_type, error, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+  `).bind(
+    sessionId.slice(0, 128) || null,
+    (msisdnRaw || '').slice(0, 32) || null,
+    (userData || '').slice(0, 120) || null,
+    (network || '').slice(0, 32) || null,
+    body.MSGTYPE === true || body.MSGTYPE === 1 || body.MSGTYPE === '1' ? 1 : 0,
+    respBody ? String(respBody.MSG ?? '').slice(0, 120) : null,
+    respBody && respBody.MSGTYPE === true ? 1 : 0,
+    null,
+  ).run().catch((err) => console.error('[ussd] log write failed', err));
+
+  return reply;
+};
+
+async function runUssd(
+  db: D1Database,
+  platform: App.Platform | null | undefined,
+  input: { userId: string; msisdnRaw: string; userData: string; network: string; sessionId: string; msgTypeFirst: boolean }
+): Promise<Response> {
+  const { userId, msisdnRaw, userData, network, sessionId, msgTypeFirst } = input;
+
   if (!sessionId || !msisdnRaw) {
-    return errorResponse('SESSIONID and MSISDN are required', 400);
+    return ussdReply(userId, msisdnRaw, 'Service error. Please try again.', false);
   }
 
   const configuredUserId =
@@ -182,7 +223,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return ussdReply(userId, msisdnRaw, 'Unauthorized session. Please contact support.', false);
   }
 
-  const db = getDb({ platform });
   const msisdn = normalizeMsisdn(msisdnRaw);
   const account = await findAccount(db, msisdn);
 
@@ -190,11 +230,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return ussdReply(userId, msisdn, `No SecurePay account found for this number. Support: ${supportLine(platform)}`, false);
   }
 
-  const isFirst =
-    body.MSGTYPE === true || body.MSGTYPE === 1 || body.MSGTYPE === '1' || body.MSGTYPE === 'true' || body.MSGTYPE === 'TRUE';
-
   let session = await loadSession(db, sessionId);
-  if (!session || isFirst) {
+  if (!session || msgTypeFirst) {
     session = {
       session_id: sessionId,
       msisdn,
@@ -208,9 +245,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     };
   }
 
-  const reply = await handleStep(db, platform, session, userData, userId, msisdn, account);
-  return reply;
-};
+  return handleStep(db, platform, session, userData, userId, msisdn, account);
+}
 
 function supportLine(platform: App.Platform | null | undefined): string {
   const line = platform?.env?.SUPPORT_PHONE || (typeof process !== 'undefined' ? (process.env?.SUPPORT_PHONE || '') : '');
