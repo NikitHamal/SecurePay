@@ -25,6 +25,8 @@ import { getCustomerEmail } from '$lib/paystack/email';
 const SESSION_TTL_MS = 5 * 60 * 1000;
 const MAX_AMOUNT_GHS = 50_000;
 const DEFAULT_SUPPORT = '053 799 5936';
+const WELCOME_PROMPT = 'WELCOME TO TOUCH BASE PHONES\nEnter your account number';
+const MAIN_MENU = 'TouchBase\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit';
 
 interface UssdBody {
   USERID?: unknown;
@@ -43,6 +45,7 @@ interface SessionRow {
   amount_pesewas: number | null;
   provider: string | null;
   paystack_ref: string | null;
+  account_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -121,16 +124,17 @@ async function loadSession(db: D1Database, sessionId: string): Promise<SessionRo
 
 async function saveSession(
   db: D1Database,
-  session: { session_id: string; msisdn: string; network: string | null; step: string; amount_pesewas: number | null; provider: string | null; paystack_ref: string | null }
+  session: { session_id: string; msisdn: string; network: string | null; step: string; amount_pesewas: number | null; provider: string | null; paystack_ref: string | null; account_id: string | null }
 ): Promise<void> {
   await db.prepare(`
-    INSERT INTO ussd_sessions (session_id, msisdn, network, step, amount_pesewas, provider, paystack_ref, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
+    INSERT INTO ussd_sessions (session_id, msisdn, network, step, amount_pesewas, provider, paystack_ref, account_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
     ON CONFLICT(session_id) DO UPDATE SET
       step = excluded.step,
       amount_pesewas = excluded.amount_pesewas,
       provider = excluded.provider,
       paystack_ref = excluded.paystack_ref,
+      account_id = excluded.account_id,
       updated_at = unixepoch()
   `).bind(
     session.session_id,
@@ -139,23 +143,20 @@ async function saveSession(
     session.step,
     session.amount_pesewas,
     session.provider,
-    session.paystack_ref
+    session.paystack_ref,
+    session.account_id
   ).run();
 }
 
-async function findAccount(db: D1Database, msisdn: string): Promise<Record<string, any> | null> {
-  const last9 = msisdn.slice(-9);
-  const variants = [msisdn, `0${last9}`, `+${msisdn}`];
+/** Look up an account by its customer-facing account number (e.g. 12894). */
+async function findAccountByNumber(db: D1Database, accountNumber: string): Promise<Record<string, any> | null> {
+  const raw = (accountNumber || '').trim();
+  if (!raw) return null;
+  const variants = [...new Set([raw, raw.replace(/\s+/g, ''), raw.replace(/^0+/, '')])];
   const placeholders = variants.map(() => '?').join(', ');
-  const exact = await db.prepare(
-    `SELECT * FROM accounts WHERE phone_number IN (${placeholders}) LIMIT 1`
+  return db.prepare(
+    `SELECT * FROM accounts WHERE customer_account_number IN (${placeholders}) LIMIT 1`
   ).bind(...variants).first<Record<string, any>>();
-  if (exact) return exact;
-
-  const fuzzy = await db.prepare(
-    `SELECT * FROM accounts WHERE replace(replace(phone_number, '+', ''), ' ', '') LIKE '%' || ? LIMIT 1`
-  ).bind(last9).first<Record<string, any>>();
-  return fuzzy ?? null;
 }
 
 export const POST: RequestHandler = async ({ request, platform }) => {
@@ -224,11 +225,6 @@ async function runUssd(
   }
 
   const msisdn = normalizeMsisdn(msisdnRaw);
-  const account = await findAccount(db, msisdn);
-
-  if (!account) {
-    return ussdReply(userId, msisdn, `No TouchBase account found for this number. Support: ${supportLine(platform)}`, false);
-  }
 
   let session = await loadSession(db, sessionId);
   if (!session || msgTypeFirst) {
@@ -236,16 +232,17 @@ async function runUssd(
       session_id: sessionId,
       msisdn,
       network: network || null,
-      step: 'main',
+      step: 'account',
       amount_pesewas: null,
       provider: null,
       paystack_ref: null,
+      account_id: null,
       created_at: Math.floor(Date.now() / 1000),
       updated_at: Math.floor(Date.now() / 1000)
     };
   }
 
-  return handleStep(db, platform, session, userData, userId, msisdn, account);
+  return handleStep(db, platform, session, userData, userId, msisdn, null);
 }
 
 function supportLine(platform: App.Platform | null | undefined): string {
@@ -260,15 +257,58 @@ async function handleStep(
   userData: string,
   userId: string,
   msisdn: string,
-  account: Record<string, any>
+  account: Record<string, any> | null
 ): Promise<Response> {
   const support = supportLine(platform);
   const step = session.step;
 
+  // Screen one — account number entry after dialing *920*264#.
+  if (step === 'account') {
+    const found = await findAccountByNumber(db, userData);
+    if (!found) {
+      return ussdReply(userId, msisdn, 'Account number not found\nPlease check and try again', true);
+    }
+    await saveSession(db, { ...session, step: 'main', account_id: String(found.id) });
+    const name = String(found.customer_name || 'Customer').trim();
+    return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
+  }
+
+  // Every other step needs the account the session resolved to.
+  if (!account && session.account_id) {
+    account = await db.prepare('SELECT * FROM accounts WHERE id = ?')
+      .bind(session.account_id).first<Record<string, any>>();
+  }
+  if (!account) {
+    await saveSession(db, { ...session, step: 'account', account_id: null });
+    return ussdReply(userId, msisdn, WELCOME_PROMPT, true);
+  }
+
+  // Status screen — '1' returns to main menu, '0' exits, anything else re-shows.
+  if (step === 'status') {
+    if (userData === '0') {
+      return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
+    }
+    const status = evaluateStatus(account);
+    const msg =
+      `Balance: GHS ${ghs(Number(account.amount_paid))}/${ghs(Number(account.total_loan_amount))}` +
+      (status.due > 0 ? `\nDue: ${formatDate(status.due)}` : '') +
+      `\nStatus: ${status.label}\n1. Menu\n0. Exit`;
+    return ussdReply(userId, msisdn, msg, true);
+  }
+
+  // Payment-received screen — '1' returns to main menu, '0' exits.
+  if (step === 'ended') {
+    if (userData === '0') {
+      return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
+    }
+    await saveSession(db, { ...session, step: 'main' });
+    return ussdReply(userId, msisdn, MAIN_MENU, true);
+  }
+
   // Main menu / any unrecognized step.
-  if (step === 'main' || step === 'ended' || !['main', 'amount', 'provider', 'confirm'].includes(step)) {
+  if (step === 'main' || !['main', 'status', 'ended', 'amount', 'provider', 'confirm'].includes(step)) {
     if (userData === '1') {
-      await saveSession(db, { ...session, step: 'main' });
+      await saveSession(db, { ...session, step: 'status' });
       const status = evaluateStatus(account);
       const msg =
         `Balance: GHS ${ghs(Number(account.amount_paid))}/${ghs(Number(account.total_loan_amount))}` +
@@ -287,7 +327,7 @@ async function handleStep(
       return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
     }
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'TouchBase\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
+    return ussdReply(userId, msisdn, MAIN_MENU, true);
   }
 
   if (step === 'amount') {
@@ -307,7 +347,7 @@ async function handleStep(
   const reference = session.paystack_ref;
   if (!reference) {
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'TouchBase\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
+    return ussdReply(userId, msisdn, MAIN_MENU, true);
   }
   if (userData === '1') {
     const secret = getPaystackSecret({ platform });
