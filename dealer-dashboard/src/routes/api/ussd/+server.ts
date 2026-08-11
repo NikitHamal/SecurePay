@@ -14,18 +14,14 @@ import { getCustomerEmail } from '$lib/paystack/email';
  * JEST USSD endpoint.
  *
  * JEST USSD forwards mobile handset USSD input to this URL as a POST with a
- * JSON body: USERID, MSISDN, USERDATA, MSGTYPE, SESSIONID, NETWORK (see
- * JEST_USSD_API_Documentation). We respond with USERID, MSISDN (optional),
- * MSG (<= 120 chars) and MSGTYPE (true = keep session, false = end).
- *
- * Configure JEST to POST to: https://<dashboard>/api/ussd
- * Set JEST_USSD_USER_ID to the ID assigned by JEST to enforce the caller.
+ * JSON body: USERID, MSISDN, USERDATA, MSGTYPE, SESSIONID, NETWORK.
+ * We respond with USERID, MSISDN, MSG (<= 120 chars) and MSGTYPE (true = keep, false = release).
  */
 
 const SESSION_TTL_MS = 5 * 60 * 1000;
 const MAX_AMOUNT_GHS = 50_000;
 const DEFAULT_SUPPORT = '053 799 5936';
-const WELCOME_PROMPT = 'WELCOME TO TOUCH BASE PHONES\nEnter your account number';
+const WELCOME_PROMPT = 'WELCOME TO TOUCHBASE PHONES\nEnter your account number';
 const MAIN_MENU = 'TouchBase\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit';
 
 interface UssdBody {
@@ -71,8 +67,12 @@ function normalizeMsisdn(raw: string): string {
   return digits;
 }
 
+/** Convert MSISDN (233XXXXXXXXX) to local 10-digit format (0XXXXXXXXX) expected by Paystack charge API. */
 function toPaystackPhone(msisdn: string): string {
-  return '+' + msisdn;
+  if (msisdn.startsWith('233') && msisdn.length === 12) {
+    return '0' + msisdn.slice(3);
+  }
+  return msisdn;
 }
 
 function networkToProvider(network: string): string | null {
@@ -148,11 +148,12 @@ async function saveSession(
   ).run();
 }
 
-/** Look up an account by its customer-facing account number (e.g. 12894). */
+/** Look up an account by its customer-facing account number (e.g. 12894 or 0537995936). */
 async function findAccountByNumber(db: D1Database, accountNumber: string): Promise<Record<string, any> | null> {
   const raw = (accountNumber || '').trim();
   if (!raw) return null;
-  const variants = [...new Set([raw, raw.replace(/\s+/g, ''), raw.replace(/^0+/, '')])];
+  const variants = [...new Set([raw, raw.replace(/\s+/g, ''), raw.replace(/^0+/, '')])].filter(Boolean);
+  if (variants.length === 0) return null;
   const placeholders = variants.map(() => '?').join(', ');
   return db.prepare(
     `SELECT * FROM accounts WHERE customer_account_number IN (${placeholders}) LIMIT 1`
@@ -180,16 +181,23 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return ussdReply(userId, msisdnRaw, 'Service error. Please try again.', false);
   }
 
+  let capturedError: string | null = null;
+
   const reply = await runUssd(db, platform, {
     userId, msisdnRaw, userData, network, sessionId,
     msgTypeFirst: body.MSGTYPE === true || body.MSGTYPE === 1 || body.MSGTYPE === '1' || body.MSGTYPE === 'true' || body.MSGTYPE === 'TRUE'
-  }).catch(() => ussdReply(userId, msisdnRaw, 'Service error. Please try again.', false));
+  }).catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    capturedError = msg;
+    return ussdReply(userId, msisdnRaw, 'Payment could not be started\nPlease try again later.', false);
+  });
 
-  // Record the exchange for diagnostics (JEST gateway errors like 506).
-  // Must be awaited — in Workers, un-awaited work is killed when the request returns.
+  // Record the exchange for diagnostics.
   const respBody = await (reply as Response).clone().json().catch(() => null) as {
     MSG?: unknown; MSGTYPE?: unknown;
   } | null;
+
+  const errString = capturedError as string | null;
   await db.prepare(`
     INSERT INTO ussd_logs (session_id, msisdn, user_data, network, msg_type, response_msg, response_msg_type, error, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
@@ -201,7 +209,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     body.MSGTYPE === true || body.MSGTYPE === 1 || body.MSGTYPE === '1' ? 1 : 0,
     respBody ? String(respBody.MSG ?? '').slice(0, 120) : null,
     respBody && respBody.MSGTYPE === true ? 1 : 0,
-    null,
+    errString ? errString.slice(0, 250) : null,
   ).run().catch((err) => console.error('[ussd] log write failed', err));
 
   return reply;
@@ -226,9 +234,11 @@ async function runUssd(
 
   const msisdn = normalizeMsisdn(msisdnRaw);
 
-  let session = await loadSession(db, sessionId);
-  if (!session || msgTypeFirst) {
-    session = {
+  const loadedSession = await loadSession(db, sessionId);
+  const isNewSession = !loadedSession || msgTypeFirst;
+
+  if (isNewSession) {
+    const session: SessionRow = {
       session_id: sessionId,
       msisdn,
       network: network || null,
@@ -240,9 +250,11 @@ async function runUssd(
       created_at: Math.floor(Date.now() / 1000),
       updated_at: Math.floor(Date.now() / 1000)
     };
+    await saveSession(db, session);
+    return ussdReply(userId, msisdn, WELCOME_PROMPT, true);
   }
 
-  return handleStep(db, platform, session, userData, userId, msisdn, null);
+  return handleStep(db, platform, loadedSession, userData, userId, msisdn, null);
 }
 
 function supportLine(platform: App.Platform | null | undefined): string {
@@ -283,8 +295,14 @@ async function handleStep(
     return ussdReply(userId, msisdn, WELCOME_PROMPT, true);
   }
 
+  const name = String(account.customer_name || 'Customer').trim();
+
   // Status screen — '1' returns to main menu, '0' exits, anything else re-shows.
   if (step === 'status') {
+    if (userData === '1') {
+      await saveSession(db, { ...session, step: 'main' });
+      return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
+    }
     if (userData === '0') {
       return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
     }
@@ -298,11 +316,15 @@ async function handleStep(
 
   // Payment-received screen — '1' returns to main menu, '0' exits.
   if (step === 'ended') {
+    if (userData === '1') {
+      await saveSession(db, { ...session, step: 'main' });
+      return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
+    }
     if (userData === '0') {
       return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
     }
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, MAIN_MENU, true);
+    return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
   }
 
   // Main menu / any unrecognized step.
@@ -318,7 +340,7 @@ async function handleStep(
     }
     if (userData === '2') {
       await saveSession(db, { ...session, step: 'amount' });
-      return ussdReply(userId, msisdn, 'Enter amount to pay in GHS\n(whole cedis), e.g. 50:', true);
+      return ussdReply(userId, msisdn, 'Enter amount to pay in GHS:', true);
     }
     if (userData === '3') {
       return ussdReply(userId, msisdn, `Support: call or WhatsApp ${support}\nThank you.`, false);
@@ -327,7 +349,7 @@ async function handleStep(
       return ussdReply(userId, msisdn, 'Thank you for using TouchBase\nGoodbye!', false);
     }
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, MAIN_MENU, true);
+    return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
   }
 
   if (step === 'amount') {
@@ -347,7 +369,7 @@ async function handleStep(
   const reference = session.paystack_ref;
   if (!reference) {
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, MAIN_MENU, true);
+    return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
   }
   if (userData === '1') {
     const secret = getPaystackSecret({ platform });
@@ -390,7 +412,7 @@ async function handleAmount(
 ): Promise<Response> {
   const amountGhs = Number(userData);
   if (!Number.isFinite(amountGhs) || amountGhs <= 0) {
-    return ussdReply(userId, msisdn, 'Invalid amount\nEnter whole cedis, e.g. 50:', true);
+    return ussdReply(userId, msisdn, 'Invalid amount\nEnter amount in GHS:', true);
   }
   const amountPesewas = Math.round(amountGhs * 100);
   const remaining = Math.max(0, Number(account.total_loan_amount) - Number(account.amount_paid));
@@ -475,7 +497,8 @@ async function initiateCharge(
       true
     );
   } catch (err: any) {
-    console.error('[ussd] paystack charge failed', err);
-    return ussdReply(userId, msisdn, 'Payment could not be started\nPlease try again later.', false);
+    const errDetail = err?.body?.message || err?.message || String(err);
+    console.error('[ussd] paystack charge failed', errDetail, err);
+    throw new Error(`Paystack charge failed: ${errDetail}`);
   }
 }
