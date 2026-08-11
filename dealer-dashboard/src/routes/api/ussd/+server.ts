@@ -272,22 +272,22 @@ async function handleStep(
       const status = evaluateStatus(account);
       const msg =
         `Balance: GHS ${ghs(Number(account.amount_paid))}/${ghs(Number(account.total_loan_amount))}` +
-        (status.due > 0 ? `. Due ${formatDate(status.due)}` : '') +
-        `. Status: ${status.label}. 1.Menu 0.Exit`;
+        (status.due > 0 ? `\nDue: ${formatDate(status.due)}` : '') +
+        `\nStatus: ${status.label}\n1. Menu\n0. Exit`;
       return ussdReply(userId, msisdn, msg, true);
     }
     if (userData === '2') {
       await saveSession(db, { ...session, step: 'amount' });
-      return ussdReply(userId, msisdn, 'Enter amount to pay in GHS (whole cedis), e.g. 50:', true);
+      return ussdReply(userId, msisdn, 'Enter amount to pay in GHS\n(whole cedis), e.g. 50:', true);
     }
     if (userData === '3') {
-      return ussdReply(userId, msisdn, `Support: call or WhatsApp ${support}. Thank you.`, false);
+      return ussdReply(userId, msisdn, `Support: call or WhatsApp ${support}\nThank you.`, false);
     }
     if (userData === '0') {
-      return ussdReply(userId, msisdn, 'Thank you for using SecurePay. Goodbye!', false);
+      return ussdReply(userId, msisdn, 'Thank you for using SecurePay\nGoodbye!', false);
     }
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'SecurePay: 1.Balance & Status 2.Pay via MoMo 3.Support 0.Exit', true);
+    return ussdReply(userId, msisdn, 'SecurePay\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
   }
 
   if (step === 'amount') {
@@ -298,7 +298,7 @@ async function handleStep(
     const choice: Record<string, string> = { '1': 'mtn', '2': 'tgo', '3': 'vod' };
     const provider = choice[userData];
     if (!provider) {
-      return ussdReply(userId, msisdn, 'Choose network: 1.MTN 2.AirtelTigo 3.Vodafone', true);
+      return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Vodafone', true);
     }
     return initiateCharge(db, platform, { ...session, provider }, userId, msisdn, account);
   }
@@ -307,7 +307,7 @@ async function handleStep(
   const reference = session.paystack_ref;
   if (!reference) {
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'SecurePay: 1.Balance & Status 2.Pay via MoMo 3.Support 0.Exit', true);
+    return ussdReply(userId, msisdn, 'SecurePay\n1. Balance & Status\n2. Pay via MoMo\n3. Support\n0. Exit', true);
   }
   if (userData === '1') {
     const secret = getPaystackSecret({ platform });
@@ -323,20 +323,20 @@ async function handleStep(
       const current = fresh ?? account;
       const status = evaluateStatus(current);
       const msg =
-        `Payment received! Paid: GHS ${ghs(Number(current.amount_paid))}.` +
+        `Payment received!\nPaid: GHS ${ghs(Number(current.amount_paid))}` +
         (status.label === 'PAID OFF'
-          ? ' Your phone is now unlocked. Thank you!'
-          : ` Next due ${formatDate(status.due)}. 1.Menu 0.Exit`);
+          ? '\nYour phone is now unlocked\nThank you!'
+          : `\nNext due: ${formatDate(status.due)}\n1. Menu\n0. Exit`);
       await saveSession(db, { ...session, step: 'ended' });
       return ussdReply(userId, msisdn, msg, true);
     }
-    return ussdReply(userId, msisdn, 'Payment not confirmed yet. 1.Check again 0.Exit', true);
+    return ussdReply(userId, msisdn, 'Payment not confirmed yet\n1. Check again\n0. Exit', true);
   }
   if (userData === '0') {
     await saveSession(db, { ...session, step: 'main' });
-    return ussdReply(userId, msisdn, 'Payment cancelled. 1.Balance & Status 2.Pay via MoMo 0.Exit', true);
+    return ussdReply(userId, msisdn, 'Payment cancelled\n1. Balance & Status\n2. Pay via MoMo\n0. Exit', true);
   }
-  return ussdReply(userId, msisdn, 'Reply 1 when you finish the prompt on your phone, 0 to cancel', true);
+  return ussdReply(userId, msisdn, 'Reply 1 when you finish the prompt\non your phone, 0 to cancel', true);
 }
 
 async function handleAmount(
@@ -350,21 +350,21 @@ async function handleAmount(
 ): Promise<Response> {
   const amountGhs = Number(userData);
   if (!Number.isFinite(amountGhs) || amountGhs <= 0) {
-    return ussdReply(userId, msisdn, 'Invalid amount. Enter whole cedis, e.g. 50:', true);
+    return ussdReply(userId, msisdn, 'Invalid amount\nEnter whole cedis, e.g. 50:', true);
   }
   const amountPesewas = Math.round(amountGhs * 100);
   const remaining = Math.max(0, Number(account.total_loan_amount) - Number(account.amount_paid));
   if (amountPesewas > remaining) {
-    return ussdReply(userId, msisdn, `Amount exceeds balance of GHS ${ghs(remaining)}. Enter lower amount:`, true);
+    return ussdReply(userId, msisdn, `Amount exceeds balance of GHS ${ghs(remaining)}\nEnter lower amount:`, true);
   }
   if (amountPesewas > MAX_AMOUNT_GHS * 100) {
-    return ussdReply(userId, msisdn, `Max payment is GHS ${MAX_AMOUNT_GHS.toLocaleString()}. Enter lower amount:`, true);
+    return ussdReply(userId, msisdn, `Max payment is GHS ${MAX_AMOUNT_GHS.toLocaleString()}\nEnter lower amount:`, true);
   }
 
   const provider = session.provider || networkToProvider(session.network || '');
   if (!provider) {
     await saveSession(db, { ...session, step: 'provider', amount_pesewas: amountPesewas });
-    return ussdReply(userId, msisdn, 'Choose network: 1.MTN 2.AirtelTigo 3.Vodafone', true);
+    return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Vodafone', true);
   }
   return initiateCharge(db, platform, { ...session, provider, amount_pesewas: amountPesewas }, userId, msisdn, account);
 }
@@ -431,11 +431,11 @@ async function initiateCharge(
     return ussdReply(
       userId,
       msisdn,
-      `Pay GHS ${ghs(amountPesewas)} via ${providerLabel(provider)}. Approve the prompt on your phone. Reply 1 when done, 0 to cancel`,
+      `Pay GHS ${ghs(amountPesewas)} via ${providerLabel(provider)}\nApprove the prompt on your phone\nReply 1 when done, 0 to cancel`,
       true
     );
   } catch (err: any) {
     console.error('[ussd] paystack charge failed', err);
-    return ussdReply(userId, msisdn, 'Payment could not be started. Please try again later.', false);
+    return ussdReply(userId, msisdn, 'Payment could not be started\nPlease try again later.', false);
   }
 }
