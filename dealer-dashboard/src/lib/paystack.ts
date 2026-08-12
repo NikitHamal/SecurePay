@@ -17,7 +17,7 @@ export interface PaystackChargeRequest {
   reference: string;
   channels?: PaystackChannel[];
   metadata?: Record<string, unknown>;
-  mobile_money?: { phone: string; provider: PaystackMobileProvider };
+  mobile_money?: { phone: string; provider: PaystackMobileProvider; voucher_code?: string };
 }
 
 export interface PaystackChargeResponse {

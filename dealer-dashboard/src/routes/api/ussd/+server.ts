@@ -331,7 +331,7 @@ async function handleStep(
   }
 
   // Main menu / any unrecognized step.
-  if (step === 'main' || !['main', 'status', 'ended', 'amount', 'provider', 'confirm'].includes(step)) {
+  if (step === 'main' || !['main', 'status', 'ended', 'amount', 'provider', 'momo_phone', 'voucher', 'confirm'].includes(step)) {
     if (userData === '1') {
       await saveSession(db, { ...session, step: 'status' });
       const status = evaluateStatus(account);
@@ -360,12 +360,51 @@ async function handleStep(
   }
 
   if (step === 'provider') {
-    const choice: Record<string, string> = { '1': 'mtn', '2': 'tgo', '3': 'vod' };
+    const choice: Record<string, string> = { '1': 'mtn', '2': 'vod', '3': 'tgo' };
     const provider = choice[userData];
     if (!provider) {
-      return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Telecel', true);
+      return ussdReply(userId, msisdn, 'Choose network:\n1. MTN MoMo\n2. Telecel Cash\n3. AirtelTigo', true);
     }
-    return initiateCharge(db, platform, { ...session, provider }, userId, msisdn, account);
+
+    if (provider === 'vod') {
+      await saveSession(db, { ...session, step: 'voucher', provider: 'vod' });
+      return ussdReply(userId, msisdn, 'Enter Telecel Voucher Code\n(Dial *110# on Telecel to generate):', true);
+    }
+
+    // For MTN or AirtelTigo, if caller msisdn does not match provider, prompt for phone number
+    const msisdnProvider = phoneToProvider(msisdn);
+    if (msisdnProvider !== provider) {
+      await saveSession(db, { ...session, step: 'momo_phone', provider });
+      const label = provider === 'mtn' ? 'MTN MoMo' : 'AirtelTigo';
+      return ussdReply(userId, msisdn, `Enter ${label} phone number:`, true);
+    }
+
+    return initiateCharge(db, platform, { ...session, provider }, userId, msisdn, account, { phone: msisdn });
+  }
+
+  if (step === 'momo_phone') {
+    const enteredPhone = normalizeMsisdn(userData);
+    if (!/^233\d{9}$/.test(enteredPhone)) {
+      const label = session.provider === 'mtn' ? 'MTN MoMo' : 'AirtelTigo';
+      return ussdReply(userId, msisdn, `Invalid phone number\nEnter valid 10-digit ${label} number:`, true);
+    }
+    return initiateCharge(db, platform, session, userId, msisdn, account, {
+      provider: session.provider || 'mtn',
+      phone: enteredPhone
+    });
+  }
+
+  if (step === 'voucher') {
+    const voucherCode = userData.trim().replace(/\D/g, '');
+    if (!voucherCode || voucherCode.length < 4) {
+      return ussdReply(userId, msisdn, 'Invalid voucher code\nEnter Telecel Voucher Code (from *110#):', true);
+    }
+    const payPhone = session.paystack_ref || msisdn;
+    return initiateCharge(db, platform, session, userId, msisdn, account, {
+      provider: 'vod',
+      phone: payPhone,
+      voucherCode
+    });
   }
 
   // confirm step — waiting for the user to approve the MoMo prompt on their phone.
@@ -426,15 +465,9 @@ async function handleAmount(
     return ussdReply(userId, msisdn, `Max payment is GHS ${MAX_AMOUNT_GHS.toLocaleString()}\nEnter lower amount:`, true);
   }
 
-  // Detect provider from MSISDN or customer account phone number prefix, NOT from gateway SIM network (which is always MTN on JEST)
-  const detectedProvider = phoneToProvider(msisdn) || phoneToProvider(String(account.phone_number || ''));
-  const provider = session.provider || detectedProvider;
-
-  if (!provider) {
-    await saveSession(db, { ...session, step: 'provider', amount_pesewas: amountPesewas });
-    return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Telecel', true);
-  }
-  return initiateCharge(db, platform, { ...session, provider, amount_pesewas: amountPesewas }, userId, msisdn, account);
+  // Always present the network menu after amount entry
+  await saveSession(db, { ...session, step: 'provider', amount_pesewas: amountPesewas });
+  return ussdReply(userId, msisdn, 'Choose network:\n1. MTN MoMo\n2. Telecel Cash\n3. AirtelTigo', true);
 }
 
 async function initiateCharge(
@@ -443,19 +476,21 @@ async function initiateCharge(
   session: SessionRow,
   userId: string,
   msisdn: string,
-  account: Record<string, any>
+  account: Record<string, any>,
+  opts?: { provider?: string; phone?: string; voucherCode?: string }
 ): Promise<Response> {
   const secret = getPaystackSecret({ platform });
   if (!hasPaystackConfigured(secret)) {
     return ussdReply(userId, msisdn, 'Mobile money is temporarily unavailable. Please try again later.', false);
   }
   const amountPesewas = session.amount_pesewas;
-  const provider = session.provider;
+  const provider = opts?.provider || session.provider;
   if (!amountPesewas || !provider) {
     return ussdReply(userId, msisdn, 'Session expired. Please start again.', false);
   }
 
-  const phone = toPaystackPhone(msisdn);
+  const targetMsisdn = opts?.phone || msisdn;
+  const phone = toPaystackPhone(targetMsisdn);
   const email = getCustomerEmail(account, phone);
   const reference = generateReference('SPU');
   const nowSec = Math.floor(Date.now() / 1000);
@@ -468,7 +503,11 @@ async function initiateCharge(
       reference,
       channels: ['mobile_money'],
       metadata: { account_id: account.id, source: 'ussd' },
-      mobile_money: { phone, provider: provider as 'mtn' | 'vod' | 'tgo' }
+      mobile_money: {
+        phone,
+        provider: provider as 'mtn' | 'vod' | 'tgo',
+        voucher_code: opts?.voucherCode || undefined
+      }
     }, secret);
 
     await db.prepare(`
@@ -495,7 +534,7 @@ async function initiateCharge(
       nowSec
     ).run();
 
-    await saveSession(db, { ...session, step: 'confirm', paystack_ref: reference });
+    await saveSession(db, { ...session, step: 'confirm', paystack_ref: reference, provider });
     return ussdReply(
       userId,
       msisdn,
