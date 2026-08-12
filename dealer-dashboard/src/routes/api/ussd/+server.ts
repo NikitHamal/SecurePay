@@ -75,17 +75,20 @@ function toPaystackPhone(msisdn: string): string {
   return msisdn;
 }
 
-function networkToProvider(network: string): string | null {
-  const n = network.trim().toUpperCase();
-  if (n.includes('MTN')) return 'mtn';
-  if (n.includes('VOD') || n.includes('TELECEL')) return 'vod';
-  if (n.includes('AIRTEL') || n.includes('TIGO') || n.includes('TGO')) return 'tgo';
+/** Detect Ghana mobile money provider from phone number prefix (024/054/055/059/025 -> mtn, 020/050/053 -> vod, 026/056/027/057 -> tgo). */
+function phoneToProvider(phone: string): string | null {
+  const digits = (phone || '').replace(/\D/g, '');
+  const local = digits.startsWith('233') ? '0' + digits.slice(3) : digits;
+  const prefix = local.slice(0, 3);
+  if (['024', '054', '055', '059', '025'].includes(prefix)) return 'mtn';
+  if (['020', '050', '053'].includes(prefix)) return 'vod';
+  if (['026', '056', '027', '057'].includes(prefix)) return 'tgo';
   return null;
 }
 
 function providerLabel(provider: string): string {
   if (provider === 'mtn') return 'MTN MoMo';
-  if (provider === 'vod') return 'Vodafone Cash';
+  if (provider === 'vod') return 'Telecel Cash';
   return 'AirtelTigo MoMo';
 }
 
@@ -360,7 +363,7 @@ async function handleStep(
     const choice: Record<string, string> = { '1': 'mtn', '2': 'tgo', '3': 'vod' };
     const provider = choice[userData];
     if (!provider) {
-      return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Vodafone', true);
+      return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Telecel', true);
     }
     return initiateCharge(db, platform, { ...session, provider }, userId, msisdn, account);
   }
@@ -423,10 +426,13 @@ async function handleAmount(
     return ussdReply(userId, msisdn, `Max payment is GHS ${MAX_AMOUNT_GHS.toLocaleString()}\nEnter lower amount:`, true);
   }
 
-  const provider = session.provider || networkToProvider(session.network || '');
+  // Detect provider from MSISDN or customer account phone number prefix, NOT from gateway SIM network (which is always MTN on JEST)
+  const detectedProvider = phoneToProvider(msisdn) || phoneToProvider(String(account.phone_number || ''));
+  const provider = session.provider || detectedProvider;
+
   if (!provider) {
     await saveSession(db, { ...session, step: 'provider', amount_pesewas: amountPesewas });
-    return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Vodafone', true);
+    return ussdReply(userId, msisdn, 'Choose network:\n1. MTN\n2. AirtelTigo\n3. Telecel', true);
   }
   return initiateCharge(db, platform, { ...session, provider, amount_pesewas: amountPesewas }, userId, msisdn, account);
 }
