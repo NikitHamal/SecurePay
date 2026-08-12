@@ -75,13 +75,18 @@ function toPaystackPhone(msisdn: string): string {
   return msisdn;
 }
 
-/** Detect Ghana mobile money provider from phone number prefix (024/054/055/059/025 -> mtn, 020/050/053 -> vod, 026/056/027/057 -> tgo). */
+/**
+ * Detect Ghana mobile money provider from phone number prefix.
+ * MTN Ghana: 024, 054, 055, 059, 025, 053
+ * Telecel (Vodafone): 020, 050
+ * AirtelTigo: 026, 056, 027, 057
+ */
 function phoneToProvider(phone: string): string | null {
   const digits = (phone || '').replace(/\D/g, '');
   const local = digits.startsWith('233') ? '0' + digits.slice(3) : digits;
   const prefix = local.slice(0, 3);
-  if (['024', '054', '055', '059', '025'].includes(prefix)) return 'mtn';
-  if (['020', '050', '053'].includes(prefix)) return 'vod';
+  if (['024', '054', '055', '059', '025', '053'].includes(prefix)) return 'mtn';
+  if (['020', '050'].includes(prefix)) return 'vod';
   if (['026', '056', '027', '057'].includes(prefix)) return 'tgo';
   return null;
 }
