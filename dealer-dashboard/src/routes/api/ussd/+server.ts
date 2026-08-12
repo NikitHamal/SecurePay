@@ -192,7 +192,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   }).catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     capturedError = msg;
-    return ussdReply(userId, msisdnRaw, 'Payment could not be started\nPlease try again later.', false);
+    let userMsg = 'Payment could not be started\nPlease try again later.';
+    if (msg.includes('Charge attempted')) {
+      userMsg = 'Payment failed. Please verify your MoMo number & network, then try again.';
+    } else if (msg.toLowerCase().includes('insufficient')) {
+      userMsg = 'Payment failed: Insufficient funds in MoMo wallet.';
+    }
+    return ussdReply(userId, msisdnRaw, userMsg, false);
   });
 
   // Record the exchange for diagnostics.
@@ -367,11 +373,15 @@ async function handleStep(
     }
 
     if (provider === 'vod') {
-      await saveSession(db, { ...session, step: 'voucher', provider: 'vod' });
-      return ussdReply(userId, msisdn, 'Enter Telecel Voucher Code\n(Dial *110# on Telecel to generate):', true);
+      const targetPhone = (session.account_id && account?.phone_number)
+        ? normalizeMsisdn(String(account.phone_number))
+        : msisdn;
+      await saveSession(db, { ...session, step: 'voucher', provider: 'vod', paystack_ref: targetPhone });
+      const localPhone = toPaystackPhone(targetPhone);
+      return ussdReply(userId, msisdn, `Telecel (${localPhone}):\nEnter Telecel Voucher Code (dial *110#):`, true);
     }
 
-    // For MTN or AirtelTigo, if caller msisdn does not match provider, prompt for phone number
+    // For MTN / AirtelTigo, if caller msisdn does not match provider, prompt for phone number
     const msisdnProvider = phoneToProvider(msisdn);
     if (msisdnProvider !== provider) {
       await saveSession(db, { ...session, step: 'momo_phone', provider });
@@ -388,8 +398,20 @@ async function handleStep(
       const label = session.provider === 'mtn' ? 'MTN MoMo' : 'AirtelTigo';
       return ussdReply(userId, msisdn, `Invalid phone number\nEnter valid 10-digit ${label} number:`, true);
     }
+
+    const detectedProvider = phoneToProvider(enteredPhone);
+
+    // If user entered a Telecel (Vodafone) number while prompted for MTN MoMo, switch to Telecel Cash voucher step!
+    if (detectedProvider === 'vod') {
+      await saveSession(db, { ...session, step: 'voucher', provider: 'vod', paystack_ref: enteredPhone });
+      const localPhone = toPaystackPhone(enteredPhone);
+      return ussdReply(userId, msisdn, `${localPhone} is Telecel Cash.\nEnter Telecel Voucher Code (dial *110#):`, true);
+    }
+
+    const targetProvider = detectedProvider || session.provider || 'mtn';
+
     return initiateCharge(db, platform, session, userId, msisdn, account, {
-      provider: session.provider || 'mtn',
+      provider: targetProvider,
       phone: enteredPhone
     });
   }
