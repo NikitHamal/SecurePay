@@ -6,6 +6,7 @@ import {
   generateReference,
   hasPaystackConfigured,
   initializeCharge,
+  submitOtp,
   verifyTransaction
 } from '$lib/paystack';
 import { getCustomerEmail } from '$lib/paystack/email';
@@ -77,24 +78,25 @@ function toPaystackPhone(msisdn: string): string {
 
 /**
  * Detect Ghana mobile money provider from phone number prefix.
- * MTN Ghana: 024, 054, 055, 059, 025, 053
- * Telecel (Vodafone): 020, 050
- * AirtelTigo: 026, 056, 027, 057
+ * MTN Ghana: 024, 054, 055, 059, 025, 053 -> 'mtn'
+ * Telecel (Vodafone): 020, 050 -> 'vod'
+ * AirtelTigo: 026, 056, 027, 057 -> 'atl'
  */
-function phoneToProvider(phone: string): string | null {
+function phoneToProvider(phone: string): 'mtn' | 'vod' | 'atl' | null {
   const digits = (phone || '').replace(/\D/g, '');
   const local = digits.startsWith('233') ? '0' + digits.slice(3) : digits;
   const prefix = local.slice(0, 3);
   if (['024', '054', '055', '059', '025', '053'].includes(prefix)) return 'mtn';
   if (['020', '050'].includes(prefix)) return 'vod';
-  if (['026', '056', '027', '057'].includes(prefix)) return 'tgo';
+  if (['026', '056', '027', '057'].includes(prefix)) return 'atl';
   return null;
 }
 
 function providerLabel(provider: string): string {
   if (provider === 'mtn') return 'MTN MoMo';
   if (provider === 'vod') return 'Telecel Cash';
-  return 'AirtelTigo MoMo';
+  if (provider === 'atl' || provider === 'tgo') return 'AirtelTigo MoMo';
+  return 'Mobile Money';
 }
 
 function formatDate(ms: number): string {
@@ -198,9 +200,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const msg = err instanceof Error ? err.message : String(err);
     capturedError = msg;
     let userMsg = 'Payment could not be started\nPlease try again later.';
-    if (msg.includes('Charge attempted')) {
-      userMsg = 'Payment failed. Please verify your MoMo number & network, then try again.';
-    } else if (msg.toLowerCase().includes('insufficient')) {
+    if (msg.toLowerCase().includes('insufficient')) {
       userMsg = 'Payment failed: Insufficient funds in MoMo wallet.';
     }
     return ussdReply(userId, msisdnRaw, userMsg, false);
@@ -342,7 +342,7 @@ async function handleStep(
   }
 
   // Main menu / any unrecognized step.
-  if (step === 'main' || !['main', 'status', 'ended', 'amount', 'provider', 'momo_phone', 'voucher', 'confirm'].includes(step)) {
+  if (step === 'main' || !['main', 'status', 'ended', 'amount', 'momo_phone', 'otp', 'confirm'].includes(step)) {
     if (userData === '1') {
       await saveSession(db, { ...session, step: 'status' });
       const status = evaluateStatus(account);
@@ -370,68 +370,69 @@ async function handleStep(
     return handleAmount(db, platform, session, userData, userId, msisdn, account);
   }
 
-  if (step === 'provider') {
-    const choice: Record<string, string> = { '1': 'mtn', '2': 'vod', '3': 'tgo' };
-    const provider = choice[userData];
-    if (!provider) {
-      return ussdReply(userId, msisdn, 'Choose network:\n1. MTN MoMo\n2. Telecel Cash\n3. AirtelTigo', true);
-    }
-
-    if (provider === 'vod') {
-      const targetPhone = (session.account_id && account?.phone_number)
-        ? normalizeMsisdn(String(account.phone_number))
-        : msisdn;
-      await saveSession(db, { ...session, step: 'voucher', provider: 'vod', paystack_ref: targetPhone });
-      const localPhone = toPaystackPhone(targetPhone);
-      return ussdReply(userId, msisdn, `Telecel (${localPhone}):\nEnter Telecel Voucher Code (dial *110#):`, true);
-    }
-
-    // For MTN / AirtelTigo, if caller msisdn does not match provider, prompt for phone number
-    const msisdnProvider = phoneToProvider(msisdn);
-    if (msisdnProvider !== provider) {
-      await saveSession(db, { ...session, step: 'momo_phone', provider });
-      const label = provider === 'mtn' ? 'MTN MoMo' : 'AirtelTigo';
-      return ussdReply(userId, msisdn, `Enter ${label} phone number:`, true);
-    }
-
-    return initiateCharge(db, platform, { ...session, provider }, userId, msisdn, account, { phone: msisdn });
-  }
-
   if (step === 'momo_phone') {
     const enteredPhone = normalizeMsisdn(userData);
     if (!/^233\d{9}$/.test(enteredPhone)) {
-      const label = session.provider === 'mtn' ? 'MTN MoMo' : 'AirtelTigo';
-      return ussdReply(userId, msisdn, `Invalid phone number\nEnter valid 10-digit ${label} number:`, true);
+      return ussdReply(userId, msisdn, 'Invalid phone number\nEnter valid 10-digit MoMo number:', true);
     }
 
     const detectedProvider = phoneToProvider(enteredPhone);
-
-    // If user entered a Telecel (Vodafone) number while prompted for MTN MoMo, switch to Telecel Cash voucher step!
-    if (detectedProvider === 'vod') {
-      await saveSession(db, { ...session, step: 'voucher', provider: 'vod', paystack_ref: enteredPhone });
-      const localPhone = toPaystackPhone(enteredPhone);
-      return ussdReply(userId, msisdn, `${localPhone} is Telecel Cash.\nEnter Telecel Voucher Code (dial *110#):`, true);
+    if (!detectedProvider) {
+      return ussdReply(userId, msisdn, 'Unsupported network\nEnter MTN, Telecel, or AirtelTigo number:', true);
     }
 
-    const targetProvider = detectedProvider || session.provider || 'mtn';
+    const amountPesewas = session.amount_pesewas;
+    if (!amountPesewas) {
+      await saveSession(db, { ...session, step: 'amount' });
+      return ussdReply(userId, msisdn, 'Enter amount to pay in GHS:', true);
+    }
 
     return initiateCharge(db, platform, session, userId, msisdn, account, {
-      provider: targetProvider,
+      amountPesewas,
+      provider: detectedProvider,
       phone: enteredPhone
     });
   }
 
-  if (step === 'voucher') {
-    const voucherCode = userData.trim().replace(/\D/g, '');
-    if (!voucherCode || voucherCode.length < 4) {
-      return ussdReply(userId, msisdn, 'Invalid voucher code\nEnter Telecel Voucher Code (from *110#):', true);
+  if (step === 'otp') {
+    if (userData === '0') {
+      await saveSession(db, { ...session, step: 'main' });
+      return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
     }
-    const payPhone = session.paystack_ref || msisdn;
-    return initiateCharge(db, platform, session, userId, msisdn, account, {
-      provider: 'vod',
-      phone: payPhone,
-      voucherCode
-    });
+    const otp = userData.trim().replace(/\D/g, '');
+    if (!otp) {
+      return ussdReply(userId, msisdn, 'Invalid OTP\nEnter OTP sent to your phone\n(or 0 to cancel):', true);
+    }
+    const reference = session.paystack_ref;
+    if (!reference) {
+      await saveSession(db, { ...session, step: 'main' });
+      return ussdReply(userId, msisdn, `Welcome ${name}\n${MAIN_MENU}`, true);
+    }
+    const secret = getPaystackSecret({ platform });
+    try {
+      const otpRes = await submitOtp(reference, otp, secret);
+      if (otpRes.status === 'success') {
+        const fresh = await db.prepare('SELECT * FROM accounts WHERE id = ?')
+          .bind(account.id).first<Record<string, any>>();
+        const current = fresh ?? account;
+        const status = evaluateStatus(current);
+        const msg =
+          `Payment received!\nPaid: GHS ${ghs(Number(current.amount_paid))}` +
+          (status.label === 'PAID OFF'
+            ? '\nYour phone is now unlocked\nThank you!'
+            : `\nNext due: ${formatDate(status.due)}\n1. Menu\n0. Exit`);
+        await saveSession(db, { ...session, step: 'ended' });
+        return ussdReply(userId, msisdn, msg, true);
+      }
+      if (otpRes.status === 'pay_offline' || otpRes.status === 'pending') {
+        await saveSession(db, { ...session, step: 'confirm' });
+        return ussdReply(userId, msisdn, 'OTP submitted. Please approve prompt on your phone\nReply 1 when done, 0 to cancel', true);
+      }
+      return ussdReply(userId, msisdn, `${otpRes.display_text || 'Payment processing'}\nReply 1 when done, 0 to cancel`, true);
+    } catch (err: any) {
+      const msg = err?.body?.message || err?.message || 'Invalid OTP';
+      return ussdReply(userId, msisdn, `${msg}\nEnter OTP again (or 0 to cancel):`, true);
+    }
   }
 
   // confirm step — waiting for the user to approve the MoMo prompt on their phone.
@@ -492,9 +493,19 @@ async function handleAmount(
     return ussdReply(userId, msisdn, `Max payment is GHS ${MAX_AMOUNT_GHS.toLocaleString()}\nEnter lower amount:`, true);
   }
 
-  // Always present the network menu after amount entry
-  await saveSession(db, { ...session, step: 'provider', amount_pesewas: amountPesewas });
-  return ussdReply(userId, msisdn, 'Choose network:\n1. MTN MoMo\n2. Telecel Cash\n3. AirtelTigo', true);
+  // Auto-detect network from the caller's phone number
+  const detected = phoneToProvider(msisdn);
+  if (detected) {
+    return initiateCharge(db, platform, session, userId, msisdn, account, {
+      amountPesewas,
+      provider: detected,
+      phone: msisdn
+    });
+  }
+
+  // Fallback if caller network cannot be determined from MSISDN
+  await saveSession(db, { ...session, step: 'momo_phone', amount_pesewas: amountPesewas });
+  return ussdReply(userId, msisdn, 'Enter MoMo phone number (10 digits):', true);
 }
 
 async function initiateCharge(
@@ -504,21 +515,16 @@ async function initiateCharge(
   userId: string,
   msisdn: string,
   account: Record<string, any>,
-  opts?: { provider?: string; phone?: string; voucherCode?: string }
+  opts: { amountPesewas: number; provider: 'mtn' | 'vod' | 'atl'; phone: string }
 ): Promise<Response> {
   const secret = getPaystackSecret({ platform });
   if (!hasPaystackConfigured(secret)) {
     return ussdReply(userId, msisdn, 'Mobile money is temporarily unavailable. Please try again later.', false);
   }
-  const amountPesewas = session.amount_pesewas;
-  const provider = opts?.provider || session.provider;
-  if (!amountPesewas || !provider) {
-    return ussdReply(userId, msisdn, 'Session expired. Please start again.', false);
-  }
 
-  const targetMsisdn = opts?.phone || msisdn;
-  const phone = toPaystackPhone(targetMsisdn);
-  const email = getCustomerEmail(account, phone);
+  const { amountPesewas, provider, phone: targetPhone } = opts;
+  const payPhone = toPaystackPhone(targetPhone);
+  const email = getCustomerEmail(account, payPhone);
   const reference = generateReference('SPU');
   const nowSec = Math.floor(Date.now() / 1000);
 
@@ -528,12 +534,10 @@ async function initiateCharge(
       email,
       currency: 'GHS',
       reference,
-      channels: ['mobile_money'],
       metadata: { account_id: account.id, source: 'ussd' },
       mobile_money: {
-        phone,
-        provider: provider as 'mtn' | 'vod' | 'tgo',
-        voucher_code: opts?.voucherCode || undefined
+        phone: payPhone,
+        provider: provider
       }
     }, secret);
 
@@ -553,19 +557,49 @@ async function initiateCharge(
       'mobile_money',
       provider,
       email,
-      phone,
+      payPhone,
       result.status || 'pending',
-      typeof result.message === 'string' ? result.message.slice(0, 500) : null,
+      typeof result.message === 'string' ? result.message.slice(0, 500) : (result.display_text || null),
       JSON.stringify({ account_id: account.id, source: 'ussd' }),
       nowSec,
       nowSec
-    ).run();
+    ).run().catch((e) => console.error('[ussd] paystack_transactions insert failed', e));
 
-    await saveSession(db, { ...session, step: 'confirm', paystack_ref: reference, provider });
+    if (result.status === 'send_otp') {
+      await saveSession(db, {
+        ...session,
+        step: 'otp',
+        amount_pesewas: amountPesewas,
+        provider,
+        paystack_ref: reference
+      });
+      return ussdReply(userId, msisdn, 'Enter OTP sent to your phone:', true);
+    }
+
+    if (result.status === 'success') {
+      await saveSession(db, {
+        ...session,
+        step: 'ended',
+        amount_pesewas: amountPesewas,
+        provider,
+        paystack_ref: reference
+      });
+      return ussdReply(userId, msisdn, `Payment of GHS ${ghs(amountPesewas)} successful!\nThank you for choosing TouchBase.`, false);
+    }
+
+    // Default: 'pay_offline' or 'pending' -> USSD prompt sent to user handset
+    await saveSession(db, {
+      ...session,
+      step: 'confirm',
+      amount_pesewas: amountPesewas,
+      provider,
+      paystack_ref: reference
+    });
+
     return ussdReply(
       userId,
       msisdn,
-      `Pay GHS ${ghs(amountPesewas)} via ${providerLabel(provider)}\nApprove the prompt on your phone\nReply 1 when done, 0 to cancel`,
+      `Pay GHS ${ghs(amountPesewas)} via ${providerLabel(provider)}\nApprove prompt on your phone\nReply 1 when done, 0 to cancel`,
       true
     );
   } catch (err: any) {

@@ -8,7 +8,7 @@
  */
 
 export type PaystackChannel = 'mobile_money' | 'card' | 'bank' | 'ussd' | 'qr' | 'bank_transfer';
-export type PaystackMobileProvider = 'mtn' | 'vod' | 'tgo'; // MTN, Vodafone, Telecel/AirtelTigo
+export type PaystackMobileProvider = 'mtn' | 'vod' | 'tgo' | 'atl'; // MTN, Vodafone/Telecel, AirtelTigo
 
 export interface PaystackChargeRequest {
   amount: number;           // pesewas (subunit)
@@ -143,8 +143,12 @@ export async function initializeCharge(req: PaystackChargeRequest, secret?: stri
     reference: req.reference,
     metadata: { ...(req.metadata || {}), source: 'securepay-dealer-console' }
   };
-  if (req.channels && req.channels.length > 0) body.channels = req.channels;
-  if (req.mobile_money) body.mobile_money = req.mobile_money;
+  if (req.channels && req.channels.length > 0 && !req.mobile_money) {
+    body.channels = req.channels;
+  }
+  if (req.mobile_money) {
+    body.mobile_money = req.mobile_money;
+  }
 
   const res = await paystackRequest<PaystackChargeResponse>('/charge', { method: 'POST', body, secret });
   return res.data;
