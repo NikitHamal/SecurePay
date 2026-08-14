@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const db = getDb({ platform });
 
   const account = await db.prepare(`
-    SELECT a.id, a.customer_name, a.phone_number, a.national_id, a.email,
+    SELECT a.id, a.customer_name, a.phone_number, a.national_id,
            a.amount_paid, a.total_loan_amount, a.daily_rate, a.dealer_id, d.imei
       FROM accounts a
       JOIN devices d ON d.id = a.device_id

@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
 
   const account = await db.prepare(`
     SELECT a.id, a.customer_name, a.customer_account_number, a.phone_number,
-           a.total_loan_amount, a.amount_paid, a.daily_rate, a.dealer_id, a.email, d.imei
+           a.total_loan_amount, a.amount_paid, a.daily_rate, a.dealer_id, d.imei
       FROM accounts a
       LEFT JOIN devices d ON d.id = a.device_id
      WHERE a.id = ?
