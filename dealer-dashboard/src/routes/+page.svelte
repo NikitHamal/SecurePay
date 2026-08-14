@@ -21,7 +21,7 @@
         id: c.id,
         name: c.customerName,
         amount: c.dailyRate,
-        ms: c.nextPaymentDueEpochMillis - Date.now(),
+        ms: c.nextPaymentDueEpochMillis,
         status: c.status
       }));
   });

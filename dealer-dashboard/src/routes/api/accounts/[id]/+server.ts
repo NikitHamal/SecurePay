@@ -58,7 +58,10 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     return errorResponse('Account not found', 404);
   }
 
-  const nextPaymentDue = Number(row.next_payment_due);
+  const rawDue = Number(row.next_payment_due) || 0;
+  const nextPaymentDue = rawDue > 0 && rawDue < 1e11 ? rawDue * 1000 : rawDue;
+  const rawCreated = Number(row.created_at) || 0;
+  const createdAt = rawCreated > 0 && rawCreated < 1e11 ? rawCreated * 1000 : rawCreated;
   const amountPaid = Number(row.amount_paid);
   const totalLoanAmount = Number(row.total_loan_amount);
   const status: Status = releaseApproved(row as Record<string, unknown>)

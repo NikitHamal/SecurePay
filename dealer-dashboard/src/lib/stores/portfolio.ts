@@ -121,7 +121,7 @@ function upcomingDue(list: Customer[]): PortfolioMetrics['upcoming'] {
       id: c.id,
       name: c.customerName,
       phone: c.phoneNumber,
-      ms: c.nextPaymentDueEpochMillis - Date.now(),
+      ms: c.nextPaymentDueEpochMillis,
       amount: c.dailyRate,
       status: c.status
     }));
