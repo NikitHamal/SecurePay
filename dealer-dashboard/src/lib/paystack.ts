@@ -123,8 +123,8 @@ async function paystackRequest<T>(
   try { json = JSON.parse(text); } catch { json = { status: false, message: text }; }
 
   if (!res.ok || json.status === false) {
-    const msg = json?.message || `Paystack error ${res.status}`;
-    const err = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    const detail = json?.data?.message || json?.data?.gateway_response || json?.message || `Paystack error ${res.status}`;
+    const err = new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
     (err as any).status = res.status;
     (err as any).body = json;
     throw err;

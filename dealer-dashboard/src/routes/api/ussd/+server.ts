@@ -202,6 +202,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     let userMsg = 'Payment could not be started\nPlease try again later.';
     if (msg.toLowerCase().includes('insufficient')) {
       userMsg = 'Payment failed: Insufficient funds in MoMo wallet.';
+    } else if (msg.includes('Paystack charge failed:')) {
+      const reason = msg.replace('Paystack charge failed:', '').trim();
+      if (reason && reason !== 'Charge attempted' && reason !== 'undefined') {
+        userMsg = `Payment failed: ${truncate(reason, 70)}`;
+      }
     }
     return ussdReply(userId, msisdnRaw, userMsg, false);
   });
@@ -534,7 +539,11 @@ async function initiateCharge(
       email,
       currency: 'GHS',
       reference,
-      metadata: { account_id: account.id, source: 'ussd' },
+      metadata: {
+        account_id: account.id,
+        account_number: account.customer_account_number,
+        source: 'ussd'
+      },
       mobile_money: {
         phone: payPhone,
         provider: provider
@@ -587,24 +596,31 @@ async function initiateCharge(
       return ussdReply(userId, msisdn, `Payment of GHS ${ghs(amountPesewas)} successful!\nThank you for choosing TouchBase.`, false);
     }
 
-    // Default: 'pay_offline' or 'pending' -> USSD prompt sent to user handset
+    // Default: 'pay_offline' or 'pending' -> USSD prompt sent to user handset.
+    // End session (MSGTYPE: false) so handset immediately displays MoMo PIN prompt.
     await saveSession(db, {
       ...session,
-      step: 'confirm',
+      step: 'ended',
       amount_pesewas: amountPesewas,
       provider,
       paystack_ref: reference
     });
 
+    const approvalHint = provider === 'mtn'
+      ? 'No prompt? Dial *170# > Wallet > 3. Approvals'
+      : provider === 'vod'
+        ? 'No prompt? Dial *110#'
+        : 'Approve with your PIN';
+
     return ussdReply(
       userId,
       msisdn,
-      `Pay GHS ${ghs(amountPesewas)} via ${providerLabel(provider)}\nApprove prompt on your phone\nReply 1 when done, 0 to cancel`,
-      true
+      `Payment request sent for GHS ${ghs(amountPesewas)}.\nApprove with your PIN.\n${approvalHint}`,
+      false
     );
   } catch (err: any) {
-    const errDetail = err?.body?.message || err?.message || String(err);
-    console.error('[ussd] paystack charge failed', errDetail, err);
+    const errDetail = err?.body?.data?.gateway_response || err?.body?.data?.message || err?.body?.message || err?.message || String(err);
+    console.error('[ussd] paystack charge failed', errDetail, JSON.stringify(err?.body || {}));
     throw new Error(`Paystack charge failed: ${errDetail}`);
   }
 }

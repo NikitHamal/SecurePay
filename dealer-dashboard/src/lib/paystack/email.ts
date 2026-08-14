@@ -5,8 +5,10 @@
  * update it.
  */
 export function getCustomerEmail(account: Record<string, any>, normalizedPhone: string): string {
-  const direct = typeof account.email === 'string' && account.email.trim().includes('@') ? account.email.trim() : '';
+  const direct = typeof account?.email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email.trim())
+    ? account.email.trim()
+    : '';
   if (direct) return direct;
-  const digits = normalizedPhone.replace(/\D/g, '');
-  return `customer-${digits}@pay.securepay.io`;
+  const digits = (normalizedPhone || '').replace(/\D/g, '');
+  return `${digits || '0000000000'}@ussd.touchbase.com`;
 }
