@@ -96,7 +96,8 @@
   }
 
   function localTime(epochMs: number): string {
-    return new Date(epochMs).toLocaleString(undefined, {
+    const ms = epochMs < 1e11 ? epochMs * 1000 : epochMs;
+    return new Date(ms).toLocaleString(undefined, {
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
       hour12: false

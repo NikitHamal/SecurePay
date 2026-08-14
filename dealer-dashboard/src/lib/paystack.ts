@@ -132,6 +132,38 @@ async function paystackRequest<T>(
   return json as T;
 }
 
+/** Standard Paystack hosted checkout initialization (e.g. for card / multi-channel / web link). */
+export async function initializeTransaction(
+  req: {
+    amount: number;
+    email: string;
+    currency?: string;
+    reference: string;
+    callback_url?: string;
+    channels?: string[];
+    metadata?: Record<string, unknown>;
+  },
+  secret?: string
+): Promise<{ authorization_url: string; access_code: string; reference: string }> {
+  const body: Record<string, unknown> = {
+    amount: req.amount,
+    email: req.email,
+    currency: req.currency || 'GHS',
+    reference: req.reference,
+    callback_url: req.callback_url,
+    metadata: { ...(req.metadata || {}), source: 'touchbase-web-portal' }
+  };
+  if (req.channels && req.channels.length > 0) {
+    body.channels = req.channels;
+  }
+  const res = await paystackRequest<{ status: boolean; message: string; data: { authorization_url: string; access_code: string; reference: string } }>('/transaction/initialize', {
+    method: 'POST',
+    body,
+    secret
+  });
+  return res.data;
+}
+
 /** Initiate a charge (mobile money / card). Returns the pending charge state. */
 export async function initializeCharge(req: PaystackChargeRequest, secret?: string): Promise<PaystackChargeResponse['data']> {
   // Note: Ghana mobile_money uses the /charge endpoint (not /transaction/initialize)

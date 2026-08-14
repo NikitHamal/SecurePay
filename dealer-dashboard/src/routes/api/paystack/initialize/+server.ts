@@ -31,10 +31,11 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const amountPesewas = Math.round(amountGhs * 100);
 
-  const allowedProviders = ['mtn', 'vod', 'tgo'];
+  const allowedProviders = ['mtn', 'vod', 'atl', 'tgo'];
   if (!allowedProviders.includes(provider)) {
-    return errorResponse(`Provider must be one of: ${allowedProviders.join(', ')}`, 400);
+    return errorResponse(`Provider must be one of: mtn, vod, atl`, 400);
   }
+  const mappedProvider = provider === 'tgo' ? 'atl' : provider;
   if (!/^0?[25]\d{8}$/.test(phone) && !/^\+233\d{9}$/.test(phone)) {
     return errorResponse('A valid Ghana phone number is required (e.g. 055xxxxxxx or +23355xxxxxxx)', 400);
   }
@@ -77,7 +78,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       },
       mobile_money: channel === 'card' ? undefined : {
         phone: normalizedPhone,
-        provider: provider as any
+        provider: mappedProvider as any
       }
     }, secret);
 

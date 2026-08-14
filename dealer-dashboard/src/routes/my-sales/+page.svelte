@@ -60,7 +60,8 @@
   }
 
   function formatDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleDateString('en-US', {
+    const ms = timestamp < 1e11 ? timestamp * 1000 : timestamp;
+    return new Date(ms).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

@@ -124,7 +124,8 @@
   }
 
   function formatDate(ts: number): string {
-    return new Date(ts).toLocaleDateString('en-GB', {
+    const ms = ts < 1e11 ? ts * 1000 : ts;
+    return new Date(ms).toLocaleDateString('en-GB', {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
   }

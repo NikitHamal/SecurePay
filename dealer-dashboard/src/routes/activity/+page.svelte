@@ -60,7 +60,8 @@
   }
 
   function formatTime(ts: number): string {
-    return new Date(ts).toLocaleString('en-GB', {
+    const ms = ts < 1e11 ? ts * 1000 : ts;
+    return new Date(ms).toLocaleString('en-GB', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',

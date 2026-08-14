@@ -59,8 +59,9 @@
   }
 
   function formatDate(timestamp: number): string {
+    const ts = timestamp < 1e11 ? timestamp * 1000 : timestamp;
     const now = Date.now();
-    const diff = now - timestamp;
+    const diff = now - ts;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
@@ -70,7 +71,7 @@
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
     
-    return new Date(timestamp).toLocaleDateString('en-US', {
+    return new Date(ts).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
