@@ -133,11 +133,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       nowSec
     ).run().catch((e) => console.error('[paystack/online] insert transaction failed', e));
 
+    const isOtpRequired = result.status === 'send_otp' || result.status === 'otp_sent';
     return json({
       ok: true,
       reference,
       status: result.status,
-      message: result.display_text || result.message || 'Payment request sent. Please approve with your MoMo PIN on your phone.',
+      otp_required: isOtpRequired,
+      message: result.display_text || result.message || (isOtpRequired ? 'Please enter the OTP sent to your phone.' : 'Payment request sent. Please approve with your MoMo PIN on your phone.'),
       authorization_url: (result as any).authorization_url || null
     });
   } catch (err: any) {
