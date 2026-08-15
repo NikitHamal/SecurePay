@@ -68,6 +68,19 @@ export const handle: Handle = async ({ event, resolve }) => {
   const requestUrl = new URL(event.request.url);
   const path = requestUrl.pathname;
 
+  // Handle CORS preflight OPTIONS requests for API routes
+  if (event.request.method === 'OPTIONS' && path.startsWith('/api/')) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-signature, x-timestamp, x-nonce',
+        'Access-Control-Max-Age': '86400'
+      }
+    });
+  }
+
   const db = event.platform?.env?.DB;
 
   if (db && (path === '/api/auth/login' || path === '/api/device/customer-login') && event.request.method === 'POST') {
@@ -194,5 +207,11 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  return resolve(event);
+  const response = await resolve(event);
+  if (path.startsWith('/api/')) {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-signature, x-timestamp, x-nonce');
+  }
+  return response;
 };
