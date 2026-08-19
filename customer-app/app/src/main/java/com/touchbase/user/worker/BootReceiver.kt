@@ -26,17 +26,7 @@ class BootReceiver : BroadcastReceiver() {
         val tokenManager = DeviceTokenManager(context)
 
         if (!tokenManager.isRegistered) {
-            val isDeviceOwner = runCatching {
-                val pm = com.touchbase.user.admin.ProvisioningManager(context)
-                pm.isDeviceOwner
-            }.getOrDefault(false)
-            if (isDeviceOwner && !tokenManager.cachedReleaseApproved) {
-                SecureLog.i(TAG, "Provisioned but not registered — launching kiosk home")
-                runCatching { policyController.applyBaseLoanSecurity(emptyList()) }
-                launchKioskHome(context)
-            } else {
-                SecureLog.i(TAG, "Device not registered, skipping lock enforcement")
-            }
+            SecureLog.i(TAG, "Device not registered, skipping lock enforcement")
             return
         }
 
@@ -77,24 +67,6 @@ class BootReceiver : BroadcastReceiver() {
             }
             context.startActivity(intent)
         }.onFailure { SecureLog.e(TAG, "Failed to launch LockTaskActivity", it) }
-    }
-
-    private fun launchMainActivity(context: Context) {
-        runCatching {
-            val intent = Intent(context, com.touchbase.user.MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            }
-            context.startActivity(intent)
-        }.onFailure { SecureLog.e(TAG, "Failed to launch MainActivity", it) }
-    }
-
-    private fun launchKioskHome(context: Context) {
-        runCatching {
-            val intent = Intent(context, com.touchbase.user.ui.kiosk.KioskLauncherActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            }
-            context.startActivity(intent)
-        }.onFailure { SecureLog.e(TAG, "Failed to launch KioskLauncherActivity", it) }
     }
 
     companion object {
