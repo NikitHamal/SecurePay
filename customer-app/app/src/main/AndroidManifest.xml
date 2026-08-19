@@ -42,10 +42,29 @@
             android:name="com.touchbase.user.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.TBUser">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Kiosk home launcher: replaces the device's default launcher while
+             the phone is provisioned but not yet registered. After onboarding
+             completes, KioskManager.restoreLauncher() disables this activity
+             and re-enables the original OEM launcher. -->
+        <activity
+            android:name="com.touchbase.user.ui.kiosk.KioskLauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:lockTaskMode="if_whitelisted"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.TBUser">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
