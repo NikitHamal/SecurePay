@@ -54,8 +54,7 @@ class KioskLauncherActivity : ComponentActivity() {
                 val pc = runCatching { DevicePolicyController(this@KioskLauncherActivity) }.getOrNull()
                 LockProScreen(
                     onGetStarted = {
-                        // Stop lock task before leaving to MainActivity
-                        runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
+                        // Keep lock task active — blocks recent button on Login too
                         val intent = Intent(this, com.touchbase.user.MainActivity::class.java).apply {
                             putExtra("skip_lock_pro", true)
                         }

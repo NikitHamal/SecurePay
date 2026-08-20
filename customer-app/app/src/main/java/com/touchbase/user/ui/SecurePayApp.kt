@@ -92,6 +92,10 @@ fun SecurePayApp(
 
     LaunchedEffect(isRegistered) {
         if (isRegistered) {
+            runCatching {
+                val act = context as? android.app.Activity
+                if (act != null) policyController.stopLockTask(act)
+            }
             KioskManager.restoreLauncher(context)
         }
     }
