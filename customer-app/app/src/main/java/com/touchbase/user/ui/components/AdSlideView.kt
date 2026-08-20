@@ -47,6 +47,7 @@ import com.touchbase.user.ui.theme.Gold
 import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -58,6 +59,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import com.touchbase.user.BuildConfig
+import java.io.File
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
@@ -186,22 +189,44 @@ private fun resolveAdImageUrl(ad: AdModel): String? {
 }
 
 /**
- * Loads the ad artwork off the main thread. Returns null while loading or if the
+ * Loads the ad artwork off the main thread. Uses a disk cache so repeated
+ * compositions don't hit the network. Returns null while loading or if the
  * fetch/decode fails, so the caller can fall back to the branded placeholder.
  */
 @Composable
 private fun rememberAdImage(ad: AdModel): Bitmap? {
     var bitmap by remember(ad.id, ad.imageUrl) { mutableStateOf<Bitmap?>(null) }
+    val context = LocalContext.current
     LaunchedEffect(ad.id, ad.imageUrl) {
         val url = resolveAdImageUrl(ad) ?: return@LaunchedEffect
         val decoded = withContext(Dispatchers.IO) {
             try {
+                // 1. Try disk cache
+                val cacheFile = diskCacheFile(context, ad.id, url)
+                if (cacheFile.exists() && cacheFile.length() > 0) {
+                    val cached = BitmapFactory.decodeFile(cacheFile.absolutePath)
+                    if (cached != null) return@withContext cached
+                }
+
+                // 2. Fetch from network
                 val request = Request.Builder().url(url).build()
-                adImageClient.newCall(request).execute().use { response ->
+                val bitmap = adImageClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
                     val body = response.body ?: return@withContext null
-                    BitmapFactory.decodeStream(body.byteStream())
+                    val decoded = BitmapFactory.decodeStream(body.byteStream())
+
+                    // 3. Save to disk cache
+                    if (decoded != null) {
+                        runCatching {
+                            cacheFile.parentFile?.mkdirs()
+                            cacheFile.outputStream().use { out ->
+                                decoded.compress(Bitmap.CompressFormat.PNG, 90, out)
+                            }
+                        }
+                    }
+                    decoded
                 }
+                bitmap
             } catch (_: Exception) {
                 null
             }
@@ -209,6 +234,13 @@ private fun rememberAdImage(ad: AdModel): Bitmap? {
         bitmap = decoded
     }
     return bitmap
+}
+
+private fun diskCacheFile(context: Context, adId: String, url: String): File {
+    val hash = MessageDigest.getInstance("SHA-256")
+        .digest("$adId|$url".toByteArray())
+        .joinToString("") { "%02x".format(it) }
+    return File(context.cacheDir, "ad_images/$hash.png")
 }
 
 /**

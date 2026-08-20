@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import com.touchbase.user.data.model.AdModel
 import com.touchbase.user.data.remote.ApiModule
 import com.touchbase.user.data.repository.AdRepository
@@ -107,6 +108,7 @@ fun DashboardScreen(
     onCheckUpdates: () -> Unit,
     onMore: () -> Unit,
     onAccount: () -> Unit = {},
+    onReleaseApp: () -> Unit = {},
     securityReport: SecurityChecker.SecurityReport? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -179,23 +181,21 @@ fun DashboardScreen(
                 if (account.isStolen) StolenTrackingCard()
             }
 
+            // Ads Section - cached locally, refreshed on Sync Status
+            val showAds = remember { true }
+            var adRefreshTrigger by remember { mutableIntStateOf(0) }
+
             ActionGrid(
                 state = state,
-                onRefresh = onRefresh,
+                onRefresh = { onRefresh(); adRefreshTrigger++ },
                 onPayNow = onPayNow,
                 onViewPayments = onViewPayments,
-                onCheckUpdates = onCheckUpdates
+                onCheckUpdates = onCheckUpdates,
+                onReleaseApp = onReleaseApp
             )
-
-            // Ads Section - Green highlighted area
-            // Ads are hidden when permissions are ready, but kept in DOM
-            // According to client: "That place I said we will remove (the one which is highlighted, don't remove just keep it hidden when permissions are ready)"
-            // For now, we'll show ads when permissions are NOT ready
-            // In production, this will be controlled by a flag from the dashboard
-            val showAds = remember { true } // TODO: Replace with actual logic based on permissions
             
             if (showAds) {
-                AdSlideSection()
+                AdSlideSection(refreshTrigger = adRefreshTrigger)
             }
             
             PermissionHealthCard()
@@ -406,7 +406,8 @@ private fun ActionGrid(
     onRefresh: () -> Unit,
     onPayNow: () -> Unit,
     onViewPayments: () -> Unit,
-    onCheckUpdates: () -> Unit
+    onCheckUpdates: () -> Unit,
+    onReleaseApp: () -> Unit = {}
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
@@ -435,6 +436,17 @@ private fun ActionGrid(
                 Spacer(Modifier.width(8.dp))
                 Text("Sync Status", fontWeight = FontWeight.SemiBold)
             }
+        }
+
+        OutlinedButton(
+            onClick = onReleaseApp,
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Crimson)
+        ) {
+            Icon(Icons.Filled.Lock, contentDescription = null, tint = Crimson)
+            Spacer(Modifier.width(8.dp))
+            Text("Release App", fontWeight = FontWeight.SemiBold, color = Crimson)
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -587,23 +599,33 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 
 /**
  * Ads section with slide view.
- * Fetches live ads managed from the dealer dashboard (touchbasedata.com):
- * up to 3 active ads, sorted by the dashboard order. Fails soft — when the
- * server is unreachable or has no active ads the section keeps a subtle
- * placeholder so the layout never collapses mid-demo.
+ * Loads cached ads instantly on open. When the user taps "Sync Status"
+ * (refreshTrigger changes), fetches fresh ads from the network and updates cache.
  */
 @Composable
-private fun AdSlideSection() {
+private fun AdSlideSection(refreshTrigger: Int = 0) {
+    val context = LocalContext.current
     var ads by remember { mutableStateOf<List<AdModel>?>(null) }
 
+    // Load cached ads instantly on first composition
     LaunchedEffect(Unit) {
-        val repo = AdRepository(ApiModule.provideApi())
-        ads = repo.getActiveAds().getOrNull() ?: emptyList()
+        val repo = AdRepository(ApiModule.provideApi(), context)
+        ads = repo.getCachedAds()
+        // If no cache, fetch from network
+        if (ads.isNullOrEmpty()) {
+            ads = repo.getActiveAds().getOrNull() ?: emptyList()
+        }
+    }
+
+    // Refresh from network when Sync Status is tapped
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger > 0) {
+            val repo = AdRepository(ApiModule.provideApi(), context)
+            ads = repo.refreshAds().getOrNull() ?: emptyList()
+        }
     }
 
     val loaded = ads
-    // Keep the DOM slot stable while loading and hide (gracefully) when the
-    // dashboard has no active ads at all.
     if (loaded != null && loaded.isEmpty()) return
 
     Column(
@@ -617,7 +639,6 @@ private fun AdSlideSection() {
             modifier = Modifier.padding(horizontal = 4.dp)
         )
         if (loaded == null) {
-            // Loading placeholder — same footprint as a filled slide row.
             AdSlideView(
                 ads = listOf(
                     AdModel(
