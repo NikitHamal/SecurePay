@@ -57,10 +57,9 @@ class KioskLauncherActivity : ComponentActivity() {
                         // Stop lock task before leaving to MainActivity
                         runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
                         val intent = Intent(this, com.touchbase.user.MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            putExtra("skip_lock_pro", true)
                         }
                         startActivity(intent)
-                        finish()
                     },
                     onOpenWifi = {
                         // Temporarily stop lock task so WiFi panel can open

@@ -178,12 +178,14 @@ class MainActivity : ComponentActivity() {
         reportProvisioningMilestone(repository)
 
         runCatching {
+            val skipLockPro = intent.getBooleanExtra("skip_lock_pro", false)
             setContent {
                 SecurePayTheme {
                     SecurePayApp(
                         repository = repository,
                         policyController = pc,
-                        onLocked = { launchLockTask() }
+                        onLocked = { launchLockTask() },
+                        skipLockPro = skipLockPro
                     )
                 }
             }

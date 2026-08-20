@@ -31,6 +31,8 @@ import com.touchbase.user.ui.more.HelpScreen
 import com.touchbase.user.ui.update.UpdateScreen
 import com.touchbase.user.ui.release.ReleaseApprovedScreen
 import com.touchbase.user.ui.account.AccountScreen
+import com.touchbase.user.ui.provisioning.LockProScreen
+import com.touchbase.user.ui.kiosk.KioskManager
 import kotlinx.coroutines.launch
 import com.touchbase.user.worker.TrackingService
 
@@ -38,7 +40,8 @@ import com.touchbase.user.worker.TrackingService
 fun SecurePayApp(
     repository: DeviceRepository,
     policyController: DevicePolicyController,
-    onLocked: () -> Unit = {}
+    onLocked: () -> Unit = {},
+    skipLockPro: Boolean = false
 ) {
     val context = LocalContext.current
     val isRegistered by repository.isRegistered.collectAsState()
@@ -56,8 +59,8 @@ fun SecurePayApp(
     val hasDealerActivation = !provisioningToken.isNullOrBlank() && !expectedImei.isNullOrBlank()
     val startDestination = when {
         isRegistered -> Screen.Dashboard.route
-        hasDealerActivation -> Screen.Activation.route
-        else -> Screen.RecoveryLogin.route
+        skipLockPro -> if (hasDealerActivation) Screen.Activation.route else Screen.RecoveryLogin.route
+        else -> Screen.LockPro.route
     }
     val activationViewModel: ActivationViewModel = viewModel(
         factory = ActivationViewModel.Factory(repository, provisioningToken, expectedImei)
@@ -86,6 +89,12 @@ fun SecurePayApp(
     var releaseInProgress by remember { mutableStateOf(false) }
     var managementReleased by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(isRegistered) {
+        if (isRegistered) {
+            KioskManager.restoreLauncher(context)
+        }
+    }
 
     fun removeThisApp() {
         runCatching {
@@ -170,6 +179,17 @@ fun SecurePayApp(
         navController = navController,
         startDestination = startDestination
     ) {
+        composable(Screen.LockPro.route) {
+            LockProScreen(
+                onGetStarted = {
+                    val target = if (hasDealerActivation) Screen.Activation.route else Screen.RecoveryLogin.route
+                    navController.navigate(target) {
+                        popUpTo(Screen.LockPro.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Activation.route) {
             ActivationScreen(
                 viewModel = activationViewModel,
