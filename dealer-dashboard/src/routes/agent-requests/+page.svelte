@@ -63,19 +63,16 @@
     loading = true;
     error = '';
     try {
-      const status = activeTab === 'ALL' ? '' : `?status=${activeTab}`;
-      const res = await apiClient(`/api/agent-requests${status}`);
+      // Single fetch for all statuses — counts and tab filtering are derived client-side
+      // to avoid extra round-trips and scope mismatch where the 3 count requests
+      // could return stale/empty results while the main list succeeds.
+      const res = await apiClient('/api/agent-requests');
       if (!res.ok) throw new Error('Failed to fetch requests');
-      requests = await res.json();
-      // Also fetch counts for the tabs
-      const [p, a, r] = await Promise.all([
-        apiClient('/api/agent-requests?status=PENDING').then(r => r.json()),
-        apiClient('/api/agent-requests?status=APPROVED').then(r => r.json()),
-        apiClient('/api/agent-requests?status=REJECTED').then(r => r.json()),
-      ]);
-      pendingCount = p.length;
-      approvedCount = a.length;
-      rejectedCount = r.length;
+      const all: AgentRequest[] = await res.json();
+      pendingCount = all.filter(r => r.status === 'PENDING').length;
+      approvedCount = all.filter(r => r.status === 'APPROVED').length;
+      rejectedCount = all.filter(r => r.status === 'REJECTED').length;
+      requests = activeTab === 'ALL' ? all : all.filter(r => r.status === activeTab);
       applyBranchDefaults();
     } catch (e) {
       error = e instanceof Error ? e.message : 'Unknown error';
