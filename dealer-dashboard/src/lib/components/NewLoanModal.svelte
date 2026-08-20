@@ -2,8 +2,10 @@
   import { createEventDispatcher } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import { addDevice, createAccount, listDevices } from '$lib/api/client';
+  import type { InventoryDevice } from '$lib/api/client';
   import { load } from '$lib/stores/customers';
   import { newLoanPrefill } from '$lib/stores/ui';
+  import { dealer } from '$lib/stores/auth';
   import { buildAgreement, agreementMoney, agreementToday } from '$lib/utils/agreement';
   import {
     REGIONS, REGION_NAMES, LANGUAGES, MARITAL_STATUSES, EMPLOYMENT_STATUSES,
@@ -71,14 +73,18 @@
   let manualSerial = false;
   let addImeiToInventory = false;
   let selectedStockId = '';
-  let inStockDevices: { id: string; imei: string; model: string; createdAt?: number }[] = [];
+  let inStockDevices: InventoryDevice[] = [];
   let loadingDevices = false;
+  let selectedDevice: InventoryDevice | null = null;
 
-  // ---- pricing (always set by the admin/dealer for this specific sale) ----
+  // ---- pricing (admin controls for agents; admin/branch can set manually) ----
   let totalAmount = '';
   let dailyRate = '';
   let termDays = '';
   let downPayment = '';
+  $: isAgent = $dealer?.role === 'AGENT';
+  // When agent picks an assigned device, pricing is locked to admin-set values.
+  $: pricingLocked = isAgent && selectedDevice != null && selectedDevice.totalAmount != null && selectedDevice.dailyRate != null && selectedDevice.termDays != null;
 
   // ---- consent ----
   let consentChecked = false;
@@ -176,12 +182,20 @@
   function next() { if (stepValid && stepIndex < STEPS.length - 1) { error = ''; stepIndex += 1; } }
   function back() { if (stepIndex > 0) { error = ''; stepIndex -= 1; } }
 
-  function pickStockDevice(d: { id: string; imei: string; model: string }) {
+  function pickStockDevice(d: InventoryDevice) {
     selectedStockId = d.id;
     imei = d.imei;
     deviceModel = d.model;
+    selectedDevice = d;
     manualSerial = false;
     addImeiToInventory = false;
+    // Auto-fill admin-locked pricing for agents.
+    if (d.totalAmount != null && d.dailyRate != null && d.termDays != null) {
+      totalAmount = (d.totalAmount / 100).toFixed(2);
+      dailyRate = (d.dailyRate / 100).toFixed(2);
+      termDays = String(d.termDays);
+      if (d.downPayment != null) downPayment = (d.downPayment / 100).toFixed(2);
+    }
   }
 
   function useSuggestedDaily() {
@@ -199,7 +213,8 @@
     else selfieData = dataUrl;
   }
 
-  function downscaleImage(file: File, maxDim = 900, quality = 0.8): Promise<string> {
+  // Fix blurry verification: capture higher-res (1600px) at 92% quality so text on IDs stays legible.
+  function downscaleImage(file: File, maxDim = 1600, quality = 0.92): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -726,6 +741,7 @@
           <p class="text-xs text-ink-muted">No unsold devices in stock — enter the serial below.</p>
         {/if}
       </div>
+      {#if !isAgent}
       <div class="mt-3 rounded-lg border border-edge bg-surface-100 p-3">
         <label class="flex items-center gap-2 text-xs font-medium text-ink-primary cursor-pointer">
           <input type="checkbox" bind:checked={manualSerial} class="h-4 w-4" style="accent-color: var(--brand);" on:change={() => { if (!manualSerial) { selectedStockId = ''; } }} />
@@ -748,6 +764,7 @@
           </div>
         {/if}
       </div>
+      {/if}
     {/if}
 
     <!-- ============ OFFERS ============ -->
@@ -759,30 +776,45 @@
       <div class="mb-3 flex justify-end">
         <button type="button" class="rounded-full border px-3 py-1 text-xs font-bold" style="border-color: var(--brand); color: var(--brand);" on:click={() => stepTo('product')}>Change product</button>
       </div>
-      <p class="mb-1 text-sm font-bold text-ink-primary">Set the price for this sale</p>
-      <p class="mb-3 text-xs text-ink-muted">Your prices, your terms — enter the amounts you agreed with this customer.</p>
-      <div class="rounded-lg border p-3.5" style="border-color: var(--brand);">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <label class="label" for="nl-total">Total price (GH₵)</label>
-            <input id="nl-total" type="number" step="0.01" min="0" class="input" bind:value={totalAmount} placeholder="2277.80" />
-          </div>
-          <div>
-            <label class="label" for="nl-term">Repayment period (days)</label>
-            <input id="nl-term" type="number" min="1" class="input" bind:value={termDays} placeholder="119" />
-          </div>
-          <div>
-            <label class="label" for="nl-daily">Daily rate (GH₵)</label>
-            <input id="nl-daily" type="number" step="0.01" min="0" class="input" bind:value={dailyRate} placeholder="16.20" />
-          </div>
+      {#if pricingLocked}
+        <div class="mb-3 rounded-lg border border-amber/30 bg-amber/10 p-3 flex items-start gap-2">
+          <svg class="h-4 w-4 shrink-0 text-amber mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <p class="text-xs font-semibold text-amber">Admin-set price — you cannot change the financial terms. The system loaded the fixed plan for this device.</p>
         </div>
-        {#if suggestedDaily > 0}
-          <div class="mt-3 flex items-center justify-between">
-            <p class="text-2xs text-ink-muted">Suggested {formatCurrency(suggestedDaily)} / day to clear the balance in {termDaysValue} days</p>
-            <button type="button" class="text-xs font-bold" style="color: var(--brand);" on:click={useSuggestedDaily}>Use</button>
+        <div class="rounded-lg border p-3.5 bg-surface-100">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Total price</p><p class="text-sm font-bold text-ink-primary">{formatCurrency(totalCents)}</p></div>
+            <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Repayment period</p><p class="text-sm font-bold text-ink-primary">{termDaysValue} days</p></div>
+            <div><p class="text-2xs uppercase tracking-wide text-ink-muted">Daily rate</p><p class="text-sm font-bold text-ink-primary">{formatCurrency(dailyCents)}/day</p></div>
           </div>
-        {/if}
-      </div>
+          <p class="mt-2 text-2xs text-ink-muted">Down payment: {agreementMoney(downCents)}</p>
+        </div>
+      {:else}
+        <p class="mb-1 text-sm font-bold text-ink-primary">Set the price for this sale</p>
+        <p class="mb-3 text-xs text-ink-muted">Your prices, your terms — enter the amounts you agreed with this customer.</p>
+        <div class="rounded-lg border p-3.5" style="border-color: var(--brand);">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label class="label" for="nl-total">Total price (GH₵)</label>
+              <input id="nl-total" type="number" step="0.01" min="0" class="input" bind:value={totalAmount} placeholder="2277.80" />
+            </div>
+            <div>
+              <label class="label" for="nl-term">Repayment period (days)</label>
+              <input id="nl-term" type="number" min="1" class="input" bind:value={termDays} placeholder="119" />
+            </div>
+            <div>
+              <label class="label" for="nl-daily">Daily rate (GH₵)</label>
+              <input id="nl-daily" type="number" step="0.01" min="0" class="input" bind:value={dailyRate} placeholder="16.20" />
+            </div>
+          </div>
+          {#if suggestedDaily > 0}
+            <div class="mt-3 flex items-center justify-between">
+              <p class="text-2xs text-ink-muted">Suggested {formatCurrency(suggestedDaily)} / day to clear the balance in {termDaysValue} days</p>
+              <button type="button" class="text-xs font-bold" style="color: var(--brand);" on:click={useSuggestedDaily}>Use</button>
+            </div>
+          {/if}
+        </div>
+      {/if}
 
       {#if totalCents > 0 && dailyCents > 0 && termDaysValue > 0}
         <div class="mt-3 rounded-lg border border-edge bg-surface-100 p-3.5">
@@ -833,9 +865,16 @@
         <p class="mt-3 text-right text-sm font-extrabold">Total loan amount {agreementMoney(totalCents)}</p>
       </div>
       <div class="mt-4">
-        <label class="label" for="nl-down">Initial payment (deposit)</label>
-        <input id="nl-down" type="number" step="0.01" min="0" class="input" bind:value={downPayment} />
-        <p class="mt-1 text-2xs text-ink-muted">Any amount from 0 up to the total price {formatCurrency(totalCents)}</p>
+        {#if pricingLocked}
+          <div class="rounded-lg border border-edge bg-surface-100 p-3">
+            <p class="text-2xs uppercase tracking-wide text-ink-muted">Initial payment (fixed by admin)</p>
+            <p class="text-sm font-bold text-ink-primary">{agreementMoney(downCents)} — collected in cash and submitted to admin for confirmation</p>
+          </div>
+        {:else}
+          <label class="label" for="nl-down">Initial payment (deposit)</label>
+          <input id="nl-down" type="number" step="0.01" min="0" class="input" bind:value={downPayment} />
+          <p class="mt-1 text-2xs text-ink-muted">Any amount from 0 up to the total price {formatCurrency(totalCents)}</p>
+        {/if}
       </div>
     {/if}
 
@@ -946,6 +985,11 @@
       <p class="rounded-lg border border-amber/25 bg-amber/10 p-3 text-left text-xs text-amber">
         <strong>Important:</strong> Save the temporary PIN now — it cannot be retrieved later. Next, provision the device, and keep the signed agreement with your records.
       </p>
+      {#if isAgent}
+        <p class="rounded-lg border border-sky/25 bg-sky/10 p-3 text-left text-xs text-sky">
+          <strong>Down payment pending:</strong> Cash collected is awaiting admin confirmation (check Down Payments). Device provisioning is blocked until the admin confirms the GH₵ {(downCents/100).toFixed(2)} payment.
+        </p>
+      {/if}
     </div>
   {/if}
 

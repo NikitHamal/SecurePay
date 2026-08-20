@@ -257,6 +257,58 @@ export async function getKpis(): Promise<KpiSummary> {
   return request<KpiSummary>('/kpis');
 }
 
+export interface ProductModel {
+  id: string;
+  name: string;
+  model: string;
+  description?: string | null;
+  totalAmount: number;
+  downPayment: number;
+  dailyRate: number;
+  termDays: number;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+export async function listProductModels(): Promise<ProductModel[]> { return request('/product-models'); }
+export async function createProductModel(data: { name: string; model: string; description?: string; totalAmount: number; downPayment: number; dailyRate: number; termDays: number }): Promise<ProductModel> {
+  return request('/product-models', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updateProductModel(id: string, data: Partial<{ name: string; model: string; description: string; totalAmount: number; downPayment: number; dailyRate: number; termDays: number; isActive: boolean }>): Promise<ProductModel> {
+  return request(`/product-models/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+export async function deleteProductModel(id: string): Promise<{ success: boolean }> { return request(`/product-models/${id}`, { method: 'DELETE' }); }
+export async function assignDevice(id: string, agentId: string | null): Promise<{ success: boolean; assignedTo: string | null }> {
+  if (agentId) return request(`/devices/${id}/assign`, { method: 'POST', body: JSON.stringify({ agentId }) });
+  return request(`/devices/${id}/assign`, { method: 'POST', body: JSON.stringify({ unassign: true }) });
+}
+export interface DownPaymentSubmission {
+  id: string;
+  accountId: string;
+  deviceId: string;
+  agentId: string;
+  agentName?: string | null;
+  customerName: string;
+  imei: string;
+  model: string;
+  amount: number;
+  status: 'pending' | 'confirmed' | 'rejected' | 'cancelled';
+  method: string;
+  submittedAt: number;
+  confirmedBy?: string | null;
+  confirmedAt?: number | null;
+}
+export async function listDownPayments(status?: string): Promise<DownPaymentSubmission[]> {
+  const qs = status ? `?status=${status}` : '';
+  return request(`/down-payments${qs}`);
+}
+export async function confirmDownPayment(id: string, note?: string): Promise<{ id: string; status: string }> {
+  return request(`/down-payments/${id}`, { method: 'POST', body: JSON.stringify({ action: 'confirm', note }) });
+}
+export async function rejectDownPayment(id: string, note?: string): Promise<{ id: string; status: string }> {
+  return request(`/down-payments/${id}`, { method: 'POST', body: JSON.stringify({ action: 'reject', note }) });
+}
+
 export interface InventoryDevice {
   id: string;
   imei: string;
@@ -269,16 +321,25 @@ export interface InventoryDevice {
   registrationLat?: number | null;
   registrationLng?: number | null;
   registrationAccuracy?: number | null;
+  productModelId?: string | null;
+  productName?: string | null;
+  assignedTo?: string | null;
+  assignedToName?: string | null;
+  assignedAt?: number | null;
+  totalAmount?: number | null;
+  downPayment?: number | null;
+  dailyRate?: number | null;
+  termDays?: number | null;
 }
 
 export async function listDevices(): Promise<InventoryDevice[]> {
   return request('/devices');
 }
 
-export async function addDevice(imei: string, model: string): Promise<{ id: string; imei: string; model: string; status: string }> {
+export async function addDevice(imei: string, model: string, opts: { productModelId?: string; totalAmount?: number; downPayment?: number; dailyRate?: number; termDays?: number; assignedTo?: string } = {}): Promise<{ id: string; imei: string; model: string; status: string }> {
   return request('/devices', {
     method: 'POST',
-    body: JSON.stringify({ imei, model })
+    body: JSON.stringify({ imei, model, productModelId: opts.productModelId, totalAmount: opts.totalAmount, downPayment: opts.downPayment, dailyRate: opts.dailyRate, termDays: opts.termDays, assignedTo: opts.assignedTo })
   });
 }
 

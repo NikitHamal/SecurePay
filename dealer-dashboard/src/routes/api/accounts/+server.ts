@@ -85,13 +85,40 @@ async function ensureApplicationColumns(db: ReturnType<typeof getDb>) {
       // 20260801_accountability.sql — GPS captured at enrollment time
       ['enrollment_lat', 'REAL'],
       ['enrollment_lng', 'REAL'],
-      ['enrollment_accuracy', 'REAL']
+      ['enrollment_accuracy', 'REAL'],
+      // 20260821_admin_pricing_downpayments.sql
+      ['down_payment_status', 'TEXT DEFAULT \'unpaid\''],
+      ['down_payment_confirmed_by', 'TEXT'],
+      ['down_payment_confirmed_at', 'INTEGER']
     ];
     for (const [column, ddl] of defs) {
       if (!existing.has(column)) {
         await db.prepare(`ALTER TABLE accounts ADD COLUMN ${column} ${ddl}`).run();
       }
     }
+    // Ensure device pricing/assignment columns exist (idempotent for legacy DBs).
+    try {
+      const dinfo = await db.prepare('PRAGMA table_info(devices)').all();
+      const dexist = new Set(dinfo.results.map((row) => String((row as { name?: unknown }).name ?? '')));
+      for (const [column, ddl] of [
+        ['product_model_id', 'TEXT'], ['assigned_to', 'TEXT'], ['assigned_at', 'INTEGER'], ['assigned_by', 'TEXT'],
+        ['total_amount', 'INTEGER'], ['down_payment', 'INTEGER'], ['daily_rate', 'INTEGER'], ['term_days', 'INTEGER']
+      ] as Array<[string, string]>) {
+        if (!dexist.has(column)) await db.prepare(`ALTER TABLE devices ADD COLUMN ${column} ${ddl}`).run();
+      }
+      await db.prepare(`CREATE TABLE IF NOT EXISTS product_models (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, model TEXT NOT NULL, description TEXT,
+        total_amount INTEGER NOT NULL, down_payment INTEGER NOT NULL, daily_rate INTEGER NOT NULL, term_days INTEGER NOT NULL,
+        created_by TEXT, is_active INTEGER DEFAULT 1, created_at INTEGER DEFAULT (unixepoch()), updated_at INTEGER DEFAULT (unixepoch())
+      )`).run();
+      await db.prepare(`CREATE TABLE IF NOT EXISTS down_payment_submissions (
+        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        device_id TEXT NOT NULL REFERENCES devices(id), agent_id TEXT NOT NULL REFERENCES dealers(id),
+        amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','rejected','cancelled')),
+        method TEXT NOT NULL DEFAULT 'cash', reference TEXT, submitted_at INTEGER DEFAULT (unixepoch()),
+        confirmed_by TEXT, confirmed_at INTEGER, note TEXT, created_at INTEGER DEFAULT (unixepoch()), updated_at INTEGER DEFAULT (unixepoch())
+      )`).run();
+    } catch { /* ignore — nested ensure is best-effort */ }
   } catch { /* read-only replica — the query below will surface a real problem */ }
 }
 
@@ -399,12 +426,20 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       409
     );
   }
-  const device = await db.prepare(
-    'SELECT id, imei, model, status FROM devices WHERE imei = ? AND dealer_id = ?'
-  ).bind(imei, locals.dealer.id).first<{ id: string; imei: string; model: string; status: string }>();
+  // Device lookup: agents see only their assigned IMEIs; admins see any.
+  const isAgent = locals.dealer.role === 'AGENT';
+  const device = isAgent
+    ? await db.prepare(
+        'SELECT id, imei, model, status, dealer_id, assigned_to, product_model_id, total_amount, down_payment, daily_rate, term_days FROM devices WHERE imei = ? AND (assigned_to = ? OR (assigned_to IS NULL AND dealer_id = ?))'
+      ).bind(imei, locals.dealer.id, locals.dealer.id).first<{ id: string; imei: string; model: string; status: string; dealer_id: string; assigned_to: string | null; product_model_id: string | null; total_amount: number | null; down_payment: number | null; daily_rate: number | null; term_days: number | null }>()
+    : await db.prepare(
+        'SELECT id, imei, model, status, dealer_id, assigned_to, product_model_id, total_amount, down_payment, daily_rate, term_days FROM devices WHERE imei = ?'
+      ).bind(imei).first<{ id: string; imei: string; model: string; status: string; dealer_id: string; assigned_to: string | null; product_model_id: string | null; total_amount: number | null; down_payment: number | null; daily_rate: number | null; term_days: number | null }>();
 
-  if (!device) return errorResponse('Device not found in your inventory', 404);
+  if (!device) return errorResponse(isAgent ? 'Device not found in your assigned inventory' : 'Device not found in inventory', 404);
   if (device.status !== 'in_stock') return errorResponse('Device is not available for sale', 409);
+  // If inventory has admin-set pricing, agent must use it — ignore any client-supplied financials.
+  const deviceHasPricing = device.total_amount != null && device.daily_rate != null && device.term_days != null;
 
   const plan = planId
     ? await db.prepare('SELECT id, total_amount, daily_rate, term_days, min_down_payment FROM plans WHERE id = ?')
@@ -418,22 +453,60 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   let termDays: number;
   let downPayment: number;
   try {
-    totalLoanAmount = plan
-      ? parseSafeInteger(plan.total_amount, 'plan total amount', 1)
-      : parseSafeInteger(body.totalAmount, 'totalAmount', 1);
-    dailyRate = plan
-      ? parseSafeInteger(plan.daily_rate, 'plan daily rate', 1)
-      : parseSafeInteger(body.dailyRate, 'dailyRate', 1);
-    termDays = plan
-      ? parseSafeInteger(plan.term_days, 'plan term', 1, false)
-      : parseSafeInteger(body.termDays, 'termDays', 1, false);
-    // The deposit is whatever the dealer agreed with this customer. Legacy plans
-    // carry a suggested minimum, but it is never enforced any more: an admin who
-    // prices a sale at GH₵ 800 must not be blocked by a GH₵ 6,000 package floor.
-    const suggestedDownPayment = plan ? parseSafeInteger(plan.min_down_payment, 'plan minimum down payment', 0) : 0;
-    downPayment = body.downPayment == null || body.downPayment === ''
-      ? suggestedDownPayment
-      : parseSafeInteger(body.downPayment, 'downPayment', 0);
+    if (isAgent && deviceHasPricing) {
+      // Admin owns pricing — agent's numbers are ignored.
+      totalLoanAmount = parseSafeInteger(device.total_amount, 'device total amount', 1);
+      dailyRate = parseSafeInteger(device.daily_rate, 'device daily rate', 1);
+      termDays = parseSafeInteger(device.term_days, 'device term', 1, false);
+      downPayment = parseSafeInteger(device.down_payment ?? 0, 'device down payment', 0);
+      // If agent still sent explicit values that diverge, surface a clear error to catch front-end bugs.
+      const clientTotal = body.totalAmount != null ? Number(body.totalAmount) : null;
+      const clientDaily = body.dailyRate != null ? Number(body.dailyRate) : null;
+      const clientTerm = body.termDays != null ? Number(body.termDays) : null;
+      if (clientTotal != null && clientTotal !== totalLoanAmount) console.warn(`[accounts] agent supplied totalAmount ${clientTotal} ignored — device ${device.imei} locked to ${totalLoanAmount}`);
+      if (clientDaily != null && clientDaily !== dailyRate) console.warn(`[accounts] agent dailyRate ignored`);
+      if (clientTerm != null && clientTerm !== termDays) console.warn(`[accounts] agent termDays ignored`);
+    } else if (deviceHasPricing && !plan) {
+      // Admin enrolling a device that already has catalog pricing — use it unless admin explicitly overrides via plan.
+      // Allow admin to override only if they clearly supply a planId; otherwise respect the device's locked price.
+      const useDevicePricing = body.totalAmount == null && body.dailyRate == null && body.termDays == null;
+      if (useDevicePricing) {
+        totalLoanAmount = parseSafeInteger(device.total_amount, 'device total amount', 1);
+        dailyRate = parseSafeInteger(device.daily_rate, 'device daily rate', 1);
+        termDays = parseSafeInteger(device.term_days, 'device term', 1, false);
+        downPayment = parseSafeInteger(device.down_payment ?? 0, 'device down payment', 0);
+      } else {
+        const pp: any = plan as any;
+        totalLoanAmount = pp
+          ? parseSafeInteger(pp.total_amount, 'plan total amount', 1)
+          : parseSafeInteger(body.totalAmount, 'totalAmount', 1);
+        dailyRate = pp
+          ? parseSafeInteger(pp.daily_rate, 'plan daily rate', 1)
+          : parseSafeInteger(body.dailyRate, 'dailyRate', 1);
+        termDays = pp
+          ? parseSafeInteger(pp.term_days, 'plan term', 1, false)
+          : parseSafeInteger(body.termDays, 'termDays', 1, false);
+        const suggestedDownPayment = pp ? parseSafeInteger(pp.min_down_payment, 'plan minimum down payment', 0) : (device.down_payment ?? 0);
+        downPayment = body.downPayment == null || body.downPayment === ''
+          ? suggestedDownPayment
+          : parseSafeInteger(body.downPayment, 'downPayment', 0);
+      }
+    } else {
+      const p: any = plan as any;
+      totalLoanAmount = p
+        ? parseSafeInteger(p.total_amount, 'plan total amount', 1)
+        : parseSafeInteger(body.totalAmount, 'totalAmount', 1);
+      dailyRate = p
+        ? parseSafeInteger(p.daily_rate, 'plan daily rate', 1)
+        : parseSafeInteger(body.dailyRate, 'dailyRate', 1);
+      termDays = p
+        ? parseSafeInteger(p.term_days, 'plan term', 1, false)
+        : parseSafeInteger(body.termDays, 'termDays', 1, false);
+      const suggestedDownPayment = p ? parseSafeInteger(p.min_down_payment, 'plan minimum down payment', 0) : 0;
+      downPayment = body.downPayment == null || body.downPayment === ''
+        ? suggestedDownPayment
+        : parseSafeInteger(body.downPayment, 'downPayment', 0);
+    }
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : 'Invalid loan values', 400);
   }
@@ -481,6 +554,12 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('Unable to store KYC images. No customer account was created.', 502);
   }
 
+  // Down-payment settlement: agents' cash goes to pending approval; admins confirm instantly.
+  const downPaymentStatus = isAgent ? (downPayment > 0 ? 'pending' : 'unpaid') : (downPayment > 0 ? 'confirmed' : 'unpaid');
+  const initialAmountPaid = isAgent ? 0 : downPayment;
+  const downPaymentConfirmedBy = !isAgent && downPayment > 0 ? locals.dealer.id : null;
+  const downPaymentConfirmedAt = !isAgent && downPayment > 0 ? nowSeconds : null;
+
   const statements = [
     db.prepare(`
       INSERT INTO accounts (
@@ -505,7 +584,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       locals.dealer.id,
       planId,
       totalLoanAmount,
-      downPayment,
+      initialAmountPaid,
       dailyRate,
       nextPaymentDue,
       downPayment,
@@ -551,6 +630,11 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     db.prepare("UPDATE devices SET status = 'sold' WHERE id = ? AND status = 'in_stock'").bind(device.id)
   ];
 
+  // Patch in the new down-payment workflow columns (back-compat earlier insert omits them).
+  statements.push(db.prepare(
+    'UPDATE accounts SET down_payment_status = ?, down_payment_confirmed_by = ?, down_payment_confirmed_at = ? WHERE id = ?'
+  ).bind(downPaymentStatus, downPaymentConfirmedBy, downPaymentConfirmedAt, accountId));
+
   if (enrollmentLat != null && enrollmentLng != null) {
     statements.push(db.prepare(
       'UPDATE accounts SET enrollment_lat = ?, enrollment_lng = ?, enrollment_accuracy = ? WHERE id = ?'
@@ -558,10 +642,17 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   if (downPayment > 0) {
-    statements.push(db.prepare(`
-      INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
-      VALUES (?, ?, ?, 'cash', 'Down payment', ?, ?)
-    `).bind(uuidv4(), accountId, downPayment, locals.dealer.id, nowSeconds));
+    if (isAgent) {
+      statements.push(db.prepare(`
+        INSERT INTO down_payment_submissions (id, account_id, device_id, agent_id, amount, status, method, submitted_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'pending', 'cash', ?, ?, ?)
+      `).bind(uuidv4(), accountId, device.id, locals.dealer.id, downPayment, nowSeconds, nowSeconds, nowSeconds));
+    } else {
+      statements.push(db.prepare(`
+        INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
+        VALUES (?, ?, ?, 'cash', 'Down payment', ?, ?)
+      `).bind(uuidv4(), accountId, downPayment, locals.dealer.id, nowSeconds));
+    }
   }
 
   try {

@@ -203,7 +203,8 @@ private fun hasCameraPermission(context: Context): Boolean =
     ) == PackageManager.PERMISSION_GRANTED
 
 private fun compressAndToBase64(bitmap: Bitmap): String {
-    val maxDimension = 800
+    // Fix blurry verification: keep 1600px long edge at 92% JPEG so Ghana Card text stays legible.
+    val maxDimension = 1600
     val originalWidth = bitmap.width
     val originalHeight = bitmap.height
     val resizedBitmap = if (originalWidth > maxDimension || originalHeight > maxDimension) {
@@ -216,6 +217,6 @@ private fun compressAndToBase64(bitmap: Bitmap): String {
     }
 
     val outputStream = ByteArrayOutputStream()
-    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
     return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
 }

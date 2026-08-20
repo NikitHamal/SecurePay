@@ -284,9 +284,9 @@
               ></div>
             </div>
             <div class="flex justify-between text-2xs text-ink-muted">
-              <span>Daily Rate: {formatCurrency(account.dailyRate)}/day</span>
-              {#if account.nextPaymentDue > 0}
-                <span>Due: {formatDate(account.nextPaymentDue)}</span>
+              <span>Daily Rate: {formatCurrency(account!.dailyRate)}/day</span>
+              {#if account!.nextPaymentDue > 0}
+                <span>Due: {formatDate(account!.nextPaymentDue)}</span>
               {/if}
             </div>
           </div>
@@ -301,28 +301,28 @@
             <div class="space-y-2">
               <span class="text-xs font-medium text-ink-secondary">Select Amount (GH₵)</span>
               <div class="grid grid-cols-3 gap-2">
-                {#if account.dailyRate > 0 && account.dailyRate <= account.remainingBalance}
+                {#if account!.dailyRate > 0 && account!.dailyRate <= account!.remainingBalance}
                   <button
                     type="button"
-                    class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition {amountPesewas === account.dailyRate ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-50 text-ink-secondary hover:bg-hover'}"
-                    on:click={() => setAmount(account.dailyRate / 100)}
+                    class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition {amountPesewas === account!.dailyRate ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-50 text-ink-secondary hover:bg-hover'}"
+                    on:click={() => setAmount(account!.dailyRate / 100)}
                   >
-                    1 Day<br/><span class="text-2xs font-normal">GH₵ {(account.dailyRate / 100).toFixed(2)}</span>
+                    1 Day<br/><span class="text-2xs font-normal">GH₵ {(account!.dailyRate / 100).toFixed(2)}</span>
                   </button>
                 {/if}
-                {#if account.dailyRate * 7 > 0 && account.dailyRate * 7 <= account.remainingBalance}
+                {#if account!.dailyRate * 7 > 0 && account!.dailyRate * 7 <= account!.remainingBalance}
                   <button
                     type="button"
-                    class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition {amountPesewas === account.dailyRate * 7 ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-50 text-ink-secondary hover:bg-hover'}"
-                    on:click={() => setAmount((account.dailyRate * 7) / 100)}
+                    class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition {amountPesewas === account!.dailyRate * 7 ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-50 text-ink-secondary hover:bg-hover'}"
+                    on:click={() => setAmount((account!.dailyRate * 7) / 100)}
                   >
-                    1 Week<br/><span class="text-2xs font-normal">GH₵ {((account.dailyRate * 7) / 100).toFixed(2)}</span>
+                    1 Week<br/><span class="text-2xs font-normal">GH₵ {((account!.dailyRate * 7) / 100).toFixed(2)}</span>
                   </button>
                 {/if}
                 <button
                   type="button"
-                  class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition {amountPesewas === account.remainingBalance ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-50 text-ink-secondary hover:bg-hover'}"
-                  on:click={() => setAmount(account.remainingBalance / 100)}
+                  class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition {amountPesewas === account!.remainingBalance ? 'border-emerald bg-emerald/10 text-emerald' : 'border-edge bg-surface-50 text-ink-secondary hover:bg-hover'}"
+                  on:click={() => setAmount(account!.remainingBalance / 100)}
                 >
                   Pay in Full<br/><span class="text-2xs font-normal">GH₵ {remainingGhs}</span>
                 </button>

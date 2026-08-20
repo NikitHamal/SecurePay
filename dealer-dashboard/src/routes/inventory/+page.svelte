@@ -6,7 +6,7 @@
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
-  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy, type InventoryDevice } from '$lib/api/client';
+  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy, type InventoryDevice, listProductModels, createProductModel, assignDevice, type ProductModel } from '$lib/api/client';
   import { openAddDevice, openNewLoan, openProvision } from '$lib/stores/ui';
   import { dealer } from '$lib/stores/auth';
   import { onMount } from 'svelte';
@@ -17,6 +17,8 @@
 
   // Agents can register devices but can never delete them (admin-only).
   $: canDeleteDevices = $dealer ? $dealer.role !== 'AGENT' : false;
+  $: isAdmin = $dealer ? $dealer.role !== 'AGENT' : false;
+  $: isAgentView = $dealer?.role === 'AGENT';
 
   function regLocationUrl(device: DeviceRow): string | null {
     return device.registrationLat != null && device.registrationLng != null
@@ -31,8 +33,21 @@
   let securityError: string | null = null;
   let isSavingSecurity = false;
 
+  // Product catalog (admin-owned pricing)
+  let productModels: ProductModel[] = [];
+  let catalogLoading = false;
+  let catalogError: string | null = null;
+  let newProd = { name: '', model: '', totalGhs: '', downGhs: '', dailyGhs: '', term: '' };
+  let creatingProd = false;
+
+  // Assignment
+  let agents: { id: string; name: string }[] = [];
+  let agentsLoading = false;
+  let assignBusyId: string | null = null;
+
   $: m = $portfolioMetrics;
   $: inStockCount = devices.filter(d => d.status === 'in_stock').length;
+  $: assignedCount = devices.filter(d => d.assignedTo).length;
 
   function initials(name: string) {
     return (name || '?').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
@@ -43,7 +58,7 @@
     return '#DC2626';
   }
 
-  onMount(() => { Promise.all([loadSecurityPolicy(), loadDevices()]); });
+  onMount(() => { Promise.all([loadSecurityPolicy(), loadDevices(), loadProductModels(), loadAgentsIfAdmin()]); });
 
   async function loadSecurityPolicy() {
     try {
@@ -97,6 +112,59 @@
       securityError = e instanceof Error ? e.message : 'Failed to save security policy';
     } finally { isSavingSecurity = false; }
   }
+
+  async function loadProductModels() {
+    if (!isAdmin) return;
+    catalogLoading = true;
+    catalogError = null;
+    try { productModels = await listProductModels(); }
+    catch (e) { catalogError = e instanceof Error ? e.message : 'Failed to load catalog'; }
+    finally { catalogLoading = false; }
+  }
+  async function loadAgentsIfAdmin() {
+    if (!isAdmin) return;
+    agentsLoading = true;
+    try {
+      const res = await fetch('/api/agents', { headers: {} });
+      if (res.ok) agents = await res.json();
+      else agents = [];
+    } catch { agents = []; }
+    finally { agentsLoading = false; }
+  }
+  async function handleCreateProduct() {
+    catalogError = null;
+    if (!newProd.name.trim() || !newProd.model.trim()) { catalogError = 'Name and model required'; return; }
+    const total = Math.round(parseFloat(newProd.totalGhs || '0')*100);
+    const down = Math.round(parseFloat(newProd.downGhs || '0')*100);
+    const daily = Math.round(parseFloat(newProd.dailyGhs || '0')*100);
+    const term = parseInt(newProd.term || '0',10);
+    if (!total || !daily || !term) { catalogError = 'Total, daily and term are required'; return; }
+    if (down > total) { catalogError = 'Down payment cannot exceed total'; return; }
+    creatingProd = true;
+    try {
+      const pm = await createProductModel({ name: newProd.name.trim(), model: newProd.model.trim(), totalAmount: total, downPayment: down, dailyRate: daily, termDays: term });
+      productModels = [pm, ...productModels];
+      newProd = { name: '', model: '', totalGhs: '', downGhs: '', dailyGhs: '', term: '' };
+    } catch (e) { catalogError = e instanceof Error ? e.message : 'Create failed'; }
+    finally { creatingProd = false; }
+  }
+  async function handleAssign(deviceId: string, agentId: string) {
+    if (!agentId) return;
+    assignBusyId = deviceId;
+    inventoryError = null;
+    try {
+      await assignDevice(deviceId, agentId);
+      await loadDevices();
+    } catch (e) { inventoryError = e instanceof Error ? e.message : 'Assign failed'; }
+    finally { assignBusyId = null; }
+  }
+  async function handleUnassign(deviceId: string) {
+    assignBusyId = deviceId;
+    inventoryError = null;
+    try { await assignDevice(deviceId, null); await loadDevices(); }
+    catch (e) { inventoryError = e instanceof Error ? e.message : 'Unassign failed'; }
+    finally { assignBusyId = null; }
+  }
 </script>
 
 <svelte:head><title>Inventory · Touch Base</title></svelte:head>
@@ -119,10 +187,14 @@
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 21h3M17 17h4v4"/></svg>
           Provision
         </button>
+        {#if isAdmin}
         <button class="btn-primary" on:click={() => openAddDevice()}>
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
           Add device
         </button>
+        {:else}
+        <span class="text-xs text-ink-muted hidden sm:inline">Your assigned devices only</span>
+        {/if}
       </div>
     </svelte:fragment>
   </PageHeader>
@@ -138,14 +210,52 @@
       <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald">{inStockCount}</p>
     </div>
     <div class="card p-4">
-      <p class="text-xs text-ink-muted">Assigned</p>
-      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{devices.length - inStockCount}</p>
+      <p class="text-xs text-ink-muted">Assigned to agents</p>
+      <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{assignedCount}</p>
     </div>
     <div class="card p-4">
       <p class="text-xs text-ink-muted">Active loans</p>
       <p class="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{$customers.length}</p>
     </div>
   </div>
+
+  {#if isAgentView}
+    <div class="mb-5 rounded-lg border border-sky/20 bg-sky/10 px-4 py-3 text-sm text-sky">You see only the {devices.length} phones assigned to you. Ask your admin to assign more IMEIs if you need stock.</div>
+  {/if}
+
+  <!-- Product catalog (admin controls pricing) -->
+  {#if isAdmin}
+  <div class="card mb-5 p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="section-title">Product catalog · Admin-set pricing</p>
+        <p class="text-xs text-ink-muted">Create a phone model once with its fixed price plan. Every IMEI linked to it inherits the locked terms — agents cannot change them.</p>
+      </div>
+      <button class="btn-outline !py-1.5 text-xs" on:click={loadProductModels} disabled={catalogLoading}>{catalogLoading ? 'Loading…' : 'Refresh'}</button>
+    </div>
+    {#if catalogError}<p class="mt-2 text-xs text-crimson">{catalogError}</p>{/if}
+    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-5 items-end">
+      <div><label class="label">Catalog name</label><input class="input !py-1.5 text-xs" bind:value={newProd.name} placeholder="Samsung A07" /></div>
+      <div><label class="label">Model</label><input class="input !py-1.5 text-xs" bind:value={newProd.model} placeholder="A07 4/64" /></div>
+      <div><label class="label">Total GH₵</label><input class="input !py-1.5 text-xs" type="number" bind:value={newProd.totalGhs} placeholder="1500" /></div>
+      <div><label class="label">Down GH₵</label><input class="input !py-1.5 text-xs" type="number" bind:value={newProd.downGhs} placeholder="300" /></div>
+      <div><label class="label">Daily / Term</label><div class="flex gap-1"><input class="input !py-1.5 text-xs flex-1" type="number" bind:value={newProd.dailyGhs} placeholder="10" /><input class="input !py-1.5 text-xs w-16" type="number" bind:value={newProd.term} placeholder="120" /></div></div>
+    </div>
+    <div class="mt-2 flex justify-end"><button class="btn-primary !py-1.5 text-xs" on:click={handleCreateProduct} disabled={creatingProd}>{creatingProd ? 'Creating…' : 'Create product'}</button></div>
+    {#if productModels.length > 0}
+    <div class="mt-4 overflow-x-auto">
+      <table class="data-table min-w-[520px]">
+        <thead><tr><th>Name</th><th>Model</th><th>Total</th><th>Down</th><th>Daily</th><th>Term</th></tr></thead>
+        <tbody>
+          {#each productModels as pm (pm.id)}
+            <tr><td class="text-xs font-medium">{pm.name}</td><td class="text-xs">{pm.model}</td><td class="text-xs tabular-nums">{formatCurrency(pm.totalAmount)}</td><td class="text-xs tabular-nums">{formatCurrency(pm.downPayment)}</td><td class="text-xs tabular-nums">{formatCurrency(pm.dailyRate)}</td><td class="text-xs">{pm.termDays}d</td></tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+    {:else if !catalogLoading}<p class="mt-3 text-xs text-ink-muted">No products yet — create Samsung A07 as the first.</p>{/if}
+  </div>
+  {/if}
 
   <!-- Security policy -->
   <div class="card mb-5 p-5">
@@ -190,11 +300,13 @@
     </div>
 
     <div class="overflow-x-auto">
-      <table class="data-table min-w-[720px]">
+      <table class="data-table min-w-[920px]">
         <thead>
           <tr>
             <th>IMEI</th>
             <th>Model</th>
+            <th>Pricing</th>
+            <th>Assigned to</th>
             <th>Status</th>
             <th>Added</th>
             <th class="text-right">Actions</th>
@@ -202,9 +314,9 @@
         </thead>
         <tbody>
           {#if devicesLoading && devices.length === 0}
-            <tr><td colspan="5" class="py-10 text-center text-ink-muted">Loading…</td></tr>
+            <tr><td colspan="7" class="py-10 text-center text-ink-muted">Loading…</td></tr>
           {:else if devices.length === 0}
-            <tr><td colspan="5" class="py-12 text-center">
+            <tr><td colspan="7" class="py-12 text-center">
               <p class="text-sm text-ink-primary">No devices yet</p>
               <p class="mt-1 text-xs text-ink-muted">Add IMEIs to your inventory to begin selling.</p>
               <button class="btn-primary mt-3" on:click={() => openAddDevice()}>+ Add device</button>
@@ -213,7 +325,34 @@
             {#each devices as device (device.id)}
               <tr class="hover:bg-hover transition-colors">
                 <td class="font-mono text-xs text-ink-secondary">{device.imei}</td>
-                <td class="text-sm text-ink-primary">{device.model}</td>
+                <td class="text-sm text-ink-primary">{device.model}{#if device.productName}<span class="block text-[10px] text-ink-muted">{device.productName}</span>{/if}</td>
+                <td class="text-xs">
+                  {#if device.totalAmount != null}
+                    <span class="font-semibold tabular-nums text-ink-primary">{formatCurrency(device.totalAmount)}</span>
+                    <span class="block text-[10px] leading-tight text-ink-muted">Down {device.downPayment != null ? formatCurrency(device.downPayment) : '—'} · {device.dailyRate != null ? formatCurrency(device.dailyRate) : '—'}/d · {device.termDays ?? '—'}d</span>
+                  {:else}
+                    <span class="text-amber font-medium">No pricing</span>
+                    {#if isAdmin}<span class="block text-[10px] text-ink-muted">Set via Add device → product</span>{/if}
+                  {/if}
+                </td>
+                <td class="text-xs">
+                  {#if device.assignedToName}
+                    <span class="font-medium text-ink-primary">{device.assignedToName}</span>
+                  {:else if device.assignedTo}
+                    <span class="font-mono text-[11px]">{device.assignedTo.slice(0,8)}…</span>
+                  {:else}
+                    <span class="text-ink-muted">Unassigned</span>
+                  {/if}
+                  {#if isAdmin && device.status === 'in_stock'}
+                    <div class="mt-1 flex items-center gap-1">
+                      <select class="input !py-0.5 !px-1 text-[11px] max-w-[110px]" value={device.assignedTo ?? ''} on:change={(e) => handleAssign(device.id, (e.target as HTMLSelectElement).value)} disabled={assignBusyId === device.id}>
+                        <option value="">{agentsLoading ? 'Loading…' : 'Assign to…'}</option>
+                        {#each agents as ag}<option value={ag.id}>{ag.name}</option>{/each}
+                      </select>
+                      {#if device.assignedTo}<button class="text-[11px] text-crimson hover:underline" disabled={assignBusyId===device.id} on:click={() => handleUnassign(device.id)}>×</button>{/if}
+                    </div>
+                  {/if}
+                </td>
                 <td><span class={device.status === 'in_stock' ? 'chip-emerald' : 'chip-amber'}>{device.status.replace('_', ' ')}</span></td>
                 <td class="text-xs text-ink-muted">
                   {new Date(device.createdAt).toLocaleDateString()}

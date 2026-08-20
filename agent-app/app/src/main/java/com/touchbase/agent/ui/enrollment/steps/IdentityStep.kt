@@ -321,7 +321,7 @@ private fun hasCameraPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
 private fun compressAndToBase64(bitmap: Bitmap): String {
-    val maxDimension = 800
+    val maxDimension = 1600
     val resized = if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
         val aspect = bitmap.width.toFloat() / bitmap.height.toFloat()
         val newWidth = if (bitmap.width > bitmap.height) maxDimension else (maxDimension * aspect).toInt()
@@ -331,6 +331,6 @@ private fun compressAndToBase64(bitmap: Bitmap): String {
         bitmap
     }
     val stream = ByteArrayOutputStream()
-    resized.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+    resized.compress(Bitmap.CompressFormat.JPEG, 92, stream)
     return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
 }

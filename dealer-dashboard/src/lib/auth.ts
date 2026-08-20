@@ -135,3 +135,19 @@ export function canManageAccountFinancials(role: DealerRole): boolean {
 export function canReleaseOrDeleteAccount(role: DealerRole): boolean {
   return role === 'SUPER_ADMIN' || role === 'AGENCY_OWNER' || role === 'BRANCH_ADMIN';
 }
+
+export function canManageInventory(role: DealerRole): boolean {
+  return role === 'SUPER_ADMIN' || role === 'AGENCY_OWNER' || role === 'BRANCH_ADMIN';
+}
+
+export function canManagePricing(role: DealerRole): boolean {
+  return role === 'SUPER_ADMIN' || role === 'AGENCY_OWNER' || role === 'BRANCH_ADMIN';
+}
+
+export function isAgent(role: DealerRole): boolean {
+  return role === 'AGENT';
+}
+
+export function isAdminRole(role: DealerRole): boolean {
+  return role === 'SUPER_ADMIN' || role === 'AGENCY_OWNER' || role === 'BRANCH_ADMIN';
+}

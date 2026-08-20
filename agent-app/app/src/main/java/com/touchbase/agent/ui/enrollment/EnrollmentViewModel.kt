@@ -187,11 +187,33 @@ class EnrollmentViewModel(
         )
     }
 
-    fun selectDevice(device: Device) = _uiState.update {
-        it.copy(
-            draft = it.draft.copy(imei = device.imei, deviceModel = device.model),
-            deviceLookupStatus = lookupDevice(device.imei, it.availableDevices)
+    fun selectDevice(device: Device) = _uiState.update { state ->
+        // Admin-locked pricing: if this IMEI carries a catalog price, auto-fill and lock.
+        val hasLockedPricing = device.totalAmount != null && device.dailyRate != null && device.termDays != null
+        val newDraft = if (hasLockedPricing) {
+            state.draft.copy(
+                imei = device.imei, deviceModel = device.model,
+                totalLoanAmount = device.totalAmount ?: state.draft.totalLoanAmount,
+                dailyRate = device.dailyRate ?: state.draft.dailyRate,
+                termDays = device.termDays ?: state.draft.termDays,
+                downPayment = device.downPayment ?: state.draft.downPayment
+            )
+        } else {
+            state.draft.copy(imei = device.imei, deviceModel = device.model)
+        }
+        val newState = state.copy(
+            draft = newDraft,
+            deviceLookupStatus = lookupDevice(device.imei, state.availableDevices)
         )
+        if (hasLockedPricing) {
+            // Keep text inputs in sync so the offers screen shows the locked values.
+            newState.copy(
+                totalAmountInput = String.format(java.util.Locale.UK, "%.2f", (newDraft.totalLoanAmount / 100.0)),
+                dailyRateInput = String.format(java.util.Locale.UK, "%.2f", (newDraft.dailyRate / 100.0)),
+                termDaysInput = newDraft.termDays.toString(),
+                downPaymentInput = String.format(java.util.Locale.UK, "%.2f", (newDraft.downPayment / 100.0))
+            )
+        } else newState
     }
 
     private fun lookupDevice(imei: String, devices: List<Device>): DeviceLookupStatus {

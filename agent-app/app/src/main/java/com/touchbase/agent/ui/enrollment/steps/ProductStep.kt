@@ -357,65 +357,89 @@ private fun OfferSelect(
             }
         }
 
-        Text(
-            "Set the price for this sale",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            "Your prices, your terms — type the amounts you agreed with this customer.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        val selectedDevice = state.availableDevices.firstOrNull { it.imei == state.draft.imei }
+        val isLocked = selectedDevice?.totalAmount != null && selectedDevice?.dailyRate != null && selectedDevice?.termDays != null
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                WizardTextField(
-                    label = "Total price (GH\u20B5)",
-                    value = state.totalAmountInput,
-                    onValueChange = onTotalAmountChange,
-                    keyboardType = KeyboardType.Decimal,
-                    isError = state.totalAmountInput.isNotEmpty() && !state.isTotalAmountValid,
-                    supportingText = "Full amount the customer repays, e.g. 2277.80"
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                WizardTextField(
-                    label = "Repayment period (days)",
-                    value = state.termDaysInput,
-                    onValueChange = onTermDaysChange,
-                    keyboardType = KeyboardType.Number,
-                    isError = state.termDaysInput.isNotEmpty() && !state.isTermDaysValid,
-                    supportingText = "Whole days, e.g. 119"
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                WizardTextField(
-                    label = "Daily repayment rate (GH\u20B5)",
-                    value = state.dailyRateInput,
-                    onValueChange = onDailyRateChange,
-                    keyboardType = KeyboardType.Decimal,
-                    isError = state.dailyRateInput.isNotEmpty() && !state.isDailyRateValid,
-                    supportingText = "Amount due each day, e.g. 16.20"
-                )
-
-                val suggested = state.suggestedDailyRateCents
-                if (suggested > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
+        if (isLocked) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "Suggested ${AgreementText.money(suggested)} / day",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(onClick = {
-                            onDailyRateChange(String.format(Locale.UK, "%.2f", suggested / 100.0))
-                        }) { Text("Use") }
+                        Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Admin-set price — cannot be changed", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Total: ${AgreementText.money(selectedDevice?.totalAmount ?: 0)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Down: ${AgreementText.money(selectedDevice?.downPayment ?: 0)} · ${selectedDevice?.termDays ?: 0} days @ ${AgreementText.money(selectedDevice?.dailyRate ?: 0)}/day", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Linked to ${selectedDevice?.productName ?: selectedDevice?.model ?: ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } else {
+            Text(
+                "Set the price for this sale",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                "Your prices, your terms — type the amounts you agreed with this customer.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    WizardTextField(
+                        label = "Total price (GH\u20B5)",
+                        value = state.totalAmountInput,
+                        onValueChange = onTotalAmountChange,
+                        keyboardType = KeyboardType.Decimal,
+                        isError = state.totalAmountInput.isNotEmpty() && !state.isTotalAmountValid,
+                        supportingText = "Full amount the customer repays, e.g. 2277.80"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    WizardTextField(
+                        label = "Repayment period (days)",
+                        value = state.termDaysInput,
+                        onValueChange = onTermDaysChange,
+                        keyboardType = KeyboardType.Number,
+                        isError = state.termDaysInput.isNotEmpty() && !state.isTermDaysValid,
+                        supportingText = "Whole days, e.g. 119"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    WizardTextField(
+                        label = "Daily repayment rate (GH\u20B5)",
+                        value = state.dailyRateInput,
+                        onValueChange = onDailyRateChange,
+                        keyboardType = KeyboardType.Decimal,
+                        isError = state.dailyRateInput.isNotEmpty() && !state.isDailyRateValid,
+                        supportingText = "Amount due each day, e.g. 16.20"
+                    )
+
+                    val suggested = state.suggestedDailyRateCents
+                    if (suggested > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Suggested ${AgreementText.money(suggested)} / day",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = {
+                                onDailyRateChange(String.format(Locale.UK, "%.2f", suggested / 100.0))
+                            }) { Text("Use") }
+                        }
                     }
                 }
             }

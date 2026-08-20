@@ -16,7 +16,15 @@ data class Device(
     val registeredByName: String? = null,
     val registrationLat: Double? = null,
     val registrationLng: Double? = null,
-    val registrationAccuracy: Float? = null
+    val registrationAccuracy: Float? = null,
+    // Admin-locked pricing (when device was assigned from catalog).
+    val totalAmount: Int? = null,
+    val downPayment: Int? = null,
+    val dailyRate: Int? = null,
+    val termDays: Int? = null,
+    val productName: String? = null,
+    val productModelId: String? = null,
+    val assignedTo: String? = null
 )
 
 @Serializable

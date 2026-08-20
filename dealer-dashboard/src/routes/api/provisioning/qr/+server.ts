@@ -45,22 +45,32 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   const dealerScope = getDealerScopeFilter(locals.dealer, 'owner');
   const accountScope = getAccountScopeFilter(locals.dealer, 'a');
 
-  const device = await db.prepare(`
-    SELECT d.id, d.imei, d.model, d.status
-    FROM devices d
-    JOIN dealers owner ON owner.id = d.dealer_id
-    WHERE d.imei = ? AND ${dealerScope.where}
-  `).bind(imei, ...dealerScope.params).first();
+  let device: any = null;
+  if (locals.dealer.role === 'AGENT') {
+    device = await db.prepare(`
+      SELECT d.id, d.imei, d.model, d.status
+      FROM devices d
+      JOIN dealers owner ON owner.id = d.dealer_id
+      WHERE d.imei = ? AND (d.assigned_to = ? OR (d.assigned_to IS NULL AND d.dealer_id = ?))
+    `).bind(imei, locals.dealer.id, locals.dealer.id).first();
+  } else {
+    device = await db.prepare(`
+      SELECT d.id, d.imei, d.model, d.status
+      FROM devices d
+      JOIN dealers owner ON owner.id = d.dealer_id
+      WHERE d.imei = ? AND ${dealerScope.where}
+    `).bind(imei, ...dealerScope.params).first();
+  }
 
   if (!device) {
     return errorResponse('Device not found in your inventory', 404);
   }
 
   const account = await db.prepare(`
-    SELECT a.id, a.customer_name
+    SELECT a.id, a.customer_name, a.down_payment_status, a.amount_paid, a.total_loan_amount
     FROM accounts a
     WHERE a.device_id = ? AND ${accountScope.where}
-  `).bind(device.id as string, ...accountScope.params).first();
+  `).bind(device.id as string, ...accountScope.params).first() as any;
 
   if (!account) {
     return errorResponse(
@@ -68,6 +78,15 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
       409
     );
   }
+
+  // Agent-sourced down payments must be admin-confirmed before the device can be provisioned.
+  try {
+    const exists = await db.prepare('SELECT down_payment_status FROM accounts WHERE id = ?').bind(account.id as string).first<any>();
+    if (exists && exists.down_payment_status === 'pending') {
+      const pending = await db.prepare("SELECT id FROM down_payment_submissions WHERE account_id = ? AND status = 'pending' LIMIT 1").bind(account.id as string).first();
+      if (pending) return errorResponse('Down payment is pending admin confirmation. Confirm the agent\'s cash payment before provisioning.', 409);
+    }
+  } catch { /* best-effort: if table not yet migrated, ignore */ }
 
   let apkMeta;
   try {
