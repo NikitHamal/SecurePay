@@ -1,10 +1,14 @@
 package com.touchbase.user.ui.kiosk
 
+import android.app.role.RoleManager
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import com.touchbase.user.admin.DevicePolicyController
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.ui.provisioning.LockProScreen
@@ -13,9 +17,19 @@ import com.touchbase.user.util.SecureLog
 
 class KioskLauncherActivity : ComponentActivity() {
 
+    private lateinit var policyController: DevicePolicyController
+
+    private val homeRoleLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        SecureLog.i(TAG, "HOME role result: resultCode=${result.resultCode}")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         runCatching { enableEdgeToEdge() }
+
+        policyController = DevicePolicyController(this)
 
         val tokenManager = runCatching { DeviceTokenManager(this) }.getOrNull()
         if (tokenManager?.isRegistered == true) {
@@ -25,19 +39,33 @@ class KioskLauncherActivity : ComponentActivity() {
         }
 
         runCatching { KioskManager.enterKioskMode(this) }
-        val pc = runCatching { DevicePolicyController(this) }.getOrNull()
-        runCatching { pc?.startLockTask(this) }
+        requestHomeRole()
+
+        // Enter lock task to block recent button
+        runCatching { policyController.startLockTask(this) }
 
         SecureLog.i(TAG, "Kiosk home launched — provisioned but not registered")
 
         setContent {
             SecurePayTheme {
+                // Block back button on LockProScreen — nothing to go back to
+                BackHandler { }
+
+                val pc = runCatching { DevicePolicyController(this@KioskLauncherActivity) }.getOrNull()
                 LockProScreen(
                     onGetStarted = {
+                        // Stop lock task before leaving to MainActivity
+                        runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
                         val intent = Intent(this, com.touchbase.user.MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                         }
                         startActivity(intent)
+                        finish()
+                    },
+                    onOpenWifi = {
+                        // Temporarily stop lock task so WiFi panel can open
+                        runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
+                        pc?.openInternetSettings(this@KioskLauncherActivity)
                     }
                 )
             }
@@ -52,8 +80,22 @@ class KioskLauncherActivity : ComponentActivity() {
             finish()
             return
         }
-        val pc = runCatching { DevicePolicyController(this) }.getOrNull()
-        runCatching { pc?.startLockTask(this) }
+        // Re-enter lock task when returning from WiFi settings
+        runCatching { policyController.startLockTask(this) }
+    }
+
+    private fun requestHomeRole() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(ROLE_SERVICE) as? RoleManager ?: return
+            if (roleManager.isRoleAvailable(RoleManager.ROLE_HOME) &&
+                !roleManager.isRoleHeld(RoleManager.ROLE_HOME)
+            ) {
+                SecureLog.i(TAG, "Requesting HOME role via RoleManager")
+                runCatching {
+                    homeRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME))
+                }.onFailure { SecureLog.e(TAG, "Failed to request HOME role", it) }
+            }
+        }
     }
 
     companion object {

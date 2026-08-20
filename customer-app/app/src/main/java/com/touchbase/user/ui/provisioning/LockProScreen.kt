@@ -1,6 +1,7 @@
 package com.touchbase.user.ui.provisioning
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -38,7 +40,10 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun LockProScreen(onGetStarted: () -> Unit) {
+fun LockProScreen(
+    onGetStarted: () -> Unit,
+    onOpenWifi: () -> Unit = {}
+) {
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -56,74 +61,90 @@ fun LockProScreen(onGetStarted: () -> Unit) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(120.dp))
-
-            Text(
-                text = "Touch Base",
-                fontSize = 38.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Gold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Finance. Technology. Freedom",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = TextSecondary
-            )
-
-            Spacer(Modifier.height(80.dp))
-
-            Text(
-                text = timeString,
-                fontSize = 56.sp,
-                fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = dateString,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Normal,
-                color = TextSecondary,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            Button(
-                onClick = onGetStarted,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(Modifier.height(120.dp))
+
                 Text(
-                    text = "GET STARTED",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = OnAccent
+                    text = "Touch Base",
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Gold
                 )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Finance. Technology. Freedom",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = TextSecondary
+                )
+
+                Spacer(Modifier.height(80.dp))
+
+                Text(
+                    text = timeString,
+                    fontSize = 56.sp,
+                    fontWeight = FontWeight.Light,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = dateString,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                Button(
+                    onClick = onGetStarted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                ) {
+                    Text(
+                        text = "GET STARTED",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = OnAccent
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = TextSecondary
+                )
+                Spacer(Modifier.height(16.dp))
             }
 
-            Spacer(Modifier.height(24.dp))
-
             Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
+                imageVector = Icons.Filled.Settings,
+                contentDescription = "Settings",
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .size(23.dp)
+                    .clickable { onOpenWifi() },
                 tint = TextSecondary
             )
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
