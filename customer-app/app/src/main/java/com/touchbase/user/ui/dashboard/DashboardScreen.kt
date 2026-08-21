@@ -108,7 +108,6 @@ fun DashboardScreen(
     onCheckUpdates: () -> Unit,
     onMore: () -> Unit,
     onAccount: () -> Unit = {},
-    onReleaseApp: (() -> Unit)? = null,
     securityReport: SecurityChecker.SecurityReport? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -190,8 +189,7 @@ fun DashboardScreen(
                 onRefresh = { onRefresh(); adRefreshTrigger++ },
                 onPayNow = onPayNow,
                 onViewPayments = onViewPayments,
-                onCheckUpdates = onCheckUpdates,
-                onReleaseApp = onReleaseApp
+                onCheckUpdates = onCheckUpdates
             )
             
             if (showAds) {
@@ -407,7 +405,7 @@ private fun ActionGrid(
     onPayNow: () -> Unit,
     onViewPayments: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onReleaseApp: (() -> Unit)? = null
+    securityReport: SecurityChecker.SecurityReport? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
@@ -435,19 +433,6 @@ private fun ActionGrid(
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Sync Status", fontWeight = FontWeight.SemiBold)
-            }
-        }
-
-        if (onReleaseApp != null) {
-            OutlinedButton(
-                onClick = onReleaseApp,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Crimson)
-            ) {
-                Icon(Icons.Filled.Lock, contentDescription = null, tint = Crimson)
-                Spacer(Modifier.width(8.dp))
-                Text("Release App", fontWeight = FontWeight.SemiBold, color = Crimson)
             }
         }
 
