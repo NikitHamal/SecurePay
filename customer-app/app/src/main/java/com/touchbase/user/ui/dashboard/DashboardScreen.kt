@@ -108,7 +108,7 @@ fun DashboardScreen(
     onCheckUpdates: () -> Unit,
     onMore: () -> Unit,
     onAccount: () -> Unit = {},
-    onReleaseApp: () -> Unit = {},
+    onReleaseApp: (() -> Unit)? = null,
     securityReport: SecurityChecker.SecurityReport? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -407,7 +407,7 @@ private fun ActionGrid(
     onPayNow: () -> Unit,
     onViewPayments: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onReleaseApp: () -> Unit = {}
+    onReleaseApp: (() -> Unit)? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
@@ -438,15 +438,17 @@ private fun ActionGrid(
             }
         }
 
-        OutlinedButton(
-            onClick = onReleaseApp,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Crimson)
-        ) {
-            Icon(Icons.Filled.Lock, contentDescription = null, tint = Crimson)
-            Spacer(Modifier.width(8.dp))
-            Text("Release App", fontWeight = FontWeight.SemiBold, color = Crimson)
+        if (onReleaseApp != null) {
+            OutlinedButton(
+                onClick = onReleaseApp,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Crimson)
+            ) {
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = Crimson)
+                Spacer(Modifier.width(8.dp))
+                Text("Release App", fontWeight = FontWeight.SemiBold, color = Crimson)
+            }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
