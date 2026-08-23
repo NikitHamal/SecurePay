@@ -1,7 +1,10 @@
 package com.touchbase.agent.ui.enrollment.steps
 
 import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.touchbase.agent.ui.components.PhotoCaptureUtils
@@ -142,12 +145,14 @@ private fun IdCaptureRow(
     var showSourcePicker by remember { mutableStateOf(false) }
     val passed = base64 != null
 
-    val previewBitmap = remember(base64) {
-        base64?.let {
+    val previewBitmap: Bitmap? = remember(base64) {
+        if (base64 != null) {
             runCatching {
-                val decoded = Base64.decode(it, Base64.DEFAULT)
+                val decoded = Base64.decode(base64, Base64.DEFAULT)
                 BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
             }.getOrNull()
+        } else {
+            null
         }
     }
 
