@@ -10,6 +10,7 @@ import {
   verifyTransaction
 } from '$lib/paystack';
 import { getCustomerEmail } from '$lib/paystack/email';
+import { applyPayment } from '$lib/payments';
 
 /**
  * JEST USSD endpoint.
@@ -417,6 +418,21 @@ async function handleStep(
     try {
       const otpRes = await submitOtp(reference, otp, secret);
       if (otpRes.status === 'success') {
+        // USSD is the fallback creditor if webhook hasn't fired yet — apply idempotently.
+        try {
+          const existing = await db.prepare('SELECT * FROM paystack_transactions WHERE reference = ?').bind(reference).first<Record<string, any>>();
+          if (existing && !existing.payment_id) {
+            const amt = Number((otpRes as any).amount || existing.amount || session.amount_pesewas || 0);
+            if (amt > 0) {
+              const { paymentId } = await applyPayment({ db, accountId: String(account.id), amount: amt, method: 'MOBILE_MONEY', reference: `paystack:${reference}`, recordedBy: 'ussd', env: platform?.env });
+              await db.prepare(`UPDATE paystack_transactions SET status='success', payment_id=?, updated_at=unixepoch() WHERE reference=?`).bind(paymentId, reference).run();
+            }
+          } else if (!existing && session.amount_pesewas) {
+            // No paystack_transactions row (should not happen) — still credit the account directly.
+            await applyPayment({ db, accountId: String(account.id), amount: Number(session.amount_pesewas), method: 'MOBILE_MONEY', reference: `paystack:${reference}`, recordedBy: 'ussd', env: platform?.env });
+            await db.prepare(`UPDATE paystack_transactions SET status='success', updated_at=unixepoch() WHERE reference=?`).bind(reference).run().catch(()=>{});
+          }
+        } catch (e) { console.error('[ussd] otp applyPayment failed', e); }
         const fresh = await db.prepare('SELECT * FROM accounts WHERE id = ?')
           .bind(account.id).first<Record<string, any>>();
         const current = fresh ?? account;
@@ -455,6 +471,19 @@ async function handleStep(
       verified = null;
     }
     if (verified?.status === 'success') {
+      // Credit if webhook hasn't — idempotent.
+      try {
+        const existing = await db.prepare('SELECT * FROM paystack_transactions WHERE reference = ?').bind(reference).first<Record<string, any>>();
+        if (existing && !existing.payment_id) {
+          const amt = Number((verified as any).amount || existing.amount || session.amount_pesewas || 0);
+          if (amt > 0) {
+            const { paymentId } = await applyPayment({ db, accountId: String(account.id), amount: amt, method: 'MOBILE_MONEY', reference: `paystack:${reference}`, recordedBy: 'ussd', env: platform?.env });
+            await db.prepare(`UPDATE paystack_transactions SET status='success', payment_id=?, updated_at=unixepoch() WHERE reference=?`).bind(paymentId, reference).run();
+          }
+        } else if (!existing && session.amount_pesewas) {
+          await applyPayment({ db, accountId: String(account.id), amount: Number(session.amount_pesewas), method: 'MOBILE_MONEY', reference: `paystack:${reference}`, recordedBy: 'ussd', env: platform?.env });
+        }
+      } catch (e) { console.error('[ussd] confirm applyPayment failed', e); }
       const fresh = await db.prepare('SELECT * FROM accounts WHERE id = ?')
         .bind(account.id).first<Record<string, any>>();
       const current = fresh ?? account;
