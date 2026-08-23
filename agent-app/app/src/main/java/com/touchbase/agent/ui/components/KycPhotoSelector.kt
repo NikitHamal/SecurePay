@@ -56,7 +56,8 @@ fun KycPhotoSelector(
 ) {
     val context = LocalContext.current
 
-    var hasCameraPermission by remember { mutableStateOf(hasCameraPermission(context)) }
+    var hasCameraPermission by remember { mutableStateOf(PhotoCaptureUtils.hasCameraPermission(context)) }
+    var currentPhotoFile by remember { mutableStateOf<java.io.File?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -65,10 +66,14 @@ fun KycPhotoSelector(
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            onPhotoSelected(compressAndToBase64(bitmap))
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            currentPhotoFile?.let { file ->
+                PhotoCaptureUtils.processPhotoFileToBase64(file)?.let { base64 ->
+                    onPhotoSelected(base64)
+                }
+            }
         }
     }
 
@@ -76,10 +81,8 @@ fun KycPhotoSelector(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    BitmapFactory.decodeStream(stream)?.let { onPhotoSelected(compressAndToBase64(it)) }
-                }
+            PhotoCaptureUtils.processUriToBase64(context, uri)?.let { base64 ->
+                onPhotoSelected(base64)
             }
         }
     }
@@ -156,7 +159,9 @@ fun KycPhotoSelector(
                     FilledTonalButton(
                         onClick = {
                             if (hasCameraPermission) {
-                                cameraLauncher.launch(null)
+                                val (file, uri) = PhotoCaptureUtils.createTempPhotoUri(context)
+                                currentPhotoFile = file
+                                cameraLauncher.launch(uri)
                             } else {
                                 permissionLauncher.launch(Manifest.permission.CAMERA)
                             }
@@ -194,29 +199,4 @@ fun KycPhotoSelector(
             }
         }
     }
-}
-
-private fun hasCameraPermission(context: Context): Boolean =
-    ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.CAMERA
-    ) == PackageManager.PERMISSION_GRANTED
-
-private fun compressAndToBase64(bitmap: Bitmap): String {
-    // Fix blurry verification: keep 1600px long edge at 92% JPEG so Ghana Card text stays legible.
-    val maxDimension = 1600
-    val originalWidth = bitmap.width
-    val originalHeight = bitmap.height
-    val resizedBitmap = if (originalWidth > maxDimension || originalHeight > maxDimension) {
-        val aspectRatio = originalWidth.toFloat() / originalHeight.toFloat()
-        val newWidth = if (originalWidth > originalHeight) maxDimension else (maxDimension * aspectRatio).toInt()
-        val newHeight = if (originalHeight > originalWidth) maxDimension else (maxDimension / aspectRatio).toInt()
-        Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-    } else {
-        bitmap
-    }
-
-    val outputStream = ByteArrayOutputStream()
-    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
-    return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
 }

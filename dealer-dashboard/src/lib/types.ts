@@ -57,12 +57,12 @@ export interface Customer {
   nationalIdBackPath?: string | null;
   termDays: number;
   downPayment: number;
+  downPaymentStatus?: string | null;
   enrolledBy?: string | null;
   ghanaCardVerified?: boolean;
   ghanaCardStatus?: string | null;
   initialCredentials?: { accountNumber: string; temporaryPin: string };
 }
-
 
 /** A single KPI tile displayed on the Overview screen. */
 export interface Kpi {

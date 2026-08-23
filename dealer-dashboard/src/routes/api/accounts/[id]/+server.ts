@@ -89,6 +89,7 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     nationalIdBackPath: row.national_id_back_path as string | null,
     termDays: Number(row.term_days),
     downPayment: Number(row.down_payment),
+    downPaymentStatus: (row.down_payment_status as string | null) ?? 'unpaid',
     ...applicationFields(row as Record<string, unknown>),
     ...releaseFields(row as Record<string, unknown>)
   };

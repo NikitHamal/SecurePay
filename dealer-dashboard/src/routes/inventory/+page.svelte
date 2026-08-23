@@ -6,7 +6,7 @@
   import { customers } from '$lib/stores/customers';
   import { portfolioMetrics } from '$lib/stores/portfolio';
   import { formatCurrency } from '$lib/utils/format';
-  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy, type InventoryDevice, listProductModels, createProductModel, assignDevice, type ProductModel } from '$lib/api/client';
+  import { deleteDevice, getSecurityPolicy, listDevices, updateSecurityPolicy, type InventoryDevice, listProductModels, createProductModel, updateProductModel, deleteProductModel, assignDevice, type ProductModel } from '$lib/api/client';
   import { openAddDevice, openNewLoan, openProvision } from '$lib/stores/ui';
   import { dealer } from '$lib/stores/auth';
   import { onMount } from 'svelte';
@@ -39,6 +39,11 @@
   let catalogError: string | null = null;
   let newProd = { name: '', model: '', totalGhs: '', downGhs: '', dailyGhs: '', term: '' };
   let creatingProd = false;
+
+  // Edit product modal state
+  let editProdModal = false;
+  let editProd = { id: '', name: '', model: '', totalGhs: '', downGhs: '', dailyGhs: '', term: '', isActive: true };
+  let editingProd = false;
 
   // Assignment
   let agents: { id: string; name: string }[] = [];
@@ -148,6 +153,61 @@
     } catch (e) { catalogError = e instanceof Error ? e.message : 'Create failed'; }
     finally { creatingProd = false; }
   }
+
+  function openEditProduct(pm: ProductModel) {
+    editProd = {
+      id: pm.id,
+      name: pm.name,
+      model: pm.model,
+      totalGhs: (pm.totalAmount / 100).toFixed(2),
+      downGhs: (pm.downPayment / 100).toFixed(2),
+      dailyGhs: (pm.dailyRate / 100).toFixed(2),
+      term: String(pm.termDays),
+      isActive: pm.isActive
+    };
+    catalogError = null;
+    editProdModal = true;
+  }
+
+  async function handleSaveEditProduct() {
+    catalogError = null;
+    if (!editProd.name.trim() || !editProd.model.trim()) { catalogError = 'Name and model required'; return; }
+    const total = Math.round(parseFloat(editProd.totalGhs || '0') * 100);
+    const down = Math.round(parseFloat(editProd.downGhs || '0') * 100);
+    const daily = Math.round(parseFloat(editProd.dailyGhs || '0') * 100);
+    const term = parseInt(editProd.term || '0', 10);
+    if (!total || !daily || !term) { catalogError = 'Total, daily and term are required'; return; }
+    if (down > total) { catalogError = 'Down payment cannot exceed total'; return; }
+    editingProd = true;
+    try {
+      const updated = await updateProductModel(editProd.id, {
+        name: editProd.name.trim(),
+        model: editProd.model.trim(),
+        totalAmount: total,
+        downPayment: down,
+        dailyRate: daily,
+        termDays: term,
+        isActive: editProd.isActive
+      });
+      productModels = productModels.map(p => p.id === updated.id ? updated : p);
+      editProdModal = false;
+    } catch (e) {
+      catalogError = e instanceof Error ? e.message : 'Update failed';
+    } finally {
+      editingProd = false;
+    }
+  }
+
+  async function handleDeleteProduct(pm: ProductModel) {
+    if (!confirm(`Delete product "${pm.name}" (${pm.model})? This cannot be undone.`)) return;
+    catalogError = null;
+    try {
+      await deleteProductModel(pm.id);
+      productModels = productModels.filter(p => p.id !== pm.id);
+    } catch (e) {
+      catalogError = e instanceof Error ? e.message : 'Delete failed';
+    }
+  }
   async function handleAssign(deviceId: string, agentId: string) {
     if (!agentId) return;
     assignBusyId = deviceId;
@@ -244,11 +304,24 @@
     <div class="mt-2 flex justify-end"><button class="btn-primary !py-1.5 text-xs" on:click={handleCreateProduct} disabled={creatingProd}>{creatingProd ? 'Creating…' : 'Create product'}</button></div>
     {#if productModels.length > 0}
     <div class="mt-4 overflow-x-auto">
-      <table class="data-table min-w-[520px]">
-        <thead><tr><th>Name</th><th>Model</th><th>Total</th><th>Down</th><th>Daily</th><th>Term</th></tr></thead>
+      <table class="data-table min-w-[560px]">
+        <thead><tr><th>Name</th><th>Model</th><th>Total</th><th>Down</th><th>Daily</th><th>Term</th><th class="text-right">Actions</th></tr></thead>
         <tbody>
           {#each productModels as pm (pm.id)}
-            <tr><td class="text-xs font-medium">{pm.name}</td><td class="text-xs">{pm.model}</td><td class="text-xs tabular-nums">{formatCurrency(pm.totalAmount)}</td><td class="text-xs tabular-nums">{formatCurrency(pm.downPayment)}</td><td class="text-xs tabular-nums">{formatCurrency(pm.dailyRate)}</td><td class="text-xs">{pm.termDays}d</td></tr>
+            <tr>
+              <td class="text-xs font-medium">{pm.name}</td>
+              <td class="text-xs">{pm.model}</td>
+              <td class="text-xs tabular-nums">{formatCurrency(pm.totalAmount)}</td>
+              <td class="text-xs tabular-nums">{formatCurrency(pm.downPayment)}</td>
+              <td class="text-xs tabular-nums">{formatCurrency(pm.dailyRate)}</td>
+              <td class="text-xs">{pm.termDays}d</td>
+              <td class="text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <button class="btn-outline !py-1 !px-2.5 text-xs" on:click={() => openEditProduct(pm)}>Edit</button>
+                  <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" on:click={() => handleDeleteProduct(pm)}>Delete</button>
+                </div>
+              </td>
+            </tr>
           {/each}
         </tbody>
       </table>
@@ -415,5 +488,56 @@
         </article>
       {/each}
     </div>
+  {/if}
+
+  {#if editProdModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div class="card w-full max-w-lg p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-edge">
+        <h3 class="text-base font-semibold text-ink-primary">Edit Product Model</h3>
+        <button class="text-ink-muted hover:text-ink-primary" on:click={() => editProdModal = false}>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      {#if catalogError}
+        <div class="mt-3 rounded-lg border border-crimson/20 bg-crimson/10 px-3 py-2 text-xs text-crimson">{catalogError}</div>
+      {/if}
+
+      <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="label">Catalog Name</label>
+          <input class="input" bind:value={editProd.name} placeholder="e.g. Samsung Galaxy A07" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="label">Phone Model</label>
+          <input class="input" bind:value={editProd.model} placeholder="e.g. A07 4/64" />
+        </div>
+        <div>
+          <label class="label">Total Price (GH₵)</label>
+          <input class="input" type="number" step="0.01" bind:value={editProd.totalGhs} placeholder="1500" />
+        </div>
+        <div>
+          <label class="label">Down Payment (GH₵)</label>
+          <input class="input" type="number" step="0.01" bind:value={editProd.downGhs} placeholder="300" />
+        </div>
+        <div>
+          <label class="label">Daily Rate (GH₵)</label>
+          <input class="input" type="number" step="0.01" bind:value={editProd.dailyGhs} placeholder="10" />
+        </div>
+        <div>
+          <label class="label">Term (Days)</label>
+          <input class="input" type="number" bind:value={editProd.term} placeholder="120" />
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button class="btn-outline text-xs" on:click={() => editProdModal = false} disabled={editingProd}>Cancel</button>
+        <button class="btn-primary text-xs" on:click={handleSaveEditProduct} disabled={editingProd}>
+          {editingProd ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  </div>
   {/if}
 </div>

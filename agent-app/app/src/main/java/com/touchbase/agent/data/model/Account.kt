@@ -31,6 +31,7 @@ data class Account(
     val status: AccountStatus = AccountStatus.ACTIVE,
     val lockedByDealer: Int = 0,
     val downPayment: Int = 0,
+    val downPaymentStatus: String? = null,
     val termDays: Int = 0,
     val currencyCode: String = "GH₵",
     val createdAt: Long = 0L,

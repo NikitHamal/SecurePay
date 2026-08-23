@@ -627,14 +627,57 @@ private fun LoanDetails(
             }
         }
 
-        WizardTextField(
-            label = "Initial payment (deposit)",
-            value = state.downPaymentInput,
-            onValueChange = onDownPaymentChange,
-            keyboardType = KeyboardType.Decimal,
-            isError = state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid,
-            supportingText = "Deposit paid today \u2014 any amount from 0 up to the total price"
-        )
+        val selectedDevice = state.availableDevices.firstOrNull { it.imei == state.draft.imei }
+        val isLocked = selectedDevice?.totalAmount != null && selectedDevice?.dailyRate != null && selectedDevice?.termDays != null
+
+        if (isLocked) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Fixed Initial Deposit (Set by Admin)",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        AgreementText.money(draft.downPayment),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Collect cash from customer. Submit down payment in app for Admin approval to enable device provisioning.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            WizardTextField(
+                label = "Initial payment (deposit)",
+                value = state.downPaymentInput,
+                onValueChange = onDownPaymentChange,
+                keyboardType = KeyboardType.Decimal,
+                isError = state.downPaymentInput.isNotEmpty() && !state.isDownPaymentValid,
+                supportingText = "Deposit paid today — any amount from 0 up to the total price"
+            )
+        }
     }
 }
 

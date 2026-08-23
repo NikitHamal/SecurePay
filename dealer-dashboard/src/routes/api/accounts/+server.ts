@@ -297,6 +297,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
       nationalIdBackPath: row.national_id_back_path as string | null,
       termDays: Number(row.term_days),
       downPayment: Number(row.down_payment),
+      downPaymentStatus: (row.down_payment_status as string | null) ?? 'unpaid',
       enrolledBy: row.enrolled_by as string | null,
       ghanaCardVerified: row.ghana_card_verified === 1,
       ghanaCardStatus: row.ghana_card_status as string | null,

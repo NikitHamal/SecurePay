@@ -680,7 +680,12 @@ fun CustomerDetailScreen(
                 InfoRow(icon = null, label = "Total Loan", value = formatAmount(acc.totalLoanAmount))
                 InfoRow(icon = null, label = "Amount Paid", value = formatAmount(acc.amountPaid))
                 InfoRow(icon = null, label = "Remaining", value = formatAmount(acc.remainingBalance))
-                InfoRow(icon = null, label = "Down Payment", value = formatAmount(acc.downPayment))
+                val dpStatus = when (acc.downPaymentStatus) {
+                    "pending" -> " (Pending Admin Approval)"
+                    "confirmed" -> " (Confirmed)"
+                    else -> ""
+                }
+                InfoRow(icon = null, label = "Down Payment", value = "${formatAmount(acc.downPayment)}$dpStatus")
             }
 
             if (customerPhotoBitmap != null || idFrontBitmap != null || idBackBitmap != null) {

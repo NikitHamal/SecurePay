@@ -1,14 +1,11 @@
 package com.touchbase.agent.ui.enrollment.steps
 
 import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.touchbase.agent.ui.components.PhotoCaptureUtils
+import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -253,26 +250,31 @@ private fun CaptureSourceSheet(
     onPhoto: (String?) -> Unit
 ) {
     val context = LocalContext.current
-    var hasCameraPermission by remember { mutableStateOf(hasCameraPermission(context)) }
+    var hasCameraPermission by remember { mutableStateOf(PhotoCaptureUtils.hasCameraPermission(context)) }
+    var currentPhotoFile by remember { mutableStateOf<File?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> hasCameraPermission = granted }
 
     val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) onPhoto(compressAndToBase64(bitmap))
+        ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            currentPhotoFile?.let { file ->
+                PhotoCaptureUtils.processPhotoFileToBase64(file)?.let { base64 ->
+                    onPhoto(base64)
+                }
+            }
+        }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    BitmapFactory.decodeStream(stream)?.let { onPhoto(compressAndToBase64(it)) }
-                }
+            PhotoCaptureUtils.processUriToBase64(context, uri)?.let { base64 ->
+                onPhoto(base64)
             }
         }
     }
@@ -284,14 +286,19 @@ private fun CaptureSourceSheet(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(
                     onClick = {
-                        if (hasCameraPermission) cameraLauncher.launch(null)
-                        else permissionLauncher.launch(Manifest.permission.CAMERA)
+                        if (hasCameraPermission) {
+                            val (file, uri) = PhotoCaptureUtils.createTempPhotoUri(context)
+                            currentPhotoFile = file
+                            cameraLauncher.launch(uri)
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (hasCameraPermission) "Open camera" else "Allow camera")
+                    Text(if (hasCameraPermission) "Open camera (HD)" else "Allow camera")
                 }
                 TextButton(
                     onClick = { galleryLauncher.launch("image/*") },
@@ -315,22 +322,4 @@ private fun CaptureSourceSheet(
             TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
-}
-
-private fun hasCameraPermission(context: Context): Boolean =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-
-private fun compressAndToBase64(bitmap: Bitmap): String {
-    val maxDimension = 1600
-    val resized = if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
-        val aspect = bitmap.width.toFloat() / bitmap.height.toFloat()
-        val newWidth = if (bitmap.width > bitmap.height) maxDimension else (maxDimension * aspect).toInt()
-        val newHeight = if (bitmap.height > bitmap.width) maxDimension else (maxDimension / aspect).toInt()
-        Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-    } else {
-        bitmap
-    }
-    val stream = ByteArrayOutputStream()
-    resized.compress(Bitmap.CompressFormat.JPEG, 92, stream)
-    return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
 }
