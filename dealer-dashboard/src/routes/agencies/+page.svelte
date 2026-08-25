@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '$lib/api/client';
+  import { apiClient, updateAgency, deleteAgency } from '$lib/api/client';
   import Card from '$lib/components/ui/Card.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import TopBar from '$lib/components/layout/TopBar.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import { dealer } from '$lib/stores/auth';
 
   interface Agency {
     id: string;
@@ -25,6 +27,20 @@
   let formError = '';
   let showCreateForm = false;
   let creating = false;
+  let busyId = '';
+  let actionError = '';
+  $: isSuperAdmin = $dealer?.role === 'SUPER_ADMIN';
+  $: canEdit = $dealer ? ['SUPER_ADMIN', 'AGENCY_OWNER'].includes($dealer.role) : false;
+
+  // ---- edit modal ----
+  let editOpen = false;
+  let editAgency: Agency | null = null;
+  let editName = '';
+  let editPhone = '';
+  let editRegion = '';
+  let editActive = true;
+  let editSaving = false;
+  let editError = '';
 
   let newAgency = {
     name: '',
@@ -47,6 +63,51 @@
       error = e instanceof Error ? e.message : 'Unknown error';
     } finally {
       loading = false;
+    }
+  }
+
+  function openEdit(agency: Agency) {
+    editAgency = agency;
+    editName = agency.name || '';
+    editPhone = agency.phone || '';
+    editRegion = agency.region || '';
+    editActive = agency.isActive;
+    editError = '';
+    editOpen = true;
+  }
+
+  async function saveEdit() {
+    if (!editAgency) return;
+    if (editName.trim().length < 2) { editError = 'Agency name must be at least 2 characters'; return; }
+    editSaving = true;
+    editError = '';
+    try {
+      await updateAgency(editAgency.id, {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        region: editRegion.trim(),
+        isActive: editActive
+      });
+      editOpen = false;
+      await fetchAgencies();
+    } catch (e) {
+      editError = e instanceof Error ? e.message : 'Failed to update agency';
+    } finally {
+      editSaving = false;
+    }
+  }
+
+  async function removeAgency(agency: Agency) {
+    if (!confirm(`Permanently delete ${agency.name}? Only empty agencies (no branches or staff) can be deleted. Otherwise deactivate it instead.`)) return;
+    busyId = agency.id;
+    actionError = '';
+    try {
+      await deleteAgency(agency.id);
+      await fetchAgencies();
+    } catch (e) {
+      actionError = e instanceof Error ? e.message : 'Failed to delete agency';
+    } finally {
+      busyId = '';
     }
   }
 
@@ -216,6 +277,9 @@
       </div>
     </Card>
   {:else}
+    {#if actionError}
+      <div class="mb-4 rounded-xl border border-crimson/20 bg-crimson/10 p-4 text-xs text-crimson">{actionError}</div>
+    {/if}
     <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
       {#each agencies as agency (agency.id)}
         <Card class="h-full">
@@ -260,21 +324,32 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between border-t border-edge pt-3.5 text-xs">
-              <div class="flex items-center gap-1.5 text-ink-muted">
-                <svg class="h-3.5 w-3.5 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
-                </svg>
-                <span>Branches:</span>
-                <span class="font-semibold text-ink-primary">{agency.branchCount}</span>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between border-t border-edge pt-3.5 text-xs">
+                <div class="flex items-center gap-1.5 text-ink-muted">
+                  <svg class="h-3.5 w-3.5 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
+                  </svg>
+                  <span>Branches:</span>
+                  <span class="font-semibold text-ink-primary">{agency.branchCount}</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-ink-muted">
+                  <svg class="h-3.5 w-3.5 text-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span>Agents:</span>
+                  <span class="font-semibold text-ink-primary">{agency.agentCount}</span>
+                </div>
               </div>
-              <div class="flex items-center gap-1.5 text-ink-muted">
-                <svg class="h-3.5 w-3.5 text-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span>Agents:</span>
-                <span class="font-semibold text-ink-primary">{agency.agentCount}</span>
-              </div>
+
+              {#if canEdit}
+                <div class="flex items-center justify-end gap-1.5">
+                  <button class="btn-outline !py-1 !px-2.5 text-xs" disabled={busyId === agency.id} on:click={() => openEdit(agency)}>Edit</button>
+                  {#if isSuperAdmin && agency.branchCount === 0 && agency.agentCount === 0}
+                    <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={busyId === agency.id} on:click={() => removeAgency(agency)}>Delete</button>
+                  {/if}
+                </div>
+              {/if}
             </div>
           </div>
         </Card>
@@ -282,3 +357,35 @@
     </div>
   {/if}
 </div>
+
+<!-- Edit agency modal -->
+<Modal open={editOpen} title="Edit Agency" size="sm" on:close={() => (editOpen = false)}>
+  {#if editError}
+    <div class="mb-3 rounded-lg border border-crimson/20 bg-crimson/10 px-3 py-2 text-xs text-crimson">{editError}</div>
+  {/if}
+  <div class="space-y-3">
+    <div>
+      <label class="label" for="ea-name">Agency name</label>
+      <input id="ea-name" class="input" bind:value={editName} placeholder="e.g. DSL Agencies" />
+    </div>
+    <div>
+      <label class="label" for="ea-region">Region</label>
+      <input id="ea-region" class="input" bind:value={editRegion} placeholder="e.g. Greater Accra" />
+    </div>
+    <div>
+      <label class="label" for="ea-phone">Phone</label>
+      <input id="ea-phone" class="input" bind:value={editPhone} placeholder="+233 XX XXX XXXX" />
+    </div>
+    <label class="flex items-center gap-2 text-xs font-medium text-ink-primary cursor-pointer">
+      <input type="checkbox" bind:checked={editActive} class="h-4 w-4" style="accent-color: var(--brand);" />
+      Active (visible across the dashboard)
+    </label>
+    <p class="text-2xs text-ink-muted">Deactivating hides the agency from pickers but keeps all history. Only Super Admin can delete empty agencies.</p>
+  </div>
+  <svelte:fragment slot="footer">
+    <button class="btn-outline" on:click={() => (editOpen = false)} disabled={editSaving}>Cancel</button>
+    <button class="btn-primary" on:click={saveEdit} disabled={editSaving}>
+      {editSaving ? 'Saving…' : 'Save changes'}
+    </button>
+  </svelte:fragment>
+</Modal>

@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '$lib/api/client';
+  import { apiClient, updateBranch, deleteBranch } from '$lib/api/client';
   import Card from '$lib/components/ui/Card.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import TopBar from '$lib/components/layout/TopBar.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import { dealer } from '$lib/stores/auth';
 
   interface Branch {
     id: string;
@@ -33,6 +35,21 @@
   let showCreateForm = false;
   let creating = false;
   let searchQuery = '';
+  let busyId = '';
+  let actionError = '';
+  $: canManage = $dealer ? ['SUPER_ADMIN', 'AGENCY_OWNER', 'BRANCH_ADMIN'].includes($dealer.role) : false;
+  $: isSuperAdmin = $dealer?.role === 'SUPER_ADMIN';
+
+  // ---- edit modal ----
+  let editOpen = false;
+  let editBranch: Branch | null = null;
+  let editName = '';
+  let editAddress = '';
+  let editPhone = '';
+  let editAgencyId = '';
+  let editActive = true;
+  let editSaving = false;
+  let editError = '';
 
   let newBranch = {
     name: '',
@@ -70,6 +87,53 @@
       error = e instanceof Error ? e.message : 'Unknown error';
     } finally {
       loading = false;
+    }
+  }
+
+  function openEdit(branch: Branch) {
+    editBranch = branch;
+    editName = branch.name || '';
+    editAddress = branch.address || '';
+    editPhone = branch.phone || '';
+    editAgencyId = branch.agencyId || '';
+    editActive = branch.isActive;
+    editError = '';
+    editOpen = true;
+  }
+
+  async function saveEdit() {
+    if (!editBranch) return;
+    if (editName.trim().length < 2) { editError = 'Branch name must be at least 2 characters'; return; }
+    editSaving = true;
+    editError = '';
+    try {
+      await updateBranch(editBranch.id, {
+        name: editName.trim(),
+        address: editAddress.trim(),
+        phone: editPhone.trim(),
+        ...(isSuperAdmin && editAgencyId ? { agencyId: editAgencyId } : {}),
+        isActive: editActive
+      });
+      editOpen = false;
+      await fetchBranches();
+    } catch (e) {
+      editError = e instanceof Error ? e.message : 'Failed to update branch';
+    } finally {
+      editSaving = false;
+    }
+  }
+
+  async function removeBranch(branch: Branch) {
+    if (!confirm(`Permanently delete ${branch.name}? Only branches with no assigned agents can be deleted — otherwise deactivate instead.`)) return;
+    busyId = branch.id;
+    actionError = '';
+    try {
+      await deleteBranch(branch.id);
+      await fetchBranches();
+    } catch (e) {
+      actionError = e instanceof Error ? e.message : 'Failed to delete branch';
+    } finally {
+      busyId = '';
     }
   }
 
@@ -268,6 +332,10 @@
     </div>
   {/if}
 
+  {#if actionError}
+    <div class="mb-4 rounded-xl border border-crimson/20 bg-crimson/10 p-4 text-xs text-crimson">{actionError}</div>
+  {/if}
+
   <!-- Stats Bar & Search -->
   <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex flex-wrap items-center gap-3 text-xs text-ink-secondary">
@@ -386,14 +454,25 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between border-t border-edge pt-3.5 text-xs">
-              <span class="text-ink-muted">Assigned Agents</span>
-              <span class="font-semibold text-ink-primary flex items-center gap-1">
-                <svg class="h-3.5 w-3.5 text-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {branch.agentCount}
-              </span>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between border-t border-edge pt-3.5 text-xs">
+                <span class="text-ink-muted">Assigned Agents</span>
+                <span class="font-semibold text-ink-primary flex items-center gap-1">
+                  <svg class="h-3.5 w-3.5 text-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  {branch.agentCount}
+                </span>
+              </div>
+
+              {#if canManage}
+                <div class="flex items-center justify-end gap-1.5">
+                  <button class="btn-outline !py-1 !px-2.5 text-xs" disabled={busyId === branch.id} on:click={() => openEdit(branch)}>Edit</button>
+                  {#if branch.agentCount === 0 && (isSuperAdmin || $dealer?.role === 'AGENCY_OWNER')}
+                    <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={busyId === branch.id} on:click={() => removeBranch(branch)}>Delete</button>
+                  {/if}
+                </div>
+              {/if}
             </div>
           </div>
         </Card>
@@ -401,3 +480,45 @@
     </div>
   {/if}
 </div>
+
+<!-- Edit branch modal -->
+<Modal open={editOpen} title="Edit Branch" size="sm" on:close={() => (editOpen = false)}>
+  {#if editError}
+    <div class="mb-3 rounded-lg border border-crimson/20 bg-crimson/10 px-3 py-2 text-xs text-crimson">{editError}</div>
+  {/if}
+  <div class="space-y-3">
+    <div>
+      <label class="label" for="eb-name">Branch name</label>
+      <input id="eb-name" class="input" bind:value={editName} placeholder="e.g. Accra Central" />
+    </div>
+    <div>
+      <label class="label" for="eb-address">Address</label>
+      <input id="eb-address" class="input" bind:value={editAddress} placeholder="Street address or location" />
+    </div>
+    <div>
+      <label class="label" for="eb-phone">Phone</label>
+      <input id="eb-phone" class="input" bind:value={editPhone} placeholder="+233 XX XXX XXXX" />
+    </div>
+    {#if isSuperAdmin}
+      <div>
+        <label class="label" for="eb-agency">Agency</label>
+        <select id="eb-agency" class="input" bind:value={editAgencyId}>
+          {#each agencies as agency (agency.id)}
+            <option value={agency.id}>{agency.name}</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
+    <label class="flex items-center gap-2 text-xs font-medium text-ink-primary cursor-pointer">
+      <input type="checkbox" bind:checked={editActive} class="h-4 w-4" style="accent-color: var(--brand);" />
+      Active
+    </label>
+    <p class="text-2xs text-ink-muted">Deactivating hides the branch from pickers but keeps history. Branches with agents cannot be deleted.</p>
+  </div>
+  <svelte:fragment slot="footer">
+    <button class="btn-outline" on:click={() => (editOpen = false)} disabled={editSaving}>Cancel</button>
+    <button class="btn-primary" on:click={saveEdit} disabled={editSaving}>
+      {editSaving ? 'Saving…' : 'Save changes'}
+    </button>
+  </svelte:fragment>
+</Modal>

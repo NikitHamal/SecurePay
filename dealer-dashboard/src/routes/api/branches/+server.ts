@@ -17,7 +17,6 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
              FROM branches b
              LEFT JOIN agencies a ON b.agency_id = a.id
              LEFT JOIN dealers d ON b.admin_id = d.id
-             WHERE b.is_active = 1
              ORDER BY b.created_at DESC`;
     params = [];
   } else if (locals.dealer.role === 'AGENCY_OWNER') {
@@ -26,8 +25,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
              FROM branches b
              LEFT JOIN agencies a ON b.agency_id = a.id
              LEFT JOIN dealers d ON b.admin_id = d.id
-             WHERE b.agency_id = ? AND b.is_active = 1
-             ORDER BY b.created_at DESC`;
+             WHERE b.agency_id = ? ORDER BY b.created_at DESC`;
     params = [locals.dealer.agencyId || ''];
   } else if (locals.dealer.role === 'BRANCH_ADMIN') {
     query = `SELECT b.*, a.name as agency_name, d.name as admin_name,
@@ -35,7 +33,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
              FROM branches b
              LEFT JOIN agencies a ON b.agency_id = a.id
              LEFT JOIN dealers d ON b.admin_id = d.id
-             WHERE b.id = ? AND b.is_active = 1`;
+             WHERE b.id = ?`;
     params = [locals.dealer.branchId || ''];
   } else {
     return errorResponse('Insufficient permissions', 403);
@@ -86,3 +84,4 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   return json({ id: branchId, name, agencyId: branchAgencyId, address, phone }, { status: 201 });
 };
+

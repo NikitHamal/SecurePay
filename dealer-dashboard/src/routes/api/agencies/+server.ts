@@ -21,8 +21,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
              (SELECT COUNT(*) FROM dealers WHERE agency_id = a.id AND role = 'AGENT') as agent_count
              FROM agencies a
              LEFT JOIN dealers d ON a.owner_id = d.id
-             WHERE a.is_active = 1
-             ORDER BY a.created_at DESC`;
+             ORDER BY a.is_active DESC, a.created_at DESC`;
     params = [];
   } else {
     query = `SELECT a.*, d.name as owner_name,
@@ -30,7 +29,8 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
              (SELECT COUNT(*) FROM dealers WHERE agency_id = a.id AND role = 'AGENT') as agent_count
              FROM agencies a
              LEFT JOIN dealers d ON a.owner_id = d.id
-             WHERE a.id = ? AND a.is_active = 1`;
+             WHERE a.id = ?
+             ORDER BY a.is_active DESC`;
     params = [locals.dealer.agencyId || ''];
   }
 

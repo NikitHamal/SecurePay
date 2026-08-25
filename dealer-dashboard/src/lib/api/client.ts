@@ -278,6 +278,40 @@ export async function updateProductModel(id: string, data: Partial<{ name: strin
   return request(`/product-models/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 export async function deleteProductModel(id: string): Promise<{ success: boolean }> { return request(`/product-models/${id}`, { method: 'DELETE' }); }
+
+// ---- Org controls: agencies / branches / agents (full admin CRUD) ----
+export async function updateAgency(id: string, data: { name?: string; phone?: string; region?: string; isActive?: boolean; ownerId?: string }): Promise<{ id: string; name: string; isActive: boolean }> {
+  return request(`/agencies/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+export async function deleteAgency(id: string): Promise<{ success: boolean }> {
+  return request(`/agencies/${id}`, { method: 'DELETE' });
+}
+export async function updateBranch(id: string, data: { name?: string; address?: string; phone?: string; agencyId?: string; isActive?: boolean; adminId?: string | null }): Promise<{ id: string; name: string; isActive: boolean }> {
+  return request(`/branches/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+export async function deleteBranch(id: string): Promise<{ success: boolean }> {
+  return request(`/branches/${id}`, { method: 'DELETE' });
+}
+export interface AgentRow {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  branchId?: string | null;
+  branchName?: string | null;
+  agencyId?: string | null;
+  agencyName?: string | null;
+  isApproved: boolean;
+  createdAt: number;
+  salesCount: number;
+  totalRevenue: number;
+}
+export async function updateAgent(id: string, data: { name?: string; phone?: string; branchId?: string; isApproved?: boolean }): Promise<{ id: string; isApproved: boolean }> {
+  return request(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+export async function deleteAgent(id: string): Promise<{ success: boolean }> {
+  return request(`/agents/${id}`, { method: 'DELETE' });
+}
 export async function assignDevice(id: string, agentId: string | null): Promise<{ success: boolean; assignedTo: string | null }> {
   if (agentId) return request(`/devices/${id}/assign`, { method: 'POST', body: JSON.stringify({ agentId }) });
   return request(`/devices/${id}/assign`, { method: 'POST', body: JSON.stringify({ unassign: true }) });

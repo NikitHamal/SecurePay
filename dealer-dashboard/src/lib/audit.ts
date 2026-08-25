@@ -34,7 +34,15 @@ export type ActivityAction =
   | 'DOWN_PAYMENT_CONFIRMED'
   | 'DOWN_PAYMENT_REJECTED'
   | 'AGENT_APPROVED'
-  | 'AGENT_REJECTED';
+  | 'AGENT_REJECTED'
+  | 'AGENT_UPDATED'
+  | 'AGENT_BANNED'
+  | 'AGENT_UNBANNED'
+  | 'AGENT_DELETED'
+  | 'AGENCY_UPDATED'
+  | 'AGENCY_DELETED'
+  | 'BRANCH_UPDATED'
+  | 'BRANCH_DELETED';
 
 export interface ActivityActor {
   id: string;
