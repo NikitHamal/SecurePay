@@ -4,7 +4,7 @@
   import TopBar from '$lib/components/layout/TopBar.svelte';
   import Donut from '$lib/components/charts/Donut.svelte';
   import BarChart from '$lib/components/charts/BarChart.svelte';
-  import { listLedger, listCustomers } from '$lib/api/client';
+  import { listLedger, listCustomers, apiClient } from '$lib/api/client';
   import type { LedgerEntry, PaymentMethod, Customer } from '$lib/types';
   import { formatCurrency, formatDateTime, formatRelative } from '$lib/utils/format';
 
@@ -57,6 +57,28 @@
   let loadError: string | null = null;
   let methodFilter: PaymentMethod | 'ALL' = 'ALL';
   let expanded: string | null = null;
+  let syncingPaystack = false;
+  let syncMessage: string | null = null;
+
+  async function syncPaystack() {
+    syncingPaystack = true;
+    syncMessage = null;
+    try {
+      const res = await apiClient('/api/paystack/sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      syncMessage = data.applied > 0
+        ? `Credited ${data.applied} missing payment(s): ${data.appliedReferences.join(', ')}`
+        : `Checked ${data.checked} pending charge(s) — everything already up to date.`;
+      const [ledger, accts] = await Promise.all([listLedger(), listCustomers()]);
+      entries = ledger;
+      customers = accts;
+    } catch (err) {
+      syncMessage = err instanceof Error ? err.message : 'Sync failed';
+    } finally {
+      syncingPaystack = false;
+    }
+  }
 
   const paymentMethods: PaymentMethod[] = ['MOBILE_MONEY', 'CARD', 'BANK', 'CASH'];
 
@@ -149,6 +171,12 @@
     subtitle="Recorded installment collections across all financed accounts."
   >
     <div slot="actions" class="flex items-center gap-2">
+      <button type="button" class="btn-primary !py-2" on:click={syncPaystack} disabled={syncingPaystack}>
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class:animate-spin={syncingPaystack}>
+          <path d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 0114-3m2 7a8 8 0 01-14 3" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        {syncingPaystack ? 'Syncing…' : 'Sync Paystack'}
+      </button>
       <button type="button" class="btn-outline">
         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14M5 12h14" stroke-linecap="round" />
@@ -157,6 +185,10 @@
       </button>
     </div>
   </PageHeader>
+
+  {#if syncMessage}
+    <div class="mb-4 rounded-lg border border-sky/20 bg-sky/10 px-4 py-3 text-sm text-sky">{syncMessage}</div>
+  {/if}
 
   {#if loadError}
     <div class="mb-4 rounded-xl border border-crimson-200/30 bg-crimson-200/10 px-4 py-3 text-sm text-crimson">

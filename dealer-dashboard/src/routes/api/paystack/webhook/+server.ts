@@ -40,9 +40,61 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   // Idempotency: load existing row.
   const existing = await db.prepare(`SELECT * FROM paystack_transactions WHERE reference = ?`).bind(reference).first<Record<string, any>>();
   if (!existing) {
-    // Transaction wasn't initialized by us — don't auto-apply, but log.
-    console.warn(`[paystack] received webhook for unknown reference ${reference}`);
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // Row missing (e.g. the initiate-time insert failed). Recover using the
+    // account_id we embedded in the charge metadata so the money still lands.
+    const metaAccountId = event.data?.metadata?.account_id ? String(event.data.metadata.account_id).trim() : '';
+    if (!metaAccountId) {
+      console.warn(`[paystack] received webhook for unknown reference ${reference} (no metadata.account_id)`);
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    let verifiedUnknown;
+    try {
+      verifiedUnknown = await verifyTransaction(reference, secret);
+    } catch (err) {
+      // 500 makes Paystack retry the webhook later.
+      console.error('[paystack] verify failed for unknown-reference recovery', err);
+      return new Response(JSON.stringify({ error: 'verify failed' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (verifiedUnknown.status !== 'success') {
+      return new Response(JSON.stringify({ ok: true, status: verifiedUnknown.status }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const recAmount = Number(verifiedUnknown.amount || event.data?.amount || 0);
+    const recChannel = String(verifiedUnknown.channel || 'mobile_money').toUpperCase();
+    const recPaidAt = verifiedUnknown.paid_at ? Math.floor(new Date(verifiedUnknown.paid_at).getTime() / 1000) : Math.floor(Date.now() / 1000);
+    try {
+      const { paymentId } = await applyPayment({
+        db,
+        accountId: metaAccountId,
+        amount: recAmount,
+        method: recChannel === 'CARD' ? 'CARD' : 'MOBILE_MONEY',
+        reference: `paystack:${reference}`,
+        recordedBy: 'paystack',
+        env: platform?.env
+      });
+      // Best-effort audit row (id INTEGER PRIMARY KEY auto-assigns when omitted).
+      await db.prepare(`
+        INSERT INTO paystack_transactions
+          (reference, account_id, dealer_id, amount, currency, channel, customer_email, status, gateway_response, fees, paid_at, payment_id, created_at, updated_at)
+        VALUES (?, ?, (SELECT dealer_id FROM accounts WHERE id = ?), ?, ?, ?, ?, 'success', 'Successful', ?, ?, ?, unixepoch(), unixepoch())
+      `).bind(
+        reference,
+        metaAccountId,
+        metaAccountId,
+        recAmount,
+        verifiedUnknown.currency || 'GHS',
+        verifiedUnknown.channel || 'mobile_money',
+        verifiedUnknown.customer?.email || null,
+        verifiedUnknown.fees != null ? Math.round(Number(verifiedUnknown.fees)) : null,
+        recPaidAt,
+        paymentId
+      ).run().catch((e) => console.error('[paystack] recovery audit insert failed', e));
+      return new Response(JSON.stringify({ ok: true, paymentId, recovered: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (err: any) {
+      console.error('[paystack] unknown-reference recovery apply failed', err);
+      return new Response(JSON.stringify({ error: err.message || 'apply failed' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
   }
   if (existing.payment_id) {
     // Already applied — idempotent 200.

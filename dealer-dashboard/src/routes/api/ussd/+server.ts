@@ -11,6 +11,7 @@ import {
 } from '$lib/paystack';
 import { getCustomerEmail } from '$lib/paystack/email';
 import { applyPayment } from '$lib/payments';
+import { requeryPendingPayments } from '$lib/paystack-sync';
 
 /**
  * JEST USSD endpoint.
@@ -258,6 +259,21 @@ async function runUssd(
   const isNewSession = !loadedSession || msgTypeFirst;
 
   if (isNewSession) {
+    // Ghana MoMo 'pay_offline' charges complete AFTER this USSD session closes,
+    // so requery Paystack for any approved-but-unapplied payments from this
+    // number and credit them before the customer sees their balance.
+    try {
+      const psSecret = getPaystackSecret({ platform });
+      if (psSecret) {
+        const synced = await requeryPendingPayments(db, psSecret, { phone: toPaystackPhone(msisdn) });
+        if (synced.some((r) => r.applied)) {
+          console.log('[ussd] credited pending MoMo payment(s) for', msisdn, JSON.stringify(synced.filter((r) => r.applied)));
+        }
+      }
+    } catch (e) {
+      console.error('[ussd] startup payment sync failed', e);
+    }
+
     const session: SessionRow = {
       session_id: sessionId,
       msisdn,
@@ -581,15 +597,14 @@ async function initiateCharge(
 
     await db.prepare(`
       INSERT INTO paystack_transactions
-        (id, reference, access_code, account_id, dealer_id, amount, currency, channel, provider,
+        (reference, access_code, account_id, dealer_id, amount, currency, channel, provider,
          customer_email, customer_phone, status, gateway_response, metadata_json, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, (SELECT dealer_id FROM accounts WHERE id = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      result.id ?? null,
       reference,
       result.access_code ?? null,
       account.id,
-      account.dealer_id,
+      account.id,
       amountPesewas,
       'GHS',
       'mobile_money',
