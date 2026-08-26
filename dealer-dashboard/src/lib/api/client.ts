@@ -192,7 +192,7 @@ export async function createAccount(data: {
 export async function extendTimer(id: string, hours: number): Promise<Customer> {
   return request<Customer>(`/accounts/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ nextPaymentDue: Date.now() + hours * 24 * 60 * 60 * 1000 })
+    body: JSON.stringify({ nextPaymentDue: Date.now() + hours * 60 * 60 * 1000 })
   });
 }
 
