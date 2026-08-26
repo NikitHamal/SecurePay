@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy, getPaystackSecret } from '$lib/api/server';
 import { pushCustomerDevice, cedisLabel } from '$lib/notify';
+import { requeryPendingPayments } from '$lib/paystack-sync';
 
 /**
  * Customer trigger: "payment reminder". The managed app calls this endpoint
@@ -86,6 +87,26 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   const now = Date.now();
   await db.prepare('UPDATE accounts SET updated_at = ? WHERE id = ?').bind(Math.floor(now / 1000), account.id as string).run();
 
+  // Self-heal: if the customer paid (MoMo prompt approved after a session closed,
+  // or the webhook never fired), the heartbeat requeries Paystack and credits the
+  // account before returning status — no manual dashboard sync needed.
+  let credited = 0;
+  try {
+    const psSecret = getPaystackSecret({ platform });
+    if (psSecret) {
+      const synced = await requeryPendingPayments(db, psSecret, { accountId: String(account.id) });
+      credited = synced.filter((r) => r.applied).length;
+      if (credited > 0) {
+        // Reload so the response reflects the credited balance immediately.
+        const fresh = await db.prepare('SELECT * FROM accounts WHERE device_id = ? AND id = ?').bind(device.id as string, accountId).first();
+        if (fresh) Object.assign(account as Record<string, unknown>, fresh);
+        console.log('[heartbeat] credited', credited, 'pending Paystack payment(s) for', accountId);
+      }
+    }
+  } catch (e) {
+    console.error('[heartbeat] paystack sync failed', e);
+  }
+
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const release = releaseFields(account as Record<string, unknown>);
   const isStolen = Number(account.is_stolen ?? 0) === 1;
@@ -118,6 +139,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       releaseApprovedAt: release.releaseApprovedAt,
       releasedAt: release.releasedAt
     },
+    creditedPendingPayments: credited,
     securityPolicy,
     serverTime: Date.now()
   });

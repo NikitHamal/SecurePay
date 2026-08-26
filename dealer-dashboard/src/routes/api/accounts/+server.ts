@@ -454,6 +454,13 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   let termDays: number;
   let downPayment: number;
   try {
+    if (isAgent && !deviceHasPricing) {
+      // Agents never set financial terms — the admin must price the device first.
+      return errorResponse(
+        `This device (${device.imei}) has no admin-set pricing yet. Ask your admin to add it with a product plan before enrolling.`,
+        409
+      );
+    }
     if (isAgent && deviceHasPricing) {
       // Admin owns pricing — agent's numbers are ignored.
       totalLoanAmount = parseSafeInteger(device.total_amount, 'device total amount', 1);

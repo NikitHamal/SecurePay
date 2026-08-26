@@ -448,7 +448,7 @@
                         <button class="btn-outline !py-1 !px-2.5 text-xs text-crimson hover:bg-crimson/10" disabled={devicesLoading} on:click={() => removeDevice(device)}>Delete</button>
                       {/if}
                     {:else}
-                      <span class="text-xs text-ink-muted">Assigned to {device.customerName || 'customer'}</span>
+                      <span class="text-xs text-ink-muted">Sold to {device.customerName || 'customer'}</span>
                     {/if}
                   </div>
                 </td>
@@ -483,7 +483,7 @@
               <button class="btn-outline !py-1.5 text-xs" on:click={() => openProvision(device.imei)}>Provision</button>
             </div>
           {:else if device.customerName}
-            <p class="mt-3 text-xs text-ink-secondary">Assigned to <span class="font-medium text-ink-primary">{device.customerName}</span></p>
+            <p class="mt-3 text-xs text-ink-secondary">Sold to <span class="font-medium text-ink-primary">{device.customerName}</span></p>
           {/if}
         </article>
       {/each}

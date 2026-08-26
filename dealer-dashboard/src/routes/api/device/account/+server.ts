@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy } from '$lib/api/server';
+import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy, getPaystackSecret } from '$lib/api/server';
+import { requeryPendingPayments } from '$lib/paystack-sync';
 
 /**
  * Device-scoped account endpoint.
@@ -19,6 +20,19 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   }
 
   const db = getDb({ platform });
+
+  // Self-heal: sweep any approved-but-unapplied Paystack payments for this
+  // account so the app shows the credited balance without a manual sync.
+  try {
+    const psSecret = getPaystackSecret({ platform });
+    if (psSecret) {
+      const synced = await requeryPendingPayments(db, psSecret, { accountId });
+      if (synced.some((r) => r.applied)) console.log('[device-account] credited pending payment(s) for', accountId);
+    }
+  } catch (e) {
+    console.error('[device-account] paystack sync failed', e);
+  }
+
   const row = await db.prepare(`
     SELECT a.*, d.imei, d.model AS device_model, COALESCE(p.name, 'Custom') AS plan_name
       FROM accounts a

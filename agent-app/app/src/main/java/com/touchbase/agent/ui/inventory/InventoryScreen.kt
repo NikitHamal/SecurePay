@@ -131,6 +131,8 @@ fun InventoryScreen(
     val dealerRole by repository?.dealerRole?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<String?>(null) }
     val canDeleteDevices = dealerRole?.uppercase()?.let { it != "AGENT" } ?: true
+    // Per client model: agents never add devices — the admin creates, prices and assigns IMEIs.
+    val canAddDevices = canDeleteDevices
 
     // Anti-fraud: the registration GPS fix is requested when the dialog opens.
     val locationPermission = rememberLauncherForActivityResult(
@@ -175,21 +177,23 @@ fun InventoryScreen(
             TopAppBar(
                 title = { Text("Inventory", color = MaterialTheme.colorScheme.onBackground) },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            if (!LocationCapture.hasPermission(context)) {
-                                locationPermission.launch(LocationCapture.REQUIRED_PERMISSIONS)
-                            }
-                            showAddDialog = true
-                        },
-                        modifier = Modifier.padding(end = 6.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_device),
-                            contentDescription = "Add device",
-                            tint = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    if (canAddDevices) {
+                        IconButton(
+                            onClick = {
+                                if (!LocationCapture.hasPermission(context)) {
+                                    locationPermission.launch(LocationCapture.REQUIRED_PERMISSIONS)
+                                }
+                                showAddDialog = true
+                            },
+                            modifier = Modifier.padding(end = 6.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_device),
+                                contentDescription = "Add device",
+                                tint = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
