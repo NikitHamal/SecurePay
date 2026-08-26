@@ -3,6 +3,7 @@ import type { Customer, KpiSummary } from '$lib/types';
 import {
   listCustomers as apiListCustomers,
   extendTimer as apiExtendTimer,
+  reduceTimer as apiReduceTimer,
   forceRemoteLock as apiForceRemoteLock,
   approveRelease as apiApproveRelease,
   deleteAccount as apiDeleteAccount,
@@ -51,6 +52,19 @@ export async function extendTimer(id: string, hours: number): Promise<void> {
     replaceCustomer(updated);
   } catch (err) {
     error.set(err instanceof Error ? err.message : 'Failed to extend timer');
+  } finally {
+    setPending(id, false);
+  }
+}
+
+export async function reduceTimer(id: string, hours: number): Promise<void> {
+  setPending(id, true);
+  error.set(null);
+  try {
+    const updated = await apiReduceTimer(id, hours);
+    replaceCustomer(updated);
+  } catch (err) {
+    error.set(err instanceof Error ? err.message : 'Failed to reduce timer');
   } finally {
     setPending(id, false);
   }

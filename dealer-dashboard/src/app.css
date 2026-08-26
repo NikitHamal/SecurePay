@@ -161,6 +161,12 @@
   }
   .btn-crimson:hover { background-color: #B91C1C; }
 
+  .btn-amber {
+    @apply btn text-white font-semibold;
+    background-color: #D97706;
+  }
+  .btn-amber:hover { background-color: #B45309; }
+
   .chip {
     @apply inline-flex items-center gap-1 rounded-full border border-edge bg-surface-100 px-2.5 py-1 text-xs font-medium text-ink-secondary;
   }

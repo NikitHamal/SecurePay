@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import type { Customer, Status } from '$lib/types';
-  import { customers, deleteCustomer, extendTimer, forceRemoteLock, pending } from '$lib/stores/customers';
+  import { customers, deleteCustomer, extendTimer, reduceTimer, forceRemoteLock, pending } from '$lib/stores/customers';
   import { dealer } from '$lib/stores/auth';
   import { formatCountdown, formatCurrency, formatPhone } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
@@ -41,6 +41,10 @@
 
   async function onExtend(id: string): Promise<void> {
     await extendTimer(id, extendHours);
+  }
+
+  async function onReduce(id: string): Promise<void> {
+    await reduceTimer(id, extendHours);
   }
 
   async function onLock(id: string): Promise<void> {
@@ -151,6 +155,14 @@
                   on:click|stopPropagation={() => onExtend(customer.id)}
                 >
                   +{extendHours}h
+                </button>
+                <button
+                  type="button"
+                  class="btn-amber"
+                  disabled={isPending($pending, customer.id)}
+                  on:click|stopPropagation={() => onReduce(customer.id)}
+                >
+                  -{extendHours}h
                 </button>
                 <button
                   type="button"

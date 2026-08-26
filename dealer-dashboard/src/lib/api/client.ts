@@ -196,6 +196,16 @@ export async function extendTimer(id: string, hours: number): Promise<Customer> 
   });
 }
 
+export async function reduceTimer(id: string, hours: number): Promise<Customer> {
+  const account = await request<Customer>(`/accounts/${id}`);
+  const currentDue = account.nextPaymentDueEpochMillis ?? Date.now();
+  const reduced = Math.max(Date.now(), currentDue - hours * 60 * 60 * 1000);
+  return request<Customer>(`/accounts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ nextPaymentDue: reduced })
+  });
+}
+
 export async function updateAccount(id: string, data: {
   customerName?: string;
   nationalId?: string;

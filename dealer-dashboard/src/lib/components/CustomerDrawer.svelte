@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Customer } from '$lib/types';
-  import { approveRelease, customers, deleteCustomer, extendTimer, forceRemoteLock, pending, updateCustomer } from '$lib/stores/customers';
+  import { approveRelease, customers, deleteCustomer, extendTimer, reduceTimer, forceRemoteLock, pending, updateCustomer } from '$lib/stores/customers';
   import { formatCountdown, formatCurrency, formatDate, formatPhone, formatRelative } from '$lib/utils/format';
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import ProgressRing from '$lib/components/charts/ProgressRing.svelte';
@@ -135,6 +135,9 @@
 
   async function extend(): Promise<void> {
     if (customer) await extendTimer(customer.id, 24);
+  }
+  async function reduce(): Promise<void> {
+    if (customer) await reduceTimer(customer.id, 24);
   }
   async function lock(): Promise<void> {
     if (customer) await forceRemoteLock(customer.id);
@@ -710,6 +713,17 @@
             <path d="M12 8v8M8 12h8" stroke-linecap="round" />
           </svg>
           Extend +24h
+        </button>
+        <button
+          type="button"
+          class="btn-amber flex-1"
+          disabled={isPending || editing}
+          on:click={reduce}
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 12h8" stroke-linecap="round" />
+          </svg>
+          Reduce -24h
         </button>
         <button
           type="button"
