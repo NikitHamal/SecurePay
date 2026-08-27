@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse } from '$lib/api/server';
 import { getAccountScopeFilter } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
@@ -29,9 +29,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
   for (const row of accountResult.results) {
     totalAccounts++;
-    const status = row.locked_by_dealer === 1
-      ? 'LOCKED' as const
-      : computeStatus(Number(row.next_payment_due), now);
+    const status = computeAccountStatus(row as Record<string, unknown>);
 
     if (status === 'ACTIVE') activeCount++;
     else if (status === 'WARNING') warningCount++;

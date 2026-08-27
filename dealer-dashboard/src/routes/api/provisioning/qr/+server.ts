@@ -8,7 +8,8 @@ import {
   findUnusedActivationCode,
   buildQrPayload,
   readApkMeta,
-  getDealerSecurityPolicy
+  getDealerSecurityPolicy,
+  downPaymentSettled
 } from '$lib/api/server';
 import { getAccountScopeFilter, getDealerScopeFilter } from '$lib/auth';
 
@@ -67,7 +68,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
 
   const account = await db.prepare(`
-    SELECT a.id, a.customer_name, a.down_payment_status, a.amount_paid, a.total_loan_amount
+    SELECT a.id, a.customer_name, a.down_payment, a.down_payment_status, a.amount_paid, a.total_loan_amount
     FROM accounts a
     WHERE a.device_id = ? AND ${accountScope.where}
   `).bind(device.id as string, ...accountScope.params).first() as any;
@@ -85,6 +86,16 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     if (exists && exists.down_payment_status === 'pending') {
       const pending = await db.prepare("SELECT id FROM down_payment_submissions WHERE account_id = ? AND status = 'pending' LIMIT 1").bind(account.id as string).first();
       if (pending) return errorResponse('Down payment is pending admin confirmation. Confirm the agent\'s cash payment before provisioning.', 409);
+    }
+    // A phone stays locked (and should not be provisioned) until the required
+    // down payment is actually received — either fully paid through any channel
+    // or admin-confirmed. Partial payments keep it blocked.
+    if (!downPaymentSettled({
+      down_payment: account.down_payment,
+      down_payment_status: account.down_payment_status,
+      amount_paid: account.amount_paid
+    })) {
+      return errorResponse('The required down payment has not been fully received yet. The phone will remain locked until it is.', 409);
     }
   } catch { /* best-effort: if table not yet migrated, ignore */ }
 

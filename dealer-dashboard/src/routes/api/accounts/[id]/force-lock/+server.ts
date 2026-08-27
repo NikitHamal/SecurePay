@@ -10,6 +10,9 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
   }
+  if (locals.dealer.role === 'AGENT') {
+    return errorResponse('Agents cannot force-lock accounts', 403);
+  }
 
   const accountId = params.id;
   const db = getDb({ platform });

@@ -1,12 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
-  computeStatus,
+  computeAccountStatus,
   errorResponse,
   generateDeviceApiSecret,
   getDb,
   getDealerSecurityPolicy,
-  releaseApproved,
   releaseFields
 } from '$lib/api/server';
 import { verifyPassword } from '$lib/auth';
@@ -71,11 +70,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 
   const release = releaseFields(row);
   const isStolen = Number(row.is_stolen ?? 0) === 1;
-  const status = releaseApproved(row)
-    ? 'ACTIVE'
-    : (isStolen ? 'STOLEN' : (Number(row.locked_by_dealer ?? 0) === 1
-      ? 'LOCKED'
-      : computeStatus(Number(row.next_payment_due))));
+  const status = computeAccountStatus(row);
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(row.dealer_id));
 
   return json({

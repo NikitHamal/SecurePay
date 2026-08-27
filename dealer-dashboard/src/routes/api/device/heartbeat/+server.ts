@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy, getPaystackSecret } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields, getDealerSecurityPolicy, getPaystackSecret } from '$lib/api/server';
 import { pushCustomerDevice, cedisLabel } from '$lib/notify';
 import { requeryPendingPayments } from '$lib/paystack-sync';
 
@@ -115,9 +115,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     void maybeSendPaymentReminder(db, platform, account as Record<string, unknown>, accountId, now);
   }
 
-  const status = releaseApproved(account as Record<string, unknown>)
-    ? 'ACTIVE'
-    : (isStolen ? 'STOLEN' : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due))));
+  const status = computeAccountStatus(account as Record<string, unknown>);
 
   return json({
     enrolled: true,

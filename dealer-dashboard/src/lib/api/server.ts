@@ -144,6 +144,42 @@ export function computeStatus(nextPaymentDueEpochMillis: number, now = Date.now(
   return 'ACTIVE';
 }
 
+/**
+ * Whether the required down payment has been settled for an account row.
+ *
+ * The first payments on an account accumulate toward the down payment, so an
+ * account is considered settled once the money actually received (amount_paid)
+ * covers the required down_payment — or once an admin explicitly confirmed the
+ * agent-cash submission (down_payment_status = 'confirmed'). While unsettled,
+ * the phone must remain locked regardless of next_payment_due.
+ */
+const UNSETTLED_DOWN_PAYMENT_STATUSES = new Set(['UNPAID', 'PENDING', 'REJECTED']);
+
+export function downPaymentSettled(row: Record<string, unknown>): boolean {
+  const required = Number(row.down_payment ?? 0) || 0;
+  if (required <= 0) return true;
+  const status = String(row.down_payment_status ?? '').trim().toUpperCase();
+  if (status === 'CONFIRMED') return true;
+  if (UNSETTLED_DOWN_PAYMENT_STATUSES.has(status)) return false;
+  // Accounts whose status column predates the workflow: money already paid
+  // toward the loan counts as settlement.
+  return Number(row.amount_paid ?? 0) >= required;
+}
+
+/**
+ * Canonical account status for a DB row, honoring (in priority order):
+ * release approval, stolen flag, dealer force-lock, an unsettled down payment,
+ * and finally the payment deadline. Callers replaced bespoke ternaries with this
+ * so the down-payment lock is enforced consistently across dashboards + devices.
+ */
+export function computeAccountStatus(row: Record<string, unknown>, now = Date.now()): Status {
+  if (releaseApproved(row)) return 'ACTIVE';
+  if (Number(row.is_stolen ?? 0) === 1) return 'STOLEN';
+  if (Number(row.locked_by_dealer ?? 0) === 1) return 'LOCKED';
+  if (!downPaymentSettled(row)) return 'LOCKED';
+  return computeStatus(Number(row.next_payment_due), now);
+}
+
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,

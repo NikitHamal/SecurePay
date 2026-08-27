@@ -125,6 +125,9 @@ fun CustomerDetailScreen(
     val dealerRole by repository?.dealerRole?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<String?>(null) }
     val canDeleteCustomer = dealerRole?.uppercase()?.let { it != "AGENT" } ?: true
+    // Force-lock and force-unlock have the same admin-only privilege; the
+    // server returns 403 for agents, so hide both controls up-front.
+    val canAdministerAccount = dealerRole?.uppercase() != "AGENT"
     var isEditing by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf("") }
@@ -844,7 +847,7 @@ fun CustomerDetailScreen(
                     ButtonText("Cash / Record")
                 }
 
-                if (acc.status == AccountStatus.LOCKED) {
+                if (canAdministerAccount && acc.status == AccountStatus.LOCKED) {
                     OutlinedButton(
                         onClick = {
                             actionInProgress = true
@@ -873,7 +876,7 @@ fun CustomerDetailScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         ButtonText("Unlock")
                     }
-                } else {
+                } else if (canAdministerAccount) {
                     OutlinedButton(
                         onClick = {
                             actionInProgress = true

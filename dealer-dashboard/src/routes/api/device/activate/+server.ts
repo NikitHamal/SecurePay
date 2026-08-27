@@ -2,10 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
   getDb,
-  computeStatus,
+  computeAccountStatus,
   errorResponse,
   releaseFields,
-  releaseApproved,
   getDealerSecurityPolicy,
   generateDeviceApiSecret
 } from '$lib/api/server';
@@ -86,9 +85,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
   const release = releaseFields(account as Record<string, unknown>);
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const isStolen = Number(account.is_stolen ?? 0) === 1;
-  const status = releaseApproved(account as Record<string, unknown>)
-    ? 'ACTIVE'
-    : (isStolen ? 'STOLEN' : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due))));
+  const status = computeAccountStatus(account as Record<string, unknown>);
 
   return json({
     enrolled: true,

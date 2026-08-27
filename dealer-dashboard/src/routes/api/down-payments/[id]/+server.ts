@@ -31,7 +31,8 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   const db = getDb({ platform });
   await ensure(db);
   const sub = await db.prepare(`
-    SELECT s.*, a.total_loan_amount, a.amount_paid, a.enrolled_by, a.agency_id, a.branch_id, d.imei, d.model
+    SELECT s.*, a.total_loan_amount, a.amount_paid, a.down_payment, a.down_payment_status,
+           a.enrolled_by, a.agency_id, a.branch_id, d.imei, d.model
     FROM down_payment_submissions s
     JOIN accounts a ON a.id = s.account_id
     JOIN devices d ON d.id = s.device_id
@@ -46,18 +47,42 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   const now = Math.floor(Date.now() / 1000);
   if (action === 'confirm') {
     const amount = Number(sub.amount);
-    await db.batch([
-      db.prepare("UPDATE down_payment_submissions SET status='confirmed', confirmed_by=?, confirmed_at=?, updated_at=?, note=? WHERE id=?").bind(locals.dealer.id, now, now, note, params.id),
-      db.prepare("UPDATE accounts SET amount_paid = amount_paid + ?, down_payment_status='confirmed', down_payment_confirmed_by=?, down_payment_confirmed_at=?, updated_at=? WHERE id=?").bind(amount, locals.dealer.id, now, now, sub.account_id),
-      db.prepare("INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at) VALUES (?, ?, ?, 'cash', ?, ?, ?)").bind(uuidv4(), sub.account_id, amount, `Down payment confirmed (${sub.imei})`, locals.dealer.id, now)
-    ]);
+    // Submissions created by applyPayment (agent cash already credited through
+    // /api/payments) carry a payment: prefix — confirming them must not credit
+    // amount_paid a second time.
+    const alreadyCredited = String(sub.reference ?? '').startsWith('payment:');
+    if (alreadyCredited) {
+      const required = Number(sub.down_payment ?? 0) || 0;
+      const paid = Number(sub.amount_paid) || 0;
+      await db.batch([
+        db.prepare("UPDATE down_payment_submissions SET status='confirmed', confirmed_by=?, confirmed_at=?, updated_at=?, note=? WHERE id=?").bind(locals.dealer.id, now, now, note, params.id),
+        ...(required > 0 && paid >= required && sub.down_payment_status !== 'confirmed'
+          ? [db.prepare("UPDATE accounts SET down_payment_status='confirmed', down_payment_confirmed_by=?, down_payment_confirmed_at=?, updated_at=? WHERE id=?").bind(locals.dealer.id, now, now, sub.account_id)]
+          : [])
+      ]);
+    } else {
+      await db.batch([
+        db.prepare("UPDATE down_payment_submissions SET status='confirmed', confirmed_by=?, confirmed_at=?, updated_at=?, note=? WHERE id=?").bind(locals.dealer.id, now, now, note, params.id),
+        db.prepare("UPDATE accounts SET amount_paid = amount_paid + ?, down_payment_status='confirmed', down_payment_confirmed_by=?, down_payment_confirmed_at=?, updated_at=? WHERE id=?").bind(amount, locals.dealer.id, now, now, sub.account_id),
+        db.prepare("INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at) VALUES (?, ?, ?, 'cash', ?, ?, ?)").bind(uuidv4(), sub.account_id, amount, `Down payment confirmed (${sub.imei})`, locals.dealer.id, now)
+      ]);
+    }
     await logActivity(db, { actor: locals.dealer!, action: 'DOWN_PAYMENT_CONFIRMED', details: `Confirmed GHS ${(amount/100).toFixed(2)} for ${sub.imei}`, accountId: sub.account_id, imei: sub.imei });
     // Notify agent
     await db.prepare("INSERT INTO notifications (id, recipient_id, type, title, message, related_entity_type, related_entity_id, created_at) VALUES (?, ?, 'DOWN_PAYMENT_CONFIRMED', 'Down payment confirmed', ?, 'account', ?, ?)")
       .bind(uuidv4(), sub.agent_id, `Your GHS ${(amount/100).toFixed(2)} down payment for ${sub.model} (${sub.imei}) was confirmed. Device can now be provisioned.`, sub.account_id, now).run();
   } else {
-    await db.prepare("UPDATE down_payment_submissions SET status='rejected', confirmed_by=?, confirmed_at=?, updated_at=?, note=? WHERE id=?").bind(locals.dealer.id, now, now, note, params.id).run();
-    await db.prepare("UPDATE accounts SET down_payment_status='rejected', updated_at=? WHERE id=?").bind(now, sub.account_id).run();
+    const alreadyCredited = String(sub.reference ?? '').startsWith('payment:');
+    const statements = [
+      db.prepare("UPDATE down_payment_submissions SET status='rejected', confirmed_by=?, confirmed_at=?, updated_at=?, note=? WHERE id=?").bind(locals.dealer.id, now, now, note, params.id)
+    ];
+    // Already-credited submissions (agent cash via /api/payments) have their
+    // money on the ledger regardless; only flag the account rejected when the
+    // submission itself was the sole record of that cash.
+    if (!alreadyCredited) {
+      statements.push(db.prepare("UPDATE accounts SET down_payment_status='rejected', updated_at=? WHERE id=?").bind(now, sub.account_id));
+    }
+    await db.batch(statements);
     await logActivity(db, { actor: locals.dealer!, action: 'DOWN_PAYMENT_REJECTED', details: `Rejected down payment for ${sub.imei}: ${note ?? ''}`, accountId: sub.account_id, imei: sub.imei });
     await db.prepare("INSERT INTO notifications (id, recipient_id, type, title, message, related_entity_type, related_entity_id, created_at) VALUES (?, ?, 'DOWN_PAYMENT_REJECTED', 'Down payment rejected', ?, 'account', ?, ?)")
       .bind(uuidv4(), sub.agent_id, `Down payment for ${sub.model} (${sub.imei}) was rejected${note ? ': ' + note : ''}. Please resubmit.`, sub.account_id, now).run();

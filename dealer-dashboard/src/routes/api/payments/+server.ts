@@ -1,14 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, releaseHorizon } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields } from '$lib/api/server';
 import { parsePaymentMethod, paymentMethodStorageValue } from '$lib/payment-method';
-import { v4 as uuidv4 } from 'uuid';
+import { applyPayment } from '$lib/payments';
 import type { Customer, Status } from '$lib/types';
 import { getAccountScopeFilter } from '$lib/auth';
 import { logActivity } from '$lib/audit';
-import { notifyPaymentSuccess } from '$lib/notify';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) {
@@ -35,55 +32,30 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('Account not found', 404);
   }
 
-  const currentPaid = Number(account.amount_paid);
   const totalLoan = Number(account.total_loan_amount);
-  if (amount > Math.max(0, totalLoan - currentPaid)) {
-    return errorResponse('Payment exceeds the remaining loan balance', 409);
-  }
-
-  const newAmountPaid = currentPaid + amount;
-  const paidOff = newAmountPaid >= totalLoan;
   const dailyRate = Number(account.daily_rate);
-  if (!Number.isSafeInteger(dailyRate) || dailyRate <= 0) {
-    return errorResponse('Account daily rate is invalid', 409);
-  }
 
-  const currentDue = Number(account.next_payment_due);
-  const now = Date.now();
-  const nowSec = Math.floor(now / 1000);
-  const base = Math.max(currentDue, now);
-  // Precise millisecond extension: every cent pays for (DAY_MS / dailyRate) ms.
-  // Sub-day precision guaranteed — 5 GHS on 20 GHS/day = 6 hours exactly.
-  const msExtended = Math.floor((amount / dailyRate) * DAY_MS);
-  const newDue = paidOff
-    ? releaseHorizon(now)
-    : base + msExtended;
-
-  const paymentId = uuidv4();
-  await db.batch([
-    db.prepare(
-      `INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      paymentId,
+  let paymentId: string;
+  try {
+    ({ paymentId } = await applyPayment({
+      db,
       accountId,
       amount,
-      paymentMethodStorageValue(method),
-      reference || null,
-      locals.dealer.id,
-      Math.floor(now / 1000)
-    ),
-    db.prepare(
-      `UPDATE accounts
-          SET amount_paid = ?,
-              next_payment_due = ?,
-              locked_by_dealer = 0,
-              release_approved = CASE WHEN ? THEN 1 ELSE release_approved END,
-              release_approved_at = CASE WHEN ? THEN COALESCE(release_approved_at, ?) ELSE release_approved_at END,
-              updated_at = ?
-        WHERE id = ?`
-    ).bind(newAmountPaid, newDue, paidOff ? 1 : 0, paidOff ? 1 : 0, nowSec, nowSec, accountId)
-  ]);
+      method: paymentMethodStorageValue(method),
+      reference,
+      recordedBy: locals.dealer.id,
+      env: platform?.env
+    }));
+  } catch (error) {
+    const message = String(error);
+    if (message.includes('exceeds remaining')) {
+      return errorResponse('Payment exceeds the remaining loan balance', 409);
+    }
+    if (message.includes('daily rate')) {
+      return errorResponse('Account daily rate is invalid', 409);
+    }
+    return errorResponse('Payment could not be recorded', 409);
+  }
 
   const row = await db.prepare(`
     SELECT a.*, d.imei, d.model as device_model, COALESCE(p.name, 'Custom') as plan_name
@@ -106,12 +78,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     imei: String(row.imei)
   });
 
-  // Customer trigger: "successful payment" push onto the enrolled device.
-  void notifyPaymentSuccess(db, platform?.env, { accountId, paymentId, amount, recordedBy: locals.dealer.id });
-
   const nextDue = Number(row.next_payment_due);
   const amtPaid = Number(row.amount_paid);
-  const status: Status = releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
+  const status: Status = computeAccountStatus(row as Record<string, unknown>);
 
   const customer: Customer = {
     id: row.id as string,

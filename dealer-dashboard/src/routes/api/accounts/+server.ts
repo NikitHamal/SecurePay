@@ -2,10 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
   getDb,
-  computeStatus,
+  computeAccountStatus,
   errorResponse,
   releaseFields,
-  releaseApproved,
   getR2,
   generateAccountId,
   generateCustomerPin
@@ -273,9 +272,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
     const createdAt = rawCreated > 0 && rawCreated < 1e11 ? rawCreated * 1000 : rawCreated;
     const amountPaid = Number(row.amount_paid);
     const totalLoanAmount = Number(row.total_loan_amount);
-    const status: Status = releaseApproved(row as Record<string, unknown>)
-      ? 'ACTIVE'
-      : (row.is_stolen === 1 ? 'STOLEN' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue)));
+    const status: Status = computeAccountStatus(row as Record<string, unknown>);
 
     return {
       id: row.id as string,
@@ -562,8 +559,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('Unable to store KYC images. No customer account was created.', 502);
   }
 
-  // Down-payment settlement: agents' cash goes to pending approval; admins confirm instantly.
-  const downPaymentStatus = isAgent ? (downPayment > 0 ? 'pending' : 'unpaid') : (downPayment > 0 ? 'confirmed' : 'unpaid');
+  // Down-payment settlement: for agents the down payment is NOT considered
+  // received at enrollment — the first real payment settles it (via any
+  // channel) and unlocks the phone; admins can confirm instantly here.
+  const downPaymentStatus = downPayment > 0 ? (isAgent ? 'unpaid' : 'confirmed') : 'unpaid';
   const initialAmountPaid = isAgent ? 0 : downPayment;
   const downPaymentConfirmedBy = !isAgent && downPayment > 0 ? locals.dealer.id : null;
   const downPaymentConfirmedAt = !isAgent && downPayment > 0 ? nowSeconds : null;
@@ -649,18 +648,11 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     ).bind(enrollmentLat, enrollmentLng, enrollmentAccuracy, accountId));
   }
 
-  if (downPayment > 0) {
-    if (isAgent) {
-      statements.push(db.prepare(`
-        INSERT INTO down_payment_submissions (id, account_id, device_id, agent_id, amount, status, method, submitted_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', 'cash', ?, ?, ?)
-      `).bind(uuidv4(), accountId, device.id, locals.dealer.id, downPayment, nowSeconds, nowSeconds, nowSeconds));
-    } else {
-      statements.push(db.prepare(`
-        INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
-        VALUES (?, ?, ?, 'cash', 'Down payment', ?, ?)
-      `).bind(uuidv4(), accountId, downPayment, locals.dealer.id, nowSeconds));
-    }
+  if (downPayment > 0 && !isAgent) {
+    statements.push(db.prepare(`
+      INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
+      VALUES (?, ?, ?, 'cash', 'Down payment', ?, ?)
+    `).bind(uuidv4(), accountId, downPayment, locals.dealer.id, nowSeconds));
   }
 
   try {
@@ -720,9 +712,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
   const amountPaid = Number(row.amount_paid);
   const total = Number(row.total_loan_amount);
-  const status: Status = releaseApproved(row as Record<string, unknown>)
-    ? 'ACTIVE'
-    : computeStatus(Number(row.next_payment_due));
+  const status: Status = computeAccountStatus(row as Record<string, unknown>);
 
   const customer: Customer = {
     id: row.id as string,

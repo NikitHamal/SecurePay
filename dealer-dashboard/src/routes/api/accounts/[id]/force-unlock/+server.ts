@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields } from '$lib/api/server';
 import { sendFcm } from '$lib/api/fcm';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
@@ -9,6 +9,9 @@ import { getAccountScopeFilter } from '$lib/auth';
 export const POST: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) {
     return errorResponse('Unauthorized', 401);
+  }
+  if (locals.dealer.role === 'AGENT') {
+    return errorResponse('Agents cannot force-unlock accounts', 403);
   }
 
   const accountId = params.id;
@@ -66,7 +69,7 @@ export const POST: RequestHandler = async ({ locals, params, platform }) => {
     remainingBalance: Math.max(0, totalLoan - amtPaid),
     dailyRate: Number(row!.daily_rate),
     nextPaymentDueEpochMillis: nextDue,
-    status: Number(row!.is_stolen ?? 0) === 1 ? 'STOLEN' : computeStatus(nextDue),
+    status: computeAccountStatus(row as Record<string, unknown>),
     lockedByDealer: Number(row!.locked_by_dealer ?? 0),
     isStolen: Number(row!.is_stolen ?? 0) === 1,
     termDays: Number(row!.term_days),

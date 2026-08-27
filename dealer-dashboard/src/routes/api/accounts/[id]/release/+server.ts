@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, releaseHorizon } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields, releaseHorizon } from '$lib/api/server';
 import { getAccountScopeFilter, canReleaseOrDeleteAccount } from '$lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Status } from '$lib/types';
@@ -72,9 +72,7 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   const nextDue = Number(row.next_payment_due);
   const amtPaid = Number(row.amount_paid);
   const totalLoan = Number(row.total_loan_amount);
-  const status: Status = releaseApproved(row as Record<string, unknown>)
-    ? 'ACTIVE'
-    : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextDue));
+  const status: Status = computeAccountStatus(row as Record<string, unknown>);
 
   const customer: Customer = {
     id: row.id as string,

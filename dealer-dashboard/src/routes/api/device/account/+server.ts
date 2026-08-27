@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy, getPaystackSecret } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields, downPaymentSettled, getDealerSecurityPolicy, getPaystackSecret } from '$lib/api/server';
 import { requeryPendingPayments } from '$lib/paystack-sync';
 
 /**
@@ -48,7 +48,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(row.dealer_id));
   const totalLoanAmount = Number(row.total_loan_amount);
   const isStolen = Number(row.is_stolen ?? 0) === 1;
-  const lockedByDealer = Number(row.locked_by_dealer) === 1 || isStolen;
+  const lockedByDealer = Number(row.locked_by_dealer) === 1 || isStolen || !downPaymentSettled(row as Record<string, unknown>);
 
   return json({
     id: row.id,
@@ -63,7 +63,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     remainingBalance: Math.max(0, totalLoanAmount - amountPaid),
     dailyRate: Number(row.daily_rate),
     nextPaymentDueEpochMillis: nextPaymentDue,
-    status: releaseApproved(row as Record<string, unknown>) ? 'ACTIVE' : (isStolen ? 'STOLEN' : (lockedByDealer ? 'LOCKED' : computeStatus(nextPaymentDue))),
+    status: computeAccountStatus(row as Record<string, unknown>),
     lockedByDealer: lockedByDealer ? 1 : 0,
     isStolen,
     downPayment: Number(row.down_payment),

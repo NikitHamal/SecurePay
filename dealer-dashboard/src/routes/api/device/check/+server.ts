@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields, releaseApproved, getDealerSecurityPolicy, generateDeviceApiSecret } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields, getDealerSecurityPolicy, generateDeviceApiSecret } from '$lib/api/server';
 
 export const GET: RequestHandler = async ({ url, platform, locals }) => {
   if (!locals.hmacVerified) {
@@ -76,9 +76,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
   const securityPolicy = await getDealerSecurityPolicy({ platform }, String(account.dealer_id));
   const release = releaseFields(account as Record<string, unknown>);
   const isStolen = Number(account.is_stolen ?? 0) === 1;
-  const status = releaseApproved(account as Record<string, unknown>)
-    ? 'ACTIVE'
-    : (isStolen ? 'STOLEN' : (account.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(Number(account.next_payment_due))));
+  const status = computeAccountStatus(account as Record<string, unknown>);
 
   return json({
     enrolled: true,

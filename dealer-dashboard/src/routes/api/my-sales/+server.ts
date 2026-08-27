@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, computeStatus, errorResponse, releaseFields } from '$lib/api/server';
+import { getDb, computeAccountStatus, errorResponse, releaseFields } from '$lib/api/server';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
@@ -21,9 +21,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 
   const sales = result.results.map((row) => {
     const nextPaymentDue = Number(row.next_payment_due);
-    const status = row.release_approved === 1
-      ? 'ACTIVE'
-      : (row.is_stolen === 1 ? 'STOLEN' : (row.locked_by_dealer === 1 ? 'LOCKED' : computeStatus(nextPaymentDue)));
+    const status = computeAccountStatus(row as Record<string, unknown>);
 
     return {
       id: row.id,
