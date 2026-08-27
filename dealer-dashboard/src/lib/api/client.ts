@@ -190,9 +190,12 @@ export async function createAccount(data: {
 }
 
 export async function extendTimer(id: string, hours: number): Promise<Customer> {
+  const account = await request<Customer>(`/accounts/${id}`);
+  const currentDue = account.nextPaymentDueEpochMillis ?? Date.now();
+  const extended = Math.max(Date.now(), currentDue) + hours * 60 * 60 * 1000;
   return request<Customer>(`/accounts/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ nextPaymentDue: Date.now() + hours * 60 * 60 * 1000 })
+    body: JSON.stringify({ nextPaymentDue: extended })
   });
 }
 
