@@ -36,6 +36,7 @@ declare global {
         PAYSTACK_SECRET_KEY?: string;
         JEST_USSD_USER_ID?: string;
         SUPPORT_PHONE?: string;
+        CRON_SECRET?: string;
       };
     }
   }
