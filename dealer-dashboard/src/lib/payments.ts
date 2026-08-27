@@ -7,6 +7,7 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { v4 as uuidv4 } from 'uuid';
 import { notifyPaymentSuccess, type PushEnv } from '$lib/notify';
+import { ensureDownPaymentSchema } from '$lib/api/server';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -38,6 +39,10 @@ export interface ApplyPaymentResult {
  */
 export async function applyPayment(input: ApplyPaymentInput): Promise<ApplyPaymentResult> {
   const { db, accountId, amount, method, reference, recordedBy } = input;
+
+  // The down-payment table must exist before any payment (an agent-cash batch
+  // or a webhook) writes a submission into it on a first-time database.
+  await ensureDownPaymentSchema(db);
 
   const account = await db.prepare(
     `SELECT * FROM accounts WHERE id = ?`

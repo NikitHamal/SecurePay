@@ -26,7 +26,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   }
 
   const db = getDb({ platform });
-  const results = await requeryPendingPayments(db, secret, {});
+  let results;
+  try {
+    results = await requeryPendingPayments(db, secret, {});
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ ok: false, error: message }, { status: 500 });
+  }
 
   const summary = {
     ok: true,

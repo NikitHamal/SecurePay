@@ -2,9 +2,13 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, errorResponse } from '$lib/api/server';
 import { sendFcm, type FcmDataMessage } from '$lib/api/fcm';
-import { getAccountScopeFilter } from '$lib/auth';
+import { getAccountScopeFilter, isAgent } from '$lib/auth';
 
 const VALID_TYPES = ['lock', 'unlock', 'sync', 'stolen', 'notification'] as const;
+// Locking/unlocking a device is an admin action. Flagging a device stolen or
+// recovering it stays available to in-scope agents (same rules as the accounts
+// PATCH isStolen and the force-lock/force-unlock endpoints).
+const ADMIN_ONLY_TYPES = new Set(['lock', 'unlock']);
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!locals.dealer) {
@@ -20,6 +24,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   }
   if (!type || !VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
     return errorResponse(`Invalid push type; must be one of: ${VALID_TYPES.join(', ')}`, 400);
+  }
+  if (ADMIN_ONLY_TYPES.has(type as string) && isAgent(locals.dealer.role)) {
+    return errorResponse('Only admins can lock or unlock devices', 403);
   }
 
   const db = getDb({ platform });

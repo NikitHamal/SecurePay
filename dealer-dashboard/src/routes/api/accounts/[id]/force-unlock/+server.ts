@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { getDb, computeAccountStatus, errorResponse, releaseFields } from '$lib/api/server';
 import { sendFcm } from '$lib/api/fcm';
 import { v4 as uuidv4 } from 'uuid';
-import type { Customer, Status } from '$lib/types';
+import type { Customer } from '$lib/types';
 import { getAccountScopeFilter } from '$lib/auth';
 
 export const POST: RequestHandler = async ({ locals, params, platform }) => {

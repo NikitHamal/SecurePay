@@ -1,25 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, errorResponse } from '$lib/api/server';
+import { getDb, errorResponse, ensureDownPaymentSchema } from '$lib/api/server';
 import { logActivity } from '$lib/audit';
 import { v4 as uuidv4 } from 'uuid';
-
-let ensurePromise: Promise<void> | null = null;
-function ensure(db: ReturnType<typeof getDb>): Promise<void> {
-  if (!ensurePromise) {
-    ensurePromise = (async () => {
-      await db.prepare(`CREATE TABLE IF NOT EXISTS down_payment_submissions (
-        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-        device_id TEXT NOT NULL REFERENCES devices(id), agent_id TEXT NOT NULL REFERENCES dealers(id),
-        amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','rejected','cancelled')),
-        method TEXT NOT NULL DEFAULT 'cash', reference TEXT, submitted_at INTEGER NOT NULL DEFAULT (unixepoch()),
-        confirmed_by TEXT REFERENCES dealers(id), confirmed_at INTEGER, note TEXT,
-        created_at INTEGER DEFAULT (unixepoch()), updated_at INTEGER DEFAULT (unixepoch())
-      )`).run();
-    })().catch(e=>{ ensurePromise=null; throw e; });
-  }
-  return ensurePromise;
-}
 
 export const POST: RequestHandler = async ({ locals, params, request, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
@@ -29,7 +12,7 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
   const note = body?.note ? String(body.note).slice(0, 500) : null;
   if (!['confirm','reject'].includes(action)) return errorResponse('action must be confirm or reject', 400);
   const db = getDb({ platform });
-  await ensure(db);
+  await ensureDownPaymentSchema(db);
   const sub = await db.prepare(`
     SELECT s.*, a.total_loan_amount, a.amount_paid, a.down_payment, a.down_payment_status,
            a.enrolled_by, a.agency_id, a.branch_id, d.imei, d.model
@@ -94,7 +77,7 @@ export const POST: RequestHandler = async ({ locals, params, request, platform }
 export const GET: RequestHandler = async ({ locals, params, platform }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
   const db = getDb({ platform });
-  await ensure(db);
+  await ensureDownPaymentSchema(db);
   const row = await db.prepare(`
     SELECT s.*, a.customer_name, d.imei, d.model, ag.name as agent_name
     FROM down_payment_submissions s

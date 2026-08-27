@@ -1,34 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, errorResponse } from '$lib/api/server';
+import { getDb, errorResponse, ensureDownPaymentSchema } from '$lib/api/server';
 import { v4 as uuidv4 } from 'uuid';
-
-let ensureTable: Promise<void> | null = null;
-function ensure(db: ReturnType<typeof getDb>): Promise<void> {
-  if (!ensureTable) {
-    ensureTable = (async () => {
-      await db.prepare(`CREATE TABLE IF NOT EXISTS down_payment_submissions (
-        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-        device_id TEXT NOT NULL REFERENCES devices(id), agent_id TEXT NOT NULL REFERENCES dealers(id),
-        amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','rejected','cancelled')),
-        method TEXT NOT NULL DEFAULT 'cash', reference TEXT, submitted_at INTEGER NOT NULL DEFAULT (unixepoch()),
-        confirmed_by TEXT REFERENCES dealers(id), confirmed_at INTEGER, note TEXT,
-        created_at INTEGER DEFAULT (unixepoch()), updated_at INTEGER DEFAULT (unixepoch())
-      )`).run();
-      const info = await db.prepare('PRAGMA table_info(accounts)').all();
-      const cols = new Set(info.results.map((r: any) => String(r.name)));
-      for (const [c, ddl] of [['down_payment_status','TEXT'],['down_payment_confirmed_by','TEXT'],['down_payment_confirmed_at','INTEGER']] as const) {
-        if (!cols.has(c)) await db.prepare(`ALTER TABLE accounts ADD COLUMN ${c} ${ddl}`).run();
-      }
-    })().catch(e=>{ ensureTable=null; throw e; });
-  }
-  return ensureTable;
-}
 
 export const GET: RequestHandler = async ({ locals, platform, url }) => {
   if (!locals.dealer) return errorResponse('Unauthorized', 401);
   const db = getDb({ platform });
-  await ensure(db);
+  await ensureDownPaymentSchema(db);
   const status = url.searchParams.get('status');
   const isAgent = locals.dealer.role === 'AGENT';
   let rows;
@@ -90,7 +68,7 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!accountId) return errorResponse('accountId required', 400);
   if (!Number.isSafeInteger(amount) || amount <= 0) return errorResponse('amount must be positive pesewas', 400);
   const db = getDb({ platform });
-  await ensure(db);
+  await ensureDownPaymentSchema(db);
   const account = await db.prepare('SELECT id, device_id, enrolled_by, total_loan_amount, down_payment FROM accounts WHERE id = ?').bind(accountId).first<any>();
   if (!account) return errorResponse('Account not found', 404);
   // Only the enrolling agent or agency admin can submit for this account.

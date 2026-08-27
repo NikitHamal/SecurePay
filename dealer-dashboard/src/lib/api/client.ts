@@ -349,6 +349,9 @@ export async function listDownPayments(status?: string): Promise<DownPaymentSubm
   const qs = status ? `?status=${status}` : '';
   return request(`/down-payments${qs}`);
 }
+export async function submitDownPayment(data: { accountId: string; amount: number; reference?: string }): Promise<{ id: string; accountId: string; amount: number; status: string; submittedAt: number }> {
+  return request('/down-payments', { method: 'POST', body: JSON.stringify(data) });
+}
 export async function confirmDownPayment(id: string, note?: string): Promise<{ id: string; status: string }> {
   return request(`/down-payments/${id}`, { method: 'POST', body: JSON.stringify({ action: 'confirm', note }) });
 }

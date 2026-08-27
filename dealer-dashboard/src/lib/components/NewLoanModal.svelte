@@ -987,7 +987,7 @@
       </p>
       {#if isAgent}
         <p class="rounded-lg border border-sky/25 bg-sky/10 p-3 text-left text-xs text-sky">
-          <strong>Down payment pending:</strong> Cash collected is awaiting admin confirmation (check Down Payments). Device provisioning is blocked until the admin confirms the GH₵ {(downCents/100).toFixed(2)} payment.
+          <strong>Down payment:</strong> The phone stays locked until the GH₵ {(downCents/100).toFixed(2)} down payment is received. If the customer paid you in cash, record it as a payment — an admin will confirm it on the Down Payments page before provisioning is allowed.
         </p>
       {/if}
     </div>

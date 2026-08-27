@@ -180,6 +180,36 @@ export function computeAccountStatus(row: Record<string, unknown>, now = Date.no
   return computeStatus(Number(row.next_payment_due), now);
 }
 
+let ensureDownPaymentSchemaPromise: Promise<void> | null = null;
+
+/**
+ * Creates the down_payment_submissions table (and backfills the account columns
+ * it needs) if it doesn't exist yet. Idempotent and shared by every code path
+ * that writes down-payment state — payments, sync, webhooks and the
+ * down-payments admin routes — so a payment batch never fails on a fresh
+ * database that hasn't run the migration or opened the admin page yet.
+ */
+export function ensureDownPaymentSchema(db: D1Database): Promise<void> {
+  if (!ensureDownPaymentSchemaPromise) {
+    ensureDownPaymentSchemaPromise = (async () => {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS down_payment_submissions (
+        id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        device_id TEXT NOT NULL REFERENCES devices(id), agent_id TEXT NOT NULL REFERENCES dealers(id),
+        amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','rejected','cancelled')),
+        method TEXT NOT NULL DEFAULT 'cash', reference TEXT, submitted_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        confirmed_by TEXT REFERENCES dealers(id), confirmed_at INTEGER, note TEXT,
+        created_at INTEGER DEFAULT (unixepoch()), updated_at INTEGER DEFAULT (unixepoch())
+      )`).run();
+      const info = await db.prepare('PRAGMA table_info(accounts)').all();
+      const cols = new Set(info.results.map((r: { name?: unknown }) => String(r.name)));
+      for (const [c, ddl] of [['down_payment_status','TEXT'],['down_payment_confirmed_by','TEXT'],['down_payment_confirmed_at','INTEGER']] as const) {
+        if (!cols.has(c)) await db.prepare(`ALTER TABLE accounts ADD COLUMN ${c} ${ddl}`).run();
+      }
+    })().catch((e) => { ensureDownPaymentSchemaPromise = null; throw e; });
+  }
+  return ensureDownPaymentSchemaPromise;
+}
+
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,

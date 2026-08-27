@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { D1Database } from '@cloudflare/workers-types';
-import { getDb, getPaystackSecret } from '$lib/api/server';
+import { getDb, getPaystackSecret, computeAccountStatus } from '$lib/api/server';
 import {
   generateReference,
   hasPaystackConfigured,
@@ -121,8 +121,13 @@ interface StatusInfo {
 function evaluateStatus(account: Record<string, any>): StatusInfo {
   const due = Number(account.next_payment_due) || 0;
   if (Number(account.release_approved) === 1) return { label: 'PAID OFF', due };
-  if (Number(account.locked_by_dealer) === 1) return { label: 'LOCKED', due };
-  if (due > 0 && due <= Date.now()) return { label: 'OVERDUE', due };
+  const canonical = computeAccountStatus(account);
+  if (canonical === 'STOLEN') return { label: 'STOLEN', due };
+  if (canonical === 'LOCKED') {
+    if (due > 0 && due <= Date.now()) return { label: 'OVERDUE', due };
+    return { label: 'LOCKED', due };
+  }
+  if (canonical === 'WARNING') return { label: 'WARNING', due };
   return { label: 'ACTIVE', due };
 }
 
