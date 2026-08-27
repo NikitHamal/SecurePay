@@ -2,5 +2,8 @@ name = "securepay-reconcile"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 
+[vars]
+DASHBOARD_URL = "https://securepay-dashboard.pages.dev"
+
 [triggers]
 crons = ["*/5 * * * *"]

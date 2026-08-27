@@ -34,11 +34,16 @@ async function runOnce(env: Record<string, string | undefined>): Promise<void> {
   }
 
   try {
-    const res = await fetch(`${(env.DASHBOARD_URL ?? 'https://securepay-dashboard.pages.dev').replace(/\/$/, '')}/api/cron/reconcile`, {
+    const dashboardUrl = (env.DASHBOARD_URL ?? 'https://securepay-dashboard.pages.dev').replace(/\/$/, '');
+    const res = await fetch(`${dashboardUrl}/api/cron/reconcile`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-cron-secret': secret
+        'x-cron-secret': secret,
+        // SvelteKit CSRF check: POST to /api/* is rejected if Origin mismatches.
+        // Workers fetch has no Origin by default; browsers add one. Explicitly set it so
+        // the check passes on the dashboard (hooks.server.ts also normalizes it).
+        'origin': dashboardUrl
       }
     });
     if (!res.ok) {

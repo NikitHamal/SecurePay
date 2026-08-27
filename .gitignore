@@ -9,6 +9,10 @@ nul
 .env
 .env.local
 
+# Cron Worker local secret (never commit)
+.cron_secret.tmp
+cron-worker/.cron_secret.tmp
+
 # Python
 __pycache__/
 *.pyc
