@@ -218,9 +218,9 @@ fun CustomerDetailScreen(
                 customerName = editName.trim().takeIf { it != acc.customerName },
                 nationalId = editNationalId.trim().takeIf { it != acc.nationalId },
                 phoneNumber = editPhone.trim().takeIf { it != acc.phoneNumber },
-                dailyRate = newDaily.takeIf { it != acc.dailyRate },
-                totalLoanAmount = newTotal.takeIf { it != acc.totalLoanAmount },
-                termDays = newTerm.takeIf { it != acc.termDays },
+                dailyRate = if (canAdministerAccount) newDaily.takeIf { it != acc.dailyRate } else null,
+                totalLoanAmount = if (canAdministerAccount) newTotal.takeIf { it != acc.totalLoanAmount } else null,
+                termDays = if (canAdministerAccount) newTerm.takeIf { it != acc.termDays } else null,
                 customerPhoto = editCustomerPhoto,
                 nationalIdFront = editNationalIdFront,
                 nationalIdBack = editNationalIdBack
@@ -429,9 +429,13 @@ fun CustomerDetailScreen(
                         EditField(label = "Name", value = editName, onValueChange = { editName = it })
                         EditField(label = "National ID", value = editNationalId, onValueChange = { editNationalId = it })
                         EditField(label = "Phone", value = editPhone, onValueChange = { editPhone = it })
-                        EditField(label = "Daily Rate (GHS)", value = editDailyRate, onValueChange = { editDailyRate = it }, isNumber = true)
-                        EditField(label = "Total Loan (GHS)", value = editTotalLoan, onValueChange = { editTotalLoan = it }, isNumber = true)
-                        EditField(label = "Term (days)", value = editTermDays, onValueChange = { editTermDays = it }, isNumber = true)
+                        // Daily rate, loan amount, and term are admin-only fields; the
+                        // server rejects edits from agents, so don't expose the inputs.
+                        if (canAdministerAccount) {
+                            EditField(label = "Daily Rate (GHS)", value = editDailyRate, onValueChange = { editDailyRate = it }, isNumber = true)
+                            EditField(label = "Total Loan (GHS)", value = editTotalLoan, onValueChange = { editTotalLoan = it }, isNumber = true)
+                            EditField(label = "Term (days)", value = editTermDays, onValueChange = { editTermDays = it }, isNumber = true)
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("KYC Verification Photos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -945,23 +949,25 @@ fun CustomerDetailScreen(
                 ButtonText("Reset customer login PIN")
             }
 
-            OutlinedButton(
-                onClick = {
-                    actionInProgress = true
-                    scope.launch {
-                        repository?.approveRelease(acc.id, acc.remainingBalance > 0)
-                        actionInProgress = false
-                        loadAccount()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                enabled = !actionInProgress && !acc.releaseApproved && !isEditing,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(360.dp)
-            ) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                ButtonText(if (acc.remainingBalance > 0) "Approve Release" else "Approve Removal")
+            if (canAdministerAccount) {
+                OutlinedButton(
+                    onClick = {
+                        actionInProgress = true
+                        scope.launch {
+                            repository?.approveRelease(acc.id, acc.remainingBalance > 0)
+                            actionInProgress = false
+                            loadAccount()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    enabled = !actionInProgress && !acc.releaseApproved && !isEditing,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(360.dp)
+                ) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ButtonText(if (acc.remainingBalance > 0) "Approve Release" else "Approve Removal")
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
