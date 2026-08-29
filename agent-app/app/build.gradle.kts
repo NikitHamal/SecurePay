@@ -39,7 +39,7 @@ android {
         applicationId = "com.touchbase.agent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
+        versionCode = 18
         versionName = "1.8.2"
 
         buildConfigField("String", "SUPPORT_PHONE", buildConfigString(supportPhone))
