@@ -54,7 +54,10 @@ android {
 
     buildTypes {
         debug {
-            val debugUrl = configured("TB_DEBUG_API_BASE_URL", "http://10.0.2.2:5173/api/")
+            // Default to prod so a debug APK installed on a physical device still reaches the
+            // dashboard. Emulator/local dev can still override via TB_DEBUG_API_BASE_URL
+            // (e.g. http://10.0.2.2:5173/api/ for the Android emulator).
+            val debugUrl = configured("TB_DEBUG_API_BASE_URL", "https://securepay-dashboard.pages.dev/api/")
             buildConfigField("String", "API_BASE_URL", buildConfigString(debugUrl))
             buildConfigField("String", "HMAC_SECRET", buildConfigString(hmacSecret))
             buildConfigField("String", "SIGNING_CERT_HASH", buildConfigString(signingCertHash))

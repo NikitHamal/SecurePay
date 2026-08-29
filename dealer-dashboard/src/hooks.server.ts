@@ -68,19 +68,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   const requestUrl = new URL(event.request.url);
   const path = requestUrl.pathname;
 
-  // SvelteKit's CSRF guard rejects cross-site POSTs to /api/* when Origin
-  // mismatches host. The standalone cron Worker (and any external caller of
-  // /api/cron/reconcile) posts from outside the Pages origin, so normalize it.
-  // The endpoint itself is still gated by x-cron-secret + PAYSTACK_SECRET_KEY.
-  if (path === '/api/cron/reconcile' && event.request.method === 'POST') {
-    const origin = event.request.headers.get('origin');
-    if (!origin || origin !== requestUrl.origin) {
-      const headers = new Headers(event.request.headers);
-      headers.set('origin', requestUrl.origin);
-      event.request = new Request(event.request, { headers });
-    }
-  }
-
   // Handle CORS preflight OPTIONS requests for API routes
   if (event.request.method === 'OPTIONS' && path.startsWith('/api/')) {
     return new Response(null, {
