@@ -25,8 +25,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -124,6 +126,8 @@ fun InventoryScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf(InventoryCategory.ALL) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -133,6 +137,27 @@ fun InventoryScreen(
     val canDeleteDevices = dealerRole?.uppercase()?.let { it != "AGENT" } ?: true
     // Per client model: agents never add devices — the admin creates, prices and assigns IMEIs.
     val canAddDevices = canDeleteDevices
+
+    // Filter the loaded inventory by the selected category, then by the search
+    // query across model, customer name and IMEI.
+    val filteredDevices = remember(devices, searchQuery, selectedCategory) {
+        val categoryFiltered = when (selectedCategory) {
+            InventoryCategory.ALL -> devices
+            InventoryCategory.IN_STOCK -> devices.filter { it.status == "in_stock" }
+            InventoryCategory.SOLD -> devices.filter { it.status == "sold" }
+        }
+        val query = searchQuery.trim()
+        if (query.isBlank()) {
+            categoryFiltered
+        } else {
+            val q = query.lowercase(Locale.ROOT)
+            categoryFiltered.filter { device ->
+                device.model.lowercase(Locale.ROOT).contains(q) ||
+                    (device.customerName?.lowercase(Locale.ROOT)?.contains(q) == true) ||
+                    device.imei.contains(q, ignoreCase = true)
+            }
+        }
+    }
 
     // Anti-fraud: the registration GPS fix is requested when the dialog opens.
     val locationPermission = rememberLauncherForActivityResult(
@@ -247,31 +272,113 @@ fun InventoryScreen(
             return@Scaffold
         }
 
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding).padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp)
         ) {
-            items(devices, key = { it.id }) { device ->
-                DeviceCard(
-                    device = device,
-                    onDelete = if (!canDeleteDevices) null else {
-                        {
-                            if (repository != null) {
-                                scope.launch {
-                                    val result = repository.deleteDevice(device.id)
-                                    result.fold(
-                                        onSuccess = { load() },
-                                        onFailure = {
-                                            error = it.message
-                                            load()
-                                        }
-                                    )
-                                }
-                            }
+            // Search bar — matches against phone model, customer name and IMEI.
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search model, customer or IMEI", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                )
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Search
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(360.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Category filter: All / In Stock / Sold.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InventoryCategory.entries.forEach { category ->
+                    InventoryCategoryChip(
+                        category = category,
+                        selected = category == selectedCategory,
+                        enabled = when (category) {
+                            InventoryCategory.ALL -> true
+                            InventoryCategory.IN_STOCK -> devices.any { it.status == "in_stock" }
+                            InventoryCategory.SOLD -> devices.any { it.status == "sold" }
+                        },
+                        onClick = { selectedCategory = category }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (filteredDevices.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (searchQuery.isNotBlank()) "No devices match your search" else "No devices in this category",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filteredDevices, key = { it.id }) { device ->
+                        DeviceCard(
+                            device = device,
+                            onDelete = if (!canDeleteDevices) null else {
+                                {
+                                    if (repository != null) {
+                                        scope.launch {
+                                            val result = repository.deleteDevice(device.id)
+                                            result.fold(
+                                                onSuccess = { load() },
+                                                onFailure = {
+                                                    error = it.message
+                                                    load()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -655,6 +762,46 @@ private fun AddDeviceBottomSheet(
             onScan = { digits ->
                 imei = digits
                 showScanner = false
+            }
+        )
+    }
+}
+
+private enum class InventoryCategory(val label: String) {
+    ALL("All"),
+    IN_STOCK("In Stock"),
+    SOLD("Sold")
+}
+
+@Composable
+private fun InventoryCategoryChip(
+    category: InventoryCategory,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(360.dp))
+            .background(
+                when {
+                    !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    selected -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+            )
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = category.label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = when {
+                !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                selected -> MaterialTheme.colorScheme.onPrimary
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
         )
     }
