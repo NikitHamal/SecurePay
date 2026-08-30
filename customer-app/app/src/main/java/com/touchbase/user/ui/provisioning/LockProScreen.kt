@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,7 +43,8 @@ import java.util.Locale
 @Composable
 fun LockProScreen(
     onGetStarted: () -> Unit,
-    onOpenWifi: () -> Unit = {}
+    onOpenWifi: () -> Unit = {},
+    onPowerOff: () -> Unit = {}
 ) {
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
@@ -134,6 +136,17 @@ fun LockProScreen(
                 )
                 Spacer(Modifier.height(16.dp))
             }
+
+            Icon(
+                imageVector = Icons.Filled.PowerSettingsNew,
+                contentDescription = "Power off",
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+                    .size(23.dp)
+                    .clickable { onPowerOff() },
+                tint = TextSecondary
+            )
 
             Icon(
                 imageVector = Icons.Filled.Settings,

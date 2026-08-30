@@ -33,6 +33,7 @@ import com.touchbase.user.ui.release.ReleaseApprovedScreen
 import com.touchbase.user.ui.account.AccountScreen
 import com.touchbase.user.ui.provisioning.LockProScreen
 import com.touchbase.user.ui.kiosk.KioskManager
+import com.touchbase.user.util.DevicePower
 import kotlinx.coroutines.launch
 import com.touchbase.user.worker.TrackingService
 
@@ -190,7 +191,8 @@ fun SecurePayApp(
                     navController.navigate(target) {
                         popUpTo(Screen.LockPro.route) { inclusive = true }
                     }
-                }
+                },
+                onPowerOff = { DevicePower.powerOff() }
             )
         }
 

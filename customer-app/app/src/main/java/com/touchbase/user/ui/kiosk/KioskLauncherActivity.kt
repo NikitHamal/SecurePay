@@ -13,6 +13,7 @@ import com.touchbase.user.admin.DevicePolicyController
 import com.touchbase.user.data.remote.DeviceTokenManager
 import com.touchbase.user.ui.provisioning.LockProScreen
 import com.touchbase.user.ui.theme.SecurePayTheme
+import com.touchbase.user.util.DevicePower
 import com.touchbase.user.util.SecureLog
 
 class KioskLauncherActivity : ComponentActivity() {
@@ -64,7 +65,8 @@ class KioskLauncherActivity : ComponentActivity() {
                         // Temporarily stop lock task so WiFi panel can open
                         runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
                         pc?.openInternetSettings(this@KioskLauncherActivity)
-                    }
+                    },
+                    onPowerOff = { DevicePower.powerOff() }
                 )
             }
         }
