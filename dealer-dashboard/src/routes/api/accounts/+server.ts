@@ -334,9 +334,9 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
   if (!/^\d{15}$/.test(imei)) {
     return errorResponse('imei must contain exactly 15 digits', 400);
   }
-  if (!planId && body.dailyRate == null) {
-    return errorResponse('dailyRate is required (pricing is set per sale)', 400);
-  }
+  // dailyRate / pricing is resolved from deviceHasPricing or plan or body — no early
+  // reject here so a device priced by the admin (total_amount/daily_rate on devices)
+  // enrolls even when the client sends no financials (fix: down-payment must start unpaid).
 
   // M-KOPA style application fields: references, guarantor, consent, signature.
   // All optional so older app builds keep working.
@@ -559,13 +559,14 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     return errorResponse('Unable to store KYC images. No customer account was created.', 502);
   }
 
-  // Down-payment settlement: for agents the down payment is NOT considered
-  // received at enrollment — the first real payment settles it (via any
-  // channel) and unlocks the phone; admins can confirm instantly here.
-  const downPaymentStatus = downPayment > 0 ? (isAgent ? 'unpaid' : 'confirmed') : 'unpaid';
-  const initialAmountPaid = isAgent ? 0 : downPayment;
-  const downPaymentConfirmedBy = !isAgent && downPayment > 0 ? locals.dealer.id : null;
-  const downPaymentConfirmedAt = !isAgent && downPayment > 0 ? nowSeconds : null;
+  // Down-payment settlement: NO enrollment auto-marks it paid. The phone stays
+  // locked until the first real money (Paystack MoMo/card, customer-app,
+  // or an admin recording cash on the ledger) accumulates to the required
+  // down_payment. First payments ARE the down payment (applyPayment settles).
+  const downPaymentStatus = 'unpaid';
+  const initialAmountPaid = 0;
+  const downPaymentConfirmedBy: string | null = null;
+  const downPaymentConfirmedAt: number | null = null;
 
   const statements = [
     db.prepare(`
@@ -648,12 +649,8 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
     ).bind(enrollmentLat, enrollmentLng, enrollmentAccuracy, accountId));
   }
 
-  if (downPayment > 0 && !isAgent) {
-    statements.push(db.prepare(`
-      INSERT INTO payments (id, account_id, amount, method, reference, recorded_by, created_at)
-      VALUES (?, ?, ?, 'cash', 'Down payment', ?, ?)
-    `).bind(uuidv4(), accountId, downPayment, locals.dealer.id, nowSeconds));
-  }
+  // Do NOT fabricate a cash payment at enrollment — first real payments count
+  // toward the down payment via applyPayment (see src/lib/payments.ts).
 
   try {
     await db.batch(statements);
