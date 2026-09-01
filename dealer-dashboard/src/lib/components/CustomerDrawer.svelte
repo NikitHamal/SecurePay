@@ -36,6 +36,17 @@
   let idBackPreview: string | null = null;
   let photoUploading = false;
 
+  // Lightbox for full-resolution Ghana Card viewing — thumbnails are small (aspect-square)
+  // so text looks soft; opening the original R2 file at native resolution makes it legible.
+  let lightboxSrc: string | null = null;
+  let lightboxLabel: string | null = null;
+  function openLightbox(src: string | null, label: string) {
+    if (!src) return;
+    lightboxSrc = src;
+    lightboxLabel = label;
+  }
+  function closeLightbox() { lightboxSrc = null; lightboxLabel = null; }
+
   function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -420,11 +431,11 @@
                     <input type="file" accept="image/*" class="hidden" on:change={(e)=>pickPhoto('photo',e)} />
                     {#if photoPreview}<button type="button" class="absolute top-1 right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-white text-xs" on:click|stopPropagation={()=>clearPhoto('photo')}>×</button>{/if}
                   </label>
-                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {idFrontPreview || customer.nationalIdFrontPath ? 'border-edge' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
+                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {idFrontPreview || customer.nationalIdFrontPath ? 'border-edge bg-white' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
                     {#if idFrontPreview}
-                      <img src={idFrontPreview} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                      <img src={idFrontPreview} alt="" class="absolute inset-0 h-full w-full object-contain bg-white p-1" />
                     {:else if customer.nationalIdFrontPath}
-                      <img src={`/api/accounts/${customer.id}/photos/id_front`} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                      <img src={`/api/accounts/${customer.id}/photos/id_front`} alt="" class="absolute inset-0 h-full w-full object-contain bg-white p-1" />
                     {:else}
                       <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
@@ -434,11 +445,11 @@
                     <input type="file" accept="image/*" class="hidden" on:change={(e)=>pickPhoto('id_front',e)} />
                     {#if idFrontPreview}<button type="button" class="absolute top-1 right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-crimson text-white text-xs" on:click|stopPropagation={()=>clearPhoto('id_front')}>×</button>{/if}
                   </label>
-                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {idBackPreview || customer.nationalIdBackPath ? 'border-edge' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
+                  <label class="relative flex flex-col items-center justify-center gap-1 rounded-lg border {idBackPreview || customer.nationalIdBackPath ? 'border-edge bg-white' : 'border-dashed border-edge bg-surface-100'} p-2 text-center cursor-pointer hover:border-brand/60 hover:bg-brand-soft/40 transition overflow-hidden aspect-square">
                     {#if idBackPreview}
-                      <img src={idBackPreview} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                      <img src={idBackPreview} alt="" class="absolute inset-0 h-full w-full object-contain bg-white p-1" />
                     {:else if customer.nationalIdBackPath}
-                      <img src={`/api/accounts/${customer.id}/photos/id_back`} alt="" class="absolute inset-0 h-full w-full object-cover" />
+                      <img src={`/api/accounts/${customer.id}/photos/id_back`} alt="" class="absolute inset-0 h-full w-full object-contain bg-white p-1" />
                     {:else}
                       <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
@@ -659,20 +670,22 @@
               { label: 'ID Front', src: customer.nationalIdFrontPath ? `/api/accounts/${customer.id}/photos/id_front` : null },
               { label: 'ID Back', src: customer.nationalIdBackPath ? `/api/accounts/${customer.id}/photos/id_back` : null }
             ] as item}
-              <a
-                href={item.src || '#'}
-                target={item.src ? '_blank' : undefined}
-                class="relative flex flex-col items-center justify-center rounded-lg overflow-hidden aspect-square {item.src ? 'border border-edge cursor-zoom-in' : 'border border-dashed border-edge bg-surface-100'}"
+              <button
+                type="button"
+                on:click={() => openLightbox(item.src, item.label)}
+                disabled={!item.src}
+                class="relative flex flex-col items-center justify-center rounded-lg overflow-hidden aspect-square {item.src ? 'border border-edge cursor-zoom-in hover:border-brand/60 bg-white' : 'border border-dashed border-edge bg-surface-100 cursor-default'}"
+                title={item.src ? `Click to view full ${item.label}` : 'No image'}
               >
                 {#if item.src}
-                  <img src={item.src} alt={item.label} class="absolute inset-0 h-full w-full object-cover" />
+                  <img src={item.src} alt={item.label} class="absolute inset-0 h-full w-full {item.label === 'Selfie' ? 'object-cover' : 'object-contain bg-white'}" loading="lazy" />
                 {:else}
                   <svg class="h-5 w-5 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M4 7h3l2-2h6l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.5"/>
                   </svg>
                 {/if}
-                <span class="relative z-10 text-2xs font-medium text-ink-primary px-1.5 py-0.5 rounded bg-surface-200/80 backdrop-blur mt-auto">{item.label}</span>
-              </a>
+                <span class="relative z-10 text-2xs font-medium text-ink-primary px-1.5 py-0.5 rounded bg-surface-200/90 backdrop-blur mt-auto shadow-sm">{item.label}</span>
+              </button>
             {/each}
           </div>
         </div>
@@ -758,6 +771,23 @@
           Delete
         </button>
       </footer>
+
+      {#if lightboxSrc}
+        <div
+          class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          on:click={closeLightbox}
+          on:keydown={(e) => e.key === 'Escape' && closeLightbox()}
+          tabindex="-1"
+        >
+          <div class="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center gap-3" on:click|stopPropagation>
+            <img src={lightboxSrc} alt={lightboxLabel ?? ''} class="max-h-[80vh] max-w-[85vw] object-contain rounded-lg bg-white shadow-2xl" />
+            <p class="text-sm font-medium text-white/90">{lightboxLabel}</p>
+            <button type="button" class="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-black shadow-lg hover:bg-zinc-100" on:click={closeLightbox} aria-label="Close">✕</button>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}

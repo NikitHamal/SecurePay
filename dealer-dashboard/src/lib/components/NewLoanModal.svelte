@@ -213,8 +213,8 @@
     else selfieData = dataUrl;
   }
 
-  // Fix blurry verification: capture higher-res (1600px) at 92% quality so text on IDs stays legible.
-  function downscaleImage(file: File, maxDim = 1600, quality = 0.92): Promise<string> {
+  // Fix blurry Ghana Card: keep original sharpness — 1920px max at 92% JPEG with high-quality smoothing so small text stays legible.
+  function downscaleImage(file: File, maxDim = 1920, quality = 0.92): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -227,6 +227,9 @@
         c.width = w; c.height = h;
         const ctx = c.getContext('2d');
         if (!ctx) return reject(new Error('Canvas unavailable'));
+        ctx.imageSmoothingEnabled = true;
+        // @ts-ignore — imageSmoothingQuality is widely supported
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, w, h);
         resolve(c.toDataURL('image/jpeg', quality));
       };

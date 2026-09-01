@@ -45,11 +45,17 @@ export const GET: RequestHandler = async ({ locals, params, platform }) => {
     }
 
     const bytes = await obj.arrayBuffer();
+    // Serve with the stored MIME type (set at upload via httpMetadata) so PNG/WebP
+    // Ghana Cards aren't forced to JPEG. Falls back to extension sniffing.
+    const storedType = (obj as unknown as { httpMetadata?: { contentType?: string } }).httpMetadata?.contentType;
+    const ext = path.split('.').pop()?.toLowerCase();
+    const contentType = storedType || (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
     return new Response(bytes, {
       headers: {
-        'Content-Type': 'image/jpeg',
+        'Content-Type': contentType,
         'Cache-Control': 'private, max-age=300',
-        'X-Content-Type-Options': 'nosniff'
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Disposition': 'inline'
       }
     });
   } catch (err: any) {
