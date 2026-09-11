@@ -66,7 +66,11 @@ class KioskLauncherActivity : ComponentActivity() {
                         runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
                         pc?.openInternetSettings(this@KioskLauncherActivity)
                     },
-                    onPowerOff = { DevicePower.powerOff() }
+                    onPowerOff = {
+                        // Release lock task first so the hidden shutdown isn't blocked
+                        runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
+                        runCatching { DevicePower.powerOff() }
+                    }
                 )
             }
         }
