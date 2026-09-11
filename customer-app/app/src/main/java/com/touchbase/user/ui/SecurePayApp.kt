@@ -2,6 +2,7 @@ package com.touchbase.user.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,9 +35,12 @@ import com.touchbase.user.ui.account.AccountScreen
 import com.touchbase.user.ui.provisioning.LockProScreen
 import com.touchbase.user.ui.kiosk.KioskManager
 import com.touchbase.user.util.DevicePower
+import com.touchbase.user.util.SecureLog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.touchbase.user.worker.TrackingService
+
+private const val TAG = "SecurePayApp"
 
 @Composable
 fun SecurePayApp(
@@ -104,20 +108,55 @@ fun SecurePayApp(
 
     fun removeThisApp() {
         scope.launch {
+            SecureLog.i(TAG, "removeThisApp: start")
             // Release lock-task pinning so the system uninstaller can open.
             // Without this, ACTION_DELETE silently fails on a locked/kiosk device.
             runCatching { (context as? android.app.Activity)?.stopLockTask() }
-            delay(400)
-            // Make sure the device-owner/admin is fully removed; Android blocks
-            // uninstall while an admin or device owner is still active.
+            delay(300)
+            // If the device is still under management, remove admin/owner first;
+            // Android blocks uninstalling an active device-admin package.
+            SecureLog.i(TAG, "removeThisApp: releasing management (adminActive=${policyController.isAdminActive}, owner=${policyController.isDeviceOwnerApp})")
             runCatching { policyController.releaseManagementForPaidLoan() }
-            delay(400)
-            runCatching {
-                val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${context.packageName}")).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                }
-                context.startActivity(intent)
+            delay(300)
+
+            val packageName = context.packageName
+            SecureLog.i(TAG, "removeThisApp: firing uninstall for $packageName")
+
+            // Preferred: explicit uninstall intent.
+            val uninstallIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.parse("package:$packageName")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+            val launchedUninstall = runCatching {
+                context.startActivity(uninstallIntent)
+                true
+            }.onFailure { SecureLog.w(TAG, "ACTION_UNINSTALL_PACKAGE failed", it) }
+                .getOrDefault(false)
+            if (launchedUninstall) {
+                SecureLog.i(TAG, "removeThisApp: launched ACTION_UNINSTALL_PACKAGE")
+                return@launch
+            }
+
+            // Fallback: legacy delete intent.
+            val deleteIntent = Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val launchedDelete = runCatching {
+                context.startActivity(deleteIntent)
+                true
+            }.onFailure { SecureLog.w(TAG, "ACTION_DELETE failed", it) }
+                .getOrDefault(false)
+            if (launchedDelete) {
+                SecureLog.i(TAG, "removeThisApp: launched ACTION_DELETE")
+                return@launch
+            }
+
+            // Last resort: open this app's page in Settings so the user can
+            // reach the Uninstall button manually.
+            SecureLog.w(TAG, "removeThisApp: both uninstall intents failed, opening app-info")
+            runCatching {
+                val details = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+                context.startActivity(details)
+            }.onFailure { SecureLog.e(TAG, "removeThisApp: app-info failed", it) }
         }
     }
 
