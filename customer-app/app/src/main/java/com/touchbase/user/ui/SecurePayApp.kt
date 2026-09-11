@@ -34,6 +34,7 @@ import com.touchbase.user.ui.account.AccountScreen
 import com.touchbase.user.ui.provisioning.LockProScreen
 import com.touchbase.user.ui.kiosk.KioskManager
 import com.touchbase.user.util.DevicePower
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.touchbase.user.worker.TrackingService
 
@@ -102,11 +103,21 @@ fun SecurePayApp(
     }
 
     fun removeThisApp() {
-        runCatching {
-            val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${context.packageName}")).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        scope.launch {
+            // Release lock-task pinning so the system uninstaller can open.
+            // Without this, ACTION_DELETE silently fails on a locked/kiosk device.
+            runCatching { (context as? android.app.Activity)?.stopLockTask() }
+            delay(400)
+            // Make sure the device-owner/admin is fully removed; Android blocks
+            // uninstall while an admin or device owner is still active.
+            runCatching { policyController.releaseManagementForPaidLoan() }
+            delay(400)
+            runCatching {
+                val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${context.packageName}")).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                context.startActivity(intent)
             }
-            context.startActivity(intent)
         }
     }
 

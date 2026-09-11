@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.touchbase.user.data.model.LoanAccount
 import com.touchbase.user.data.model.formatCentsAsCurrency
 import com.touchbase.user.ui.theme.CharcoalElevated
+import com.touchbase.user.ui.theme.TextPrimary
 import com.touchbase.user.ui.theme.TextSecondary
 
 @Composable
@@ -59,6 +60,7 @@ fun ReleaseApprovedScreen(
             text = "Loan complete",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
+            color = TextPrimary,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(8.dp))
