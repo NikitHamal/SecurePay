@@ -224,7 +224,7 @@ fun SecurePayApp(
             account = state.account,
             isReleasing = releaseInProgress,
             managementReleased = managementReleased,
-            onRemoveApp = ::removeThisApp,
+            onUninstall = ::removeThisApp,
             onRefresh = { runRelease() }
         )
         return

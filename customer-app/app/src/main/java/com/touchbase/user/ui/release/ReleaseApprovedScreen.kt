@@ -24,8 +24,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,9 +45,10 @@ fun ReleaseApprovedScreen(
     account: LoanAccount?,
     isReleasing: Boolean,
     managementReleased: Boolean,
-    onRemoveApp: () -> Unit,
+    onUninstall: () -> Unit,
     onRefresh: () -> Unit
 ) {
+    var uninstallArmed by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -94,8 +100,8 @@ fun ReleaseApprovedScreen(
             Text("Removing device management…", color = TextSecondary)
         } else {
             Button(
-                onClick = onRemoveApp,
-                enabled = managementReleased,
+                onClick = { uninstallArmed = true },
+                enabled = managementReleased && !uninstallArmed,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -103,10 +109,41 @@ fun ReleaseApprovedScreen(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = null)
+                Icon(Icons.Filled.CheckCircle, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                ButtonText(if (managementReleased) "Remove Touch Base" else "Management removal pending")
+                ButtonText(
+                    when {
+                        uninstallArmed -> "Management removed"
+                        managementReleased -> "Remove Touch Base"
+                        else -> "Management removal pending"
+                    }
+                )
             }
+
+            if (managementReleased && uninstallArmed) {
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = onUninstall,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD32F2F),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    ButtonText("UNINSTALL Touch Base")
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "This permanently uninstalls the app and clears all its data.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+            }
+
             Spacer(Modifier.height(10.dp))
             OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                 ButtonText("Refresh")
