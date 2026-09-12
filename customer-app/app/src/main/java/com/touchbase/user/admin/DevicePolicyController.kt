@@ -130,10 +130,13 @@ class DevicePolicyController(context: Context) {
             defaultDialerPackage()?.let(packages::add)
             dpm.setLockTaskPackages(admin, packages.toTypedArray())
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                dpm.setLockTaskFeatures(
-                    admin,
-                    DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO
-                )
+                var features = DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Restore the long-press power menu (Power off / Restart) inside
+                    // lock task, which Samsung otherwise swallows during kiosk pinning.
+                    features = features or DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS
+                }
+                dpm.setLockTaskFeatures(admin, features)
             }
             activity.startLockTask()
             SecureLog.i(TAG, "Lock task started with allowlist=$packages")

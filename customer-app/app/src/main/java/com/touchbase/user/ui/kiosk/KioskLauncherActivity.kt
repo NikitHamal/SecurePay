@@ -67,9 +67,16 @@ class KioskLauncherActivity : ComponentActivity() {
                         pc?.openInternetSettings(this@KioskLauncherActivity)
                     },
                     onPowerOff = {
-                        // Release lock task first so the hidden shutdown isn't blocked
+                        // Same flow as Wi-Fi: release lock task first so the system
+                        // power menu (Power off / Restart) can open. SystemUI — the
+                        // only component Android lets shut the device down — does the
+                        // actual power off, so the button reliably turns the phone off.
+                        // Falls back to a forced shutdown attempt if the menu fails.
                         runCatching { policyController.stopLockTask(this@KioskLauncherActivity) }
-                        runCatching { DevicePower.powerOff() }
+                        if (!DevicePower.showPowerMenu()) {
+                            SecureLog.w(TAG, "Power menu unavailable — attempting forced shutdown")
+                            runCatching { DevicePower.powerOff() }
+                        }
                     }
                 )
             }

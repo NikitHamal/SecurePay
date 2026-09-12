@@ -11,23 +11,46 @@ object DevicePower {
 
     private const val TAG = "DevicePower"
 
+    private fun powerManager(): Any? = runCatching {
+        val serviceManager = Class.forName("android.os.ServiceManager")
+        val getService = serviceManager.getMethod("getService", String::class.java)
+        val binder = getService.invoke(null, "power") as IBinder
+
+        Class.forName("android.os.IPowerManager")
+            .getMethod("asInterface", IBinder::class.java)
+            .invoke(null, binder)
+    }.getOrNull()
+
     fun powerOff() {
         runCatching {
-            val serviceManager = Class.forName("android.os.ServiceManager")
-            val getService = serviceManager.getMethod("getService", String::class.java)
-            val binder = getService.invoke(null, "power") as IBinder
-
-            val powerManager = Class.forName("android.os.IPowerManager")
-                .getMethod("asInterface", IBinder::class.java)
-                .invoke(null, binder)
-
+            val pm = powerManager() ?: throw IllegalStateException("IPowerManager unavailable")
             // Signature is void reboot(boolean confirm, String reason, boolean wait)
             // (primitive booleans — using Boolean.class would throw NoSuchMethodException).
-            invokeReboot(powerManager)
+            invokeReboot(pm)
         }.onFailure {
             SecureLog.e(TAG, "Power off failed", it)
             runCatching { SecureLog.e(TAG, "Reboot method variants: ${android.os.PowerManager::class.java.name}") }
         }
+    }
+
+    /**
+     * Shows the system power menu (Power off / Restart / Screenshot, etc.).
+     * Works after lock task has been released — the same way opening the Wi-Fi
+     * panel works — instead of forcing an immediate shutdown. The actual power
+     * off is performed by SystemUI, which is the only caller Android allows to
+     * shut the device down.
+     *
+     * Returns true if the menu was shown.
+     */
+    fun showPowerMenu(): Boolean {
+        return runCatching {
+            val pm = powerManager() ?: throw IllegalStateException("IPowerManager unavailable")
+            pm.javaClass.getMethod("showGlobalActions").invoke(pm)
+            SecureLog.i(TAG, "System power menu shown")
+            true
+        }.onFailure {
+            SecureLog.e(TAG, "showGlobalActions failed", it)
+        }.getOrDefault(false)
     }
 
     private fun invokeReboot(powerManager: Any) {
