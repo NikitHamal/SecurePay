@@ -277,9 +277,12 @@ class DevicePolicyController(context: Context) {
             dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY)
             // Allow customers to add Google accounts and uninstall/update apps
             // (WhatsApp, TikTok, etc.) — required for the Ghana market per client.
-            // DISALLOW_APPS_CONTROL, DISALLOW_MODIFY_ACCOUNTS and
-            // DISALLOW_CONFIG_CREDENTIALS intentionally NOT set — the last one
-            // blocks personal Google account sign-in on Samsung Play Store.
+            // DISALLOW_APPS_CONTROL and DISALLOW_MODIFY_ACCOUNTS intentionally
+            // NOT set. DISALLOW_CONFIG_CREDENTIALS is set: sign-in to personal
+            // Google accounts is handled through the dedicated dealer-assisted
+            // flow instead, and blocking credential configuration protects the
+            // financed device from tampering.
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_CREDENTIALS)
             dpm.addUserRestriction(admin, UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)
             // Keep the package installer available for signed dealer APK updates.
             // Do not set INSTALL_NON_MARKET_APPS=0; that setting blocks the manual
